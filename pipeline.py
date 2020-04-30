@@ -12,8 +12,10 @@ from multiprocess.scheduler import Scheduler
 from multiprocess.shell_process import launch_shell_process, launch_python_process, launch_singularity_process
 from processes.apply_mask_process import ApplyMaskProcess
 from processes.compute_mask_process import ComputeMaskProcess
-from processes.preprocess.preprocess import DenoiseProcess, ExtractB0Process, B0PostProcess, PrepareTopupProcess, \
-    TopupProcess, ConcatenateDatasets, PrepareEddyProcess, EddyProcess, SquashB0Process
+from processes.preprocess.preprocess import ExtractB0Process, B0PostProcess, \
+    ConcatenateDatasets, SquashB0Process
+from processes.preprocess.denoise import DenoiseProcess, PrepareTopupProcess, \
+    TopupProcess, PrepareEddyProcess, EddyProcess
 from processes.preprocess.register import AntsApplyTransformProcess, AntsRegisterProcess, ants_rigid_step, ants_affine_step, ants_syn_step, ants_global_params
 from processes.reconstruction.dti import DTIProcess, ComputeFAProcess
 from processes.utils.copy_files_process import CopyFilesProcess
