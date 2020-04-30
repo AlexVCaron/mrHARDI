@@ -1,49 +1,8 @@
 {
   "singularity": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/singularity/magic_monkey/magic_monkey_singularity.simg",
-  "base_paths": [
-    "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel"
-  ],
-  "datasets" : [
-    {
-      "path" : "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/data/ap_1",
-      "name" : "2_DiffRaw_SuperRes.nii",
-      "bvals" : "20190617_105138ep2dgsliderp8mmisoCUSPs008a001_new.bval",
-      "bvecs" : "20190617_105138ep2dgsliderp8mmisoCUSPs008a001_new.bvec",
-      "type" : "DWI",
-      "direction" : "AP"
-    },
-    {
-      "path" : "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/data/ap_2",
-      "name" : "4_DiffRaw_SuperRes.nii",
-      "bvals" : "20190617_105138ep2dgsliderp8mmisoCUSPs016a001_new.bval",
-      "bvecs" : "20190617_105138ep2dgsliderp8mmisoCUSPs016a001_new.bvec",
-      "type" : "DWI",
-      "direction" : "AP"
-    },
-    {
-      "path" : "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/data/pa_1",
-      "name" : "3_DiffRaw_SuperRes.nii",
-      "bvals" : "20190617_105138ep2dgsliderp8mmisoCUSPPAs010a001_new.bval",
-      "bvecs" : "20190617_105138ep2dgsliderp8mmisoCUSPPAs010a001_new.bvec",
-      "type" : "DWI",
-      "direction" : "PA"
-    },
-    {
-      "path" : "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/data/pa_2",
-      "name" : "5_DiffRaw_SuperRes.nii",
-      "bvals" : "20190617_105138ep2dgsliderp8mmisoCUSPPAs018a001_new.bval",
-      "bvecs" : "20190617_105138ep2dgsliderp8mmisoCUSPPAs018a001_new.bvec",
-      "type" : "DWI",
-      "direction" : "PA"
-    },
-    {
-      "path" : "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/data/t1_struct",
-      "name" : "20190617_105138MPRAGE0533HCPFOV176s005a1001.nii.gz",
-      "type" : "T1"
-    }
-  ],
-  "mask" : "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/data/mask_bin.nii.gz",
+  "base_paths": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel",
+  "datasets" : "dataset.h5",
   "process_paths": {
-    "preproc": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/processing/preprocessing"
+    "preproc": "processing/preprocessing"
   }
 }
