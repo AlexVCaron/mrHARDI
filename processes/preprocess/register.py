@@ -127,7 +127,7 @@ class AntsRegisterProcess(Process):
         )
 
         self._output_package.update({
-            "img": warped_output,
+            "ref": warped_output,
             "affine": "{}0GenericAffine.mat".format(prefix)
         })
 

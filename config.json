@@ -44,12 +44,6 @@
   ],
   "mask" : "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/data/mask_bin.nii.gz",
   "process_paths": {
-    "t1_register": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/processing/t1_register_rig_aff",
-    "t1_register_syn": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/processing/t1_register_syn",
-    "mask_register": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/processing/mask_register",
-    "denoise": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/processing/denoise",
-    "b0_extract": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/processing/b0_preproc",
-    "topup": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/processing/topup",
-    "eddy": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/processing/eddy"
+    "preproc": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel/processing/preprocessing"
   }
 }

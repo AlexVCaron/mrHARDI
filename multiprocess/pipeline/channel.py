@@ -4,6 +4,8 @@ from itertools import cycle
 from threading import Thread
 from uuid import uuid4
 
+from multiprocess.pipeline.subscriber import Subscriber
+
 
 class Channel:
     class Sub(Enum):
@@ -74,3 +76,15 @@ class Channel:
         package = self._idle_packages[id_tag]
         for sub in self._subscribers[Channel.Sub.OUT]:
             sub.transmit(id_tag, package)
+
+
+def create_connection(input_list, package_keys):
+    channel = Channel(package_keys)
+
+    for in_c in input_list:
+        subscriber = Subscriber()
+
+        channel.add_subscriber(subscriber, Channel.Sub.IN)
+        in_c.add_subscriber(subscriber, Channel.Sub.OUT)
+
+    return channel
