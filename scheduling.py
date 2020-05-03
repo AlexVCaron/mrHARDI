@@ -2,7 +2,7 @@ import random
 import time
 
 from multiprocess.scheduler import Scheduler
-from multiprocess.process import Process
+from multiprocess.pipeline.process import Process
 
 
 class DummyWaiter(Process):

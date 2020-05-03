@@ -5,7 +5,7 @@ from numpy import zeros, apply_along_axis, ones
 
 from config import append_image_extension
 from magic_monkey.compute_fa_from_mrtrix_dt import compute_eigens, compute_fa
-from multiprocess.process import Process
+from multiprocess.pipeline.process import Process
 
 
 class DTIProcess(Process):
@@ -20,7 +20,12 @@ class DTIProcess(Process):
             package.pop("mask", None)
         ]
 
-    def execute(self):
+    def _execute(self, options, img, output_img, *args, **kwargs):
+        return "dwi2tensor {} {} {}".format(
+            options, img, output_img
+        )
+
+    def execute(self, *args, **kwargs):
         img, bvals, bvecs, mask = self._input
         output_img = append_image_extension(self._get_prefix())
 
@@ -30,11 +35,7 @@ class DTIProcess(Process):
         if mask:
             options += " -mask {}".format(mask)
 
-        self._launch_process(
-            "dwi2tensor {} {} {}".format(
-                options, img, output_img
-            )
-        )
+        super().execute(options, img, output_img)
 
         self._output_package.update({
             "img": output_img
@@ -48,10 +49,7 @@ class ComputeFAProcess(Process):
     def set_inputs(self, package):
         self._input = [package["img"], package.pop("mask", None)]
 
-    def execute(self):
-        self._launch_process(self._execute)
-
-    def _execute(self, log_file_path):
+    def _execute(self, log_file_path, *args, **kwargs):
         img, mask = self._input
         output_img = append_image_extension(self._get_prefix())
 

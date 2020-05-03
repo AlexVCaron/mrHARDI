@@ -17,9 +17,10 @@ class Dataset(Subscriber):
         self._cache_len = cache_len
         self._infos = {}
         self._ids = None
-        self._extras = {}
+        self._subject_infos = {}
         self._single_anat = single_anat
         self._single_mask = single_mask
+        self._empty = False
 
         if prepare_data_fn:
             self._prepare_data = prepare_data_fn
@@ -30,15 +31,24 @@ class Dataset(Subscriber):
         return len(self._infos)
 
     def data_ready(self):
-        return True
+        return not self.empty()
+
+    def empty(self):
+        return self._empty
 
     def yield_data(self):
-        id = next(self._ids)
-        return id, self._get_package(id)
+        try:
+            id = next(self._ids)
+            return id, self._get_package(id)
+        except StopIteration as e:
+            self._empty = True
+            raise e
 
     def __iter__(self):
         for id in self._ids:
             yield id, self._get_package(id)
+
+        self._empty = True
 
     def _get_package(self, id):
         if id not in self._cache.keys():
@@ -47,7 +57,11 @@ class Dataset(Subscriber):
                 data = archive[infos["subject"]][infos["rep"]]
                 self._add_to_cache(id, data)
 
-        return self._cache[id]
+        extras, subject_id = {}, self._infos[id]["subject"]
+        if subject_id in self._subject_infos.keys():
+            extras.update(self._subject_infos[subject_id])
+
+        return {**self._cache[id], **extras}
 
     def _initialize(self):
         ids = []
@@ -55,11 +69,11 @@ class Dataset(Subscriber):
         with h5py.File(self._archive, "r") as archive:
             for subject, group in archive.items():
                 gp = dict(group)
-                self._extras[subject] = {}
+                self._subject_infos[subject] = {}
                 if self._single_anat:
-                    self._extras[subject]["anat"] = gp.pop("anat")
+                    self._subject_infos[subject]["anat"] = gp.pop("anat")[()]
                 if self._single_mask:
-                    self._extras[subject]["mask"] = gp.pop("mask")
+                    self._subject_infos[subject]["mask"] = gp.pop("mask")[()]
 
                 for rep, data in gp.items():
                     id = uuid.uuid4()
@@ -79,9 +93,12 @@ class Dataset(Subscriber):
             del_key = list(self._cache.keys())[randint(0, self._cache_len - 1)]
             self._cache.pop(del_key)
 
-        self._cache[id] = self._prepare_data(data)
+        self._cache[id] = self._prepare_data(self._unpack(data))
 
-    def _prepare_data(self, data):
+    def _unpack(self, data):
         return {
             k: v[()] for k, v in data.items()
         }
+
+    def _prepare_data(self, data):
+        return data

@@ -8,7 +8,7 @@ import numpy as np
 from config import append_image_extension
 from magic_monkey.prepare_eddy_command import prepare_eddy_index
 from magic_monkey.prepare_topup_command import prepare_topup_params
-from multiprocess.process import Process
+from multiprocess.pipeline.process import Process
 
 
 class DenoiseProcess(Process):
@@ -24,7 +24,10 @@ class DenoiseProcess(Process):
     def set_inputs(self, package):
         self._input = [package["img"], package.pop("mask", None)]
 
-    def execute(self):
+    def _execute(self, *args, **kwargs):
+        return "dwidenoise " + " ".join(args)
+
+    def execute(self, *args, **kwargs):
         img, mask = self._input
         output = append_image_extension(self._get_prefix())
 
@@ -33,7 +36,7 @@ class DenoiseProcess(Process):
         if mask:
             args += ["-mask {}".format(mask)]
 
-        self._launch_process("dwidenoise " + " ".join(args))
+        super().execute(*args)
 
         self._output_package.update({
             "img": output
@@ -53,10 +56,7 @@ class PrepareTopupProcess(Process):
     def set_inputs(self, package):
         self._input = package["img"]
 
-    def execute(self):
-        self._launch_process(self._execute)
-
-    def _execute(self, log_file_path):
+    def _execute(self, log_file_path, *args, **kwargs):
         ap_b0, pa_b0 = self._input
         prefix = self._get_prefix()
 
@@ -154,12 +154,13 @@ class TopupProcess(Process):
             "param_topup": package["param_topup"]
         })
 
-    def execute(self):
+    def _execute(self, *args, **kwargs):
+        return "{} {}".format(*self._input, *args)
+
+    def execute(self, *args, **kwargs):
         output_img = append_image_extension(self._get_prefix())
 
-        self._launch_process(
-            "{} {}".format(*self._input, output_img)
-        )
+        super().execute(output_img)
 
         self._output_package.update({
             "img": output_img
@@ -180,10 +181,7 @@ class PrepareEddyProcess(Process):
     def set_inputs(self, package):
         self._input = [package["bvals"], package["param_topup"]]
 
-    def execute(self):
-        self._launch_process(self._execute)
-
-    def _execute(self, log_file_path):
+    def _execute(self, log_file_path, *args, **kwargs):
         bvals, param_topup = self._input
         prefix = self._get_prefix()
         output = {
@@ -291,7 +289,10 @@ class EddyProcess(Process):
             package["param_eddy"], package["param_topup"]
         ]
 
-    def execute(self):
+    def _execute(self, *args, **kwargs):
+        "{} {} {} {} {} {} {}_topup_results {}".format(*args)
+
+    def execute(self, *args, **kwargs):
         script, img, mask, bvals, bvecs, index, topup = self._input
         prefix = self._get_prefix()
 
@@ -301,10 +302,8 @@ class EddyProcess(Process):
             "bvecs": "{}.bvecs".format(prefix)
         }
 
-        self._launch_process(
-            "{} {} {} {} {} {} {}_topup_results {}".format(
-                script, img, bvals, bvecs, mask, index, topup, output["img"]
-            )
+        super().execute(
+            script, img, bvals, bvecs, mask, index, topup, output["img"]
         )
 
         self._output_package.append(output)

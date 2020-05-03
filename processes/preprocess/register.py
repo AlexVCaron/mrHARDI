@@ -2,7 +2,7 @@ from multiprocessing import cpu_count
 from numpy import array
 
 from config import append_image_extension
-from multiprocess.process import Process
+from multiprocess.pipeline.process import Process
 
 
 def ants_rigid_step(
@@ -98,7 +98,28 @@ class AntsRegisterProcess(Process):
     def set_inputs(self, package):
         self._input = [package["img_from"], package["img_to"]]
 
-    def execute(self):
+    def _execute(
+        self, img_frm, img_to, prefix, warped_output,
+        inv_warped_output, *args, **kwargs
+    ):
+        "antsRegistration {} {} {}".format(
+            " ".join([step.format(**{
+                "in{}".format(i + 1): "{},{}".format(img_frm[i], img_to[i])
+                for i in range(len(img_frm))
+            }) for step in self._ants_steps]),
+            self._params,
+            " ".join([
+                "--output",
+                "[{},{},{}]{}".format(
+                    prefix,
+                    warped_output,
+                    inv_warped_output,
+                    " --verbose" if self._verbose else ""
+                )
+            ])
+        )
+
+    def execute(self, *args, **kwargs):
         img_frm, img_to = self._input
         prefix = self._get_prefix()
 
@@ -107,23 +128,8 @@ class AntsRegisterProcess(Process):
             "{}InverseWarped".format(prefix)
         )
 
-        self._launch_process(
-            "antsRegistration {} {} {}".format(
-                " ".join([step.format(**{
-                    "in{}".format(i + 1): "{},{}".format(img_frm[i], img_to[i])
-                    for i in range(len(img_frm))
-                }) for step in self._ants_steps]),
-                self._params,
-                " ".join([
-                    "--output",
-                    "[{},{},{}]{}".format(
-                        prefix,
-                        warped_output,
-                        inv_warped_output,
-                        " --verbose" if self._verbose else ""
-                    )
-                ])
-            )
+        super().execute(
+            img_frm, img_to, prefix, warped_output, inv_warped_output
         )
 
         self._output_package.update({
@@ -151,18 +157,21 @@ class AntsApplyTransformProcess(Process):
     def set_inputs(self, package):
         self._input = [package["img"], package["affine"], package["ref"]]
 
-    def execute(self):
+    def _execute(self, img, affine, ref, output, *args, **kwargs):
+        return " ".join([
+            "antsApplyTransforms -i {} -r {} -t {}".format(img, affine, ref),
+            "-o {}".format(output),
+            "-e {} -d {} -n {} -f {}".format(*self._params),
+            "--verbose" if self._verbose else ""
+        ])
+
+    def execute(self, *args, **kwargs):
         img, affine, ref = self._input
         prefix = self._get_prefix()
         output = {
             "img": append_image_extension(prefix)
         }
 
-        self._launch_process(" ".join([
-            "antsApplyTransforms -i {} -r {} -t {}".format(img, affine, ref),
-            "-o {}".format(output["img"]),
-            "-e {} -d {} -n {} -f {}".format(*self._params),
-            "--verbose" if self._verbose else ""
-        ]))
+        super().execute(img, affine, ref, output["img"])
 
         self._output_package.update(output)

@@ -29,13 +29,19 @@ class Channel:
         self._thread.daemon = True
         self._thread.start()
 
+    def running(self):
+        return self._thread and self._thread.is_alive()
+
+    def has_inputs(self):
+        return len(self._subscribers[Channel.Sub.IN]) > 0
+
     def _threaded_run(self, end_fn):
         if not self._broadcast_out:
             self._subscribers[Channel.Sub.OUT] = cycle(
                 self._subscribers[Channel.Sub.OUT]
             )
 
-        while not end_fn():
+        while not end_fn() and self.has_inputs():
             self.pool_data_package()
 
     def add_subscriber(self, sub, type=Sub.IN):
@@ -44,21 +50,19 @@ class Channel:
     def pool_data_package(self):
         timestamp = uuid4()
         inputs = self._subscribers[Channel.Sub.IN]
+        has_transmitted = False
 
         while True:
-            for sub in inputs:
+            for i, sub in enumerate(inputs):
                 if not sub.timestamp(timestamp) and sub.data_ready():
-                    id_tag, data = sub.yield_data()
+                    id_tag = self._yield(i, sub)
 
-                    if id_tag not in self._idle_packages:
-                        self._idle_packages[id_tag] = {}
-
-                    self._idle_packages[id_tag](data)
-
-                    if self._is_complete(id_tag):
+                    if id_tag and self._is_complete(id_tag):
                         self._transmit(id_tag)
+                        has_transmitted = True
+                        break
 
-            if all(s.timestamp(timestamp) for s in inputs):
+            if has_transmitted or all(s.timestamp(timestamp) for s in inputs):
                 break
 
             time.sleep(1)
@@ -66,6 +70,16 @@ class Channel:
     def _is_complete(self, id_tag):
         package_keys = self._idle_packages[id_tag]
         return all(k in self._package_keys for k in package_keys)
+
+    def _yield(self, sub_idx, sub):
+        id_tag, data = sub.yield_data()
+
+        if id_tag not in self._idle_packages:
+            self._idle_packages[id_tag] = {}
+
+        self._idle_packages[id_tag].update(data)
+
+        return id_tag
 
     def _transmit(self, id_tag):
         sub = next(self._subscribers[Channel.Sub.OUT])

@@ -1,15 +1,13 @@
 import json
-from enum import Enum
 from os import getcwd, makedirs
 from os.path import join
-from shutil import copyfile
 from functools import partial
 import numpy as np
 
 from magic_monkey.dataloader import Dataloader
-from multiprocess.cuda_logger import log_gpu_usage_callback
+from multiprocess.gpu.cuda_logger import log_gpu_usage_callback
 from multiprocess.scheduler import Scheduler
-from multiprocess.shell_process import launch_shell_process, launch_python_process, launch_singularity_process
+from multiprocess.shell.shell_process import launch_shell_process, launch_python_process, launch_singularity_process
 from processes.apply_mask_process import ApplyMaskProcess
 from processes.compute_mask_process import ComputeMaskProcess
 from processes.preprocess.preprocess import ExtractB0Process, B0PostProcess, \

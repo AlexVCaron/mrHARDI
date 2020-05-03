@@ -3,7 +3,7 @@ import nibabel as nib
 
 from config import append_image_extension
 from magic_monkey.apply_mask import apply_mask_on_data
-from multiprocess.process import Process
+from multiprocess.pipeline.process import Process
 
 
 class ApplyMaskProcess(Process):
@@ -13,10 +13,7 @@ class ApplyMaskProcess(Process):
     def set_inputs(self, package):
         self._input = [package["img"], package["mask"]]
 
-    def execute(self):
-        self._launch_process(self._execute)
-
-    def _execute(self, log_file_path):
+    def _execute(self, log_file_path, *args, **kwargs):
         img, mask = self._input
         output_img = append_image_extension(self._get_prefix())
 

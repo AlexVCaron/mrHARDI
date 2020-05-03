@@ -6,7 +6,7 @@ import numpy as np
 from config import append_image_extension
 from magic_monkey.b0_process import B0PostProcess, extract_b0, squash_b0
 from magic_monkey.concatenate_dwi import concatenate_dwi
-from multiprocess.process import Process
+from multiprocess.pipeline.process import Process
 
 
 class ExtractB0Process(Process):
@@ -23,10 +23,7 @@ class ExtractB0Process(Process):
     def set_inputs(self, package):
         self._input = [package["img"], package["bvals"]]
 
-    def execute(self):
-        self._launch_process(self._execute)
-
-    def _execute(self, log_file_path):
+    def _execute(self, log_file_path, *args, **kwargs):
         img, bvals = self._input
         strides, mean_fn = self._params
         output = append_image_extension(self._get_prefix())
@@ -66,10 +63,7 @@ class SquashB0Process(Process):
     def set_inputs(self, package):
         self._input = [package["img"], package["bvals"], package["bvecs"]]
 
-    def execute(self):
-        self._launch_process(self._execute)
-
-    def _execute(self, log_file_path):
+    def _execute(self, log_file_path, *args, **kwargs):
         img, bvals, bvecs = self._input
         prefix = self._get_prefix()
 
@@ -118,10 +112,7 @@ class ConcatenateDatasets(Process):
             package.pop("bvecs", None)
         ]
 
-    def execute(self):
-        self._launch_process(self._execute)
-
-    def _execute(self, log_file_path):
+    def _execute(self, log_file_path, *args, **kwargs):
         in_dwi, in_bvals, in_bvecs = self._input
         prefix = self._get_prefix()
 

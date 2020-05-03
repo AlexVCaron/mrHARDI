@@ -1,9 +1,16 @@
+from enum import Enum
 from multiprocessing import cpu_count, Process
 import time
 import tqdm
 
+from multiprocess.shell.shell_process import launch_shell_process
+
 
 class Scheduler:
+    class Launchers(Enum):
+        SHELL = lambda method, l_conf, *args, **kwargs: launch_shell_process(method(*args, **kwargs), **l_conf)
+        PYTHON = lambda method, *args, **kwargs: method(*args, **kwargs)
+
     def __init__(self):
         self._phases = {}
         self._num_phases = 0

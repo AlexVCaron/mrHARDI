@@ -1,12 +1,11 @@
-from functools import partial
 from unittest import TestCase
 
 from moneky_io.dataset import Dataset
-from test.helpers.data import create_hdf5_dataset, create_pipeline_input_subject, create_pipeline_input_rep, \
-    assert_data_point
+from test.test_monkey_io.helpers.monkey_io_test_base import MonkeyIOTestBase
+from test.test_monkey_io.helpers.data import assert_data_point
 
 
-class TestDataset(TestCase):
+class TestDataset(TestCase, MonkeyIOTestBase):
     def setUp(self):
         self.data_shape = (10, 10, 10, 32)
         self.dataset_handle = self.generate_hdf5_dataset(
@@ -20,6 +19,8 @@ class TestDataset(TestCase):
     def test_create_dataset(self):
         loaded_ids = []
 
+        assert self.dataset.data_ready()
+
         for id, data in self.dataset:
             assert id not in loaded_ids
             assert_data_point(data, self.data_shape)
@@ -27,10 +28,24 @@ class TestDataset(TestCase):
             loaded_ids.append(id)
 
         assert len(self.dataset) == 50
+        assert self.dataset.empty()
+        assert not self.dataset.data_ready()
 
     def test_yield_single_data(self):
         id, data = self.dataset.yield_data()
         assert_data_point(data, self.data_shape)
+
+    def test_modify_single_data(self):
+        def prep_fn(data):
+            data["mask"] = data.pop("img")
+            return data
+
+        self.dataset = Dataset(
+            self.dataset_handle, prepare_data_fn=prep_fn
+        )
+
+        id, data = self.dataset.yield_data()
+        assert_data_point(data, self.data_shape, {"img": "mask"})
 
     def test_yield_all_data(self):
         i = 0
@@ -50,24 +65,3 @@ class TestDataset(TestCase):
     def _loop_dataloader(self, dataloader_fn, n):
         for i in range(n):
             dataloader_fn()
-
-    def generate_hdf5_dataset(
-        self, n_subs, n_reps, shape, prefix=None,
-        init_val=None, single_anat=True, single_mask=True
-    ):
-        sub_fn = partial(
-            create_pipeline_input_subject,
-            shape=shape, init_val=init_val,
-            single_anat=single_anat,
-            single_mask=single_mask
-        )
-
-        rep_fn = partial(
-            create_pipeline_input_rep,
-            shape=shape, init_val=init_val,
-            mask=not single_mask, anat=not single_anat
-        )
-
-        return create_hdf5_dataset(
-            n_subs, n_reps, prefix, rep_fn, sub_fn
-        )

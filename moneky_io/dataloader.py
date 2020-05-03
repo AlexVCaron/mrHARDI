@@ -7,3 +7,11 @@ class Dataloader(Channel):
 
         for dataset in datasets:
             self.add_subscriber(dataset)
+
+    def _yield(self, sub_idx, sub):
+        try:
+            return super()._yield(sub_idx, sub)
+        except StopIteration as e:
+            self._subscribers[Channel.Sub.IN].pop(sub_idx)
+
+        return None

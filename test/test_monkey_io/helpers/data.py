@@ -3,16 +3,7 @@ import h5py
 import numpy as np
 
 
-class FileHandle:
-    def __init__(self, file):
-        self._file = file
-
-    def close(self):
-        self._file.close()
-
-    @property
-    def name(self):
-        return str(self._file.name)
+DATA_KEYS = ["img", "bvals", "bvecs", "affine", "mask", "anat"]
 
 
 def create_hdf5_dataset(
@@ -65,12 +56,13 @@ def create_pipeline_input_rep(
         rep.create_dataset("anat", shape, dtype, np.full(shape, init_val if init_val else s_idx))
 
 
-def assert_data_point(data, data_shape):
-    assert "img" in data.keys()
-    assert "bvals" in data.keys()
-    assert "bvecs" in data.keys()
-    assert "affine" in data.keys()
-    np.testing.assert_equal(data["img"].shape, data_shape)
-    np.testing.assert_equal(data["bvals"], np.arange(0, data_shape[-1]))
-    np.testing.assert_equal(data["bvecs"], np.repeat(np.arange(0, data_shape[-1])[:, None], 3, axis=1))
-    np.testing.assert_equal(data["affine"], np.diag([1, 1, 1, 1]))
+def assert_data_point(data, data_shape, key_modifiers={}):
+    k_mods = {**{k: k for k in data.keys()}, **key_modifiers}
+
+    for key in DATA_KEYS:
+        assert k_mods[key] in data.keys(), "Key '{}' is not in the data".format(key)
+
+    np.testing.assert_equal(data[k_mods["img"]].shape, data_shape)
+    np.testing.assert_equal(data[k_mods["bvals"]], np.arange(0, data_shape[-1]))
+    np.testing.assert_equal(data[k_mods["bvecs"]], np.repeat(np.arange(0, data_shape[-1])[:, None], 3, axis=1))
+    np.testing.assert_equal(data[k_mods["affine"]], np.diag([1, 1, 1, 1]))

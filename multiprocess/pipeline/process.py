@@ -10,12 +10,12 @@ class Process(metaclass=ABCMeta):
         }
         self._n_cores = 1
 
-    def set_process_launcher(self, method):
-        self._launch_process = method
+    def set_process_launcher(self, launcher):
+        self._launch_process = launcher
         return self
 
     @abstractmethod
-    def execute(self):
+    def _execute(self, *args, **kwargs):
         pass
 
     @abstractmethod
@@ -36,6 +36,9 @@ class Process(metaclass=ABCMeta):
     @n_cores.setter
     def n_cores(self, n_cores):
         self._n_cores = n_cores
+
+    def execute(self, *args, **kwargs):
+        self._launch_process(self._execute, *args, **kwargs)
 
     def _get_prefix(self):
         return self._output_package["prefix"]

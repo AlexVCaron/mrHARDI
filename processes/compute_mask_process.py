@@ -1,5 +1,5 @@
 from config import append_image_extension
-from multiprocess.process import Process
+from multiprocess.pipeline.process import Process
 
 
 class ComputeMaskProcess(Process):
@@ -9,21 +9,14 @@ class ComputeMaskProcess(Process):
     def set_inputs(self, package):
         self._input = package["img"]
 
+    def _execute(self, cmd, *args, **kwargs):
+        return cmd.format(*args)
+
     def execute(self):
         output_img = append_image_extension(self._get_prefix())
 
-        self._launch_process(
-            "fslmaths {0} -Tmean {1}_mean".format(
-                self._input,
-                output_img
-            )
-        )
-        self._launch_process(
-            "bet {0}_mean {0} -m -R -v".format(
-                output_img
-            ),
-            keep_log=True
-        )
+        super().execute("fslmaths {0} -Tmean {1}_mean", self._input, output_img)
+        super().execute("bet {0}_mean {0} -m -R -v", output_img)
 
         self._output_package.update({
             "mask": output_img

@@ -1,7 +1,7 @@
 import sys
 from shutil import copyfile
 
-from multiprocess.process import Process
+from multiprocess.pipeline.process import Process
 
 
 class CopyFilesProcess(Process):
