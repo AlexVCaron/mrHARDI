@@ -127,3 +127,5 @@ dmypy.json
 
 .idea/
 external/
+/vm/python/
+/.vagrant/

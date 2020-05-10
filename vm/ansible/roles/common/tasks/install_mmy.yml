@@ -1,0 +1,11 @@
+---
+
+- name: Install Magic monkey requirements
+  command: pip{{ pysrc_ver_major }} install -r requirements.txt
+  args:
+    chdir: "{{ mmy_dir }}"
+
+- name: Install Magic monkey inside Python
+  command: python{{ pysrc_ver_major }} setup.py {{ mmy_setup_install }}
+  args:
+    chdir: "{{ mmy_dir }}"

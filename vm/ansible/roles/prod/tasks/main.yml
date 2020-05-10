@@ -1,0 +1,15 @@
+---
+
+- name: Trigger prod installation
+  include_role:
+    name: common
+    tasks_from: main
+
+- name: Set Pip as main alternative
+  command:
+    argv:
+      - "update-alternatives"
+      - "--set"
+      - "pip"
+      - "{{ pydest_dir }}/bin/pip{{ pysrc_ver_major }}"
+      - "--force"

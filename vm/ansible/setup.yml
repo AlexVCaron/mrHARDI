@@ -1,0 +1,20 @@
+---
+# Playbook to provision project's vms
+
+- name: Provision VM
+  hosts: develop
+  remote_user: root
+  become: yes
+  become_method: sudo
+  roles:
+    - defaults
+    - develop
+
+- name: Provision VM
+  hosts: prod
+  remote_user: root
+  become: yes
+  become_method: sudo
+  roles:
+    - defaults
+    - prod

@@ -1,0 +1,6 @@
+---
+
+- name: Trigger develop installation
+  include_role:
+    name: common
+    tasks_from: main

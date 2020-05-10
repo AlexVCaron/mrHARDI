@@ -45,7 +45,7 @@ class AssertShellProcess(BaseTestProcess, Process):
         self._launch_process = Scheduler.Launchers.SHELL
 
     def _execute(self, *args, **kwargs):
-        return "{} {} {}".format(
+        return "sh {} {} {}".format(
             self._script,
             " ".join(args),
             " ".join([

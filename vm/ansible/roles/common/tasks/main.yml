@@ -1,0 +1,11 @@
+---
+
+- name: Run preinstallation block
+  include: apt_get.yml
+
+- name: Run python installation block
+  include: build_python.yml
+  ignore_errors: yes
+
+- name: Run MMY installation block
+  include: install_mmy.yml

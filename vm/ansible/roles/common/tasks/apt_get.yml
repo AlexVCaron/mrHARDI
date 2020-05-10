@@ -1,0 +1,43 @@
+---
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: yes
+
+- name: Install build prerequisites
+  apt:
+    name: [
+      'build-essential',
+      'llvm',
+      'curl',
+      'wget',
+      'xz-utils'
+    ]
+    state: latest
+  become: yes
+
+- name: Install Python required development headers and libraries
+  apt:
+    name: [
+      'libffi-dev',
+      'libssl-dev',
+      'libbz2-dev',
+      'libreadline-dev',
+      'libncurses5-dev',
+      'libncursesw5-dev',
+      'libsqlite3-dev',
+      'zlib1g-dev',
+      'tk-dev'
+    ]
+    state: latest
+  become: yes
+
+- name: Install Python development headers
+  apt: name=python{{ pysrc_ver_s }}-dev state=latest
+  become: yes
+
+- name: Update ldconfig with new installed dev libraries
+  command: ldconfig
+  become: yes

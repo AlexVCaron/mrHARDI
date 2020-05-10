@@ -48,6 +48,8 @@ def launch_shell_process(command, log_file_path, keep_log=False, poll_timer=4, l
     with open(log_file_path, "a+" if keep_log else "w+") as log_file:
         log_file.write("Running command {}\n".format(command))
 
+    process = None
+
     try:
         process = Popen(
             command.split(" "),
@@ -77,9 +79,16 @@ def launch_shell_process(command, log_file_path, keep_log=False, poll_timer=4, l
 
             error_manager(process)
 
+        process.stdout.close()
+        process.stderr.close()
+
     except SubprocessError as e:
         with open(log_file_path, "a+") as log_file:
             log_file.write("Error : {}\n".format(e))
+
+        if process:
+            process.stdout.close()
+            process.stderr.close()
 
         raise e
 

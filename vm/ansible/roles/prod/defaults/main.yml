@@ -1,0 +1,16 @@
+---
+# Default values for provisioning
+
+tmp_dir: "/tmp"
+n_procs: 1
+
+pysrc_ver_major: 3.7
+pysrc_ver_minor: 7
+pysrc_ver: "{{ pysrc_ver_major }}.{{ pysrc_ver_minor }}"
+pysrc_pkg_name: "Python-{{ pysrc_ver }}"
+pysrc_url: "https://www.python.org/ftp/python/{{ pysrc_ver }}/{{ pysrc_pkg_name }}.tgz"
+pysrc_dir: "{{ tmp_dir }}/{{ pysrc_pkg_name }}"
+pysrc_pkg: "{{ pysrc_dir }}.tgz"
+pydest_dir: "/usr/local"
+
+pysrc_cleanup: yes

@@ -1,7 +1,7 @@
-from os import chmod
+from os import chmod, remove
 from os.path import join
-from tempfile import TemporaryDirectory, TemporaryFile
-
+from tempfile import TemporaryDirectory
+from pathlib import Path
 
 class ProcessTestBase:
     def __init__(self):
@@ -21,12 +21,11 @@ class ProcessTestBase:
 class ShellProcessTestBase(ProcessTestBase):
     def __init__(self):
         super().__init__()
-        self.log_handle = TemporaryFile(dir=self.test_dir.name, delete=False)
-        self.log_handle.close()
-        self.payload = ([{"log_file_path": self.log_handle.name}], self.payload[1])
+        log_handle = Path(join(self.test_dir.name, "logfile.log"))
+        log_handle.touch()
+        self.payload = ([{"log_file_path": log_handle.name}], self.payload[1])
 
     def tearDown(self):
-        # self.log_handle.close()
         super().tearDown()
 
     def _get_args(self):
