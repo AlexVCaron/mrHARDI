@@ -1,26 +1,29 @@
 from os import chmod, remove
-from os.path import join
+from os.path import join, exists
 from tempfile import TemporaryDirectory
 from pathlib import Path
+from uuid import uuid4
+
 
 class ProcessTestBase:
-    def __init__(self):
-        self.test_dir = TemporaryDirectory()
+    def __init__(self, test_dir_handle=None):
+        self.test_dir = test_dir_handle if test_dir_handle else TemporaryDirectory()
         self.payload = ([], {"data": "data"})
         self.process = None
 
     def _execute(self, exec_kwargs={}):
         args = self.payload[0] if self.payload[0] else []
-        self.process.set_inputs(self.payload[1])
+        self.process.set_inputs(uuid4(), self.payload[1])
         self.process.execute(*args, **exec_kwargs)
 
     def tearDown(self):
-        self.test_dir.cleanup()
+        if isinstance(self.test_dir, (TemporaryDirectory,)):
+            self.test_dir.cleanup()
 
 
 class ShellProcessTestBase(ProcessTestBase):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, test_dir_handle=None):
+        super().__init__(test_dir_handle)
         log_handle = Path(join(self.test_dir.name, "logfile.log"))
         log_handle.touch()
         self.payload = ([{"log_file_path": log_handle.name}], self.payload[1])
@@ -54,14 +57,14 @@ class ShellProcessTestBase(ProcessTestBase):
                 ]))
 
     def _write_script_func(self, script):
-        script.write("function assert() {\n")
+        script.write("assert () {\n")
         script.write("    cond=$1\n")
         script.write("    message=$2\n")
-        script.write("    if $cond; then\n")
+        script.write("    if [ $cond ]; then\n")
         script.write("        echo \"Success\"\n")
         script.write("    else\n")
         script.write("        echo \"Error : $message\"\n")
-        script.write("        exit 2\n")
+        script.write("        exit 200\n")
         script.write("    fi\n")
         script.write("}\n")
 
@@ -122,5 +125,5 @@ class ShellProcessTestBase(ProcessTestBase):
 
         return script, output
 
-    def _assert_shell(self):
-        pass
+    def _assert_shell(self, fail=False):
+        assert fail or exists(join(self.test_dir.name, "complete.flag"))

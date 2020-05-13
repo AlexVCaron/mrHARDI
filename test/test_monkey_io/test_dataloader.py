@@ -21,6 +21,7 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
     def test_pool_data_package(self):
         output_sub = Subscriber()
         self.dataloader.add_subscriber(output_sub, Channel.Sub.OUT)
+        self.dataloader.prepare_iterators()
 
         self.dataloader.pool_data_package()
 
@@ -158,9 +159,17 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
             assert not output_sub.data_ready()
 
         assert not self.dataloader.running()
+
+        self._assert_subs_closed(output_subs)
+
         assert i == awaited_outputs, "Awaited {} outputs, got {}".format(
             awaited_outputs, i
         )
+
+    def _assert_subs_closed(self, subs):
+        for sub in subs:
+            assert not sub.is_alive()
+
 
     def _create_dataloader(self):
         self.dataset_handles.append(

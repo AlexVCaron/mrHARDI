@@ -1,5 +1,6 @@
+from os import getcwd, makedirs
 from os.path import join
-from tempfile import TemporaryFile
+from pathlib import Path
 
 from unittest import TestCase
 
@@ -30,23 +31,24 @@ class TestShellProcess(ShellProcessTestBase, TestCase):
 
     def test_execute(self):
         self._execute()
+        self._assert_shell()
 
 
-class TestProcess(TestCase):
-    def test_set_process_launcher(self):
-        self.fail()
-
-    def test_set_inputs(self):
-        self.fail()
-
-    def test_get_outputs(self):
-        self.fail()
-
-    def test_name(self):
-        self.fail()
-
-    def test_n_cores(self):
-        self.fail()
-
-    def test_execute(self):
-        self.fail()
+# class TestProcess(TestCase):
+#     def test_set_process_launcher(self):
+#         self.fail()
+#
+#     def test_set_inputs(self):
+#         self.fail()
+#
+#     def test_get_outputs(self):
+#         self.fail()
+#
+#     def test_name(self):
+#         self.fail()
+#
+#     def test_n_cores(self):
+#         self.fail()
+#
+#     def test_execute(self):
+#         self.fail()

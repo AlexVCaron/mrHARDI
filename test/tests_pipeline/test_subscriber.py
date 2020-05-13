@@ -1,6 +1,7 @@
 from unittest import TestCase
 from uuid import uuid4
 
+from multiprocess.exceptions import SubscriberClosedException
 from multiprocess.pipeline.subscriber import Subscriber
 
 
@@ -35,3 +36,20 @@ class TestSubscriber(TestCase):
 
         assert ret_id_tag == id_tag
         assert ret_data == data
+
+    def test_shutdown_sub(self):
+        sub = Subscriber()
+        id_tag, data = uuid4(), {"data": "data"}
+
+        assert sub.is_alive()
+
+        sub.transmit(id_tag, data)
+        assert sub.data_ready()
+
+        sub.shutdown()
+        assert not sub.is_alive()
+        assert sub.data_ready()
+
+        sub.yield_data()
+
+        self.assertRaises(SubscriberClosedException, sub.transmit, id_tag, data)

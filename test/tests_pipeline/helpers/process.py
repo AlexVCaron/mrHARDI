@@ -8,12 +8,14 @@ class BaseTestProcess:
     def __init__(self, awaited_payload):
         self._awaited_payload = awaited_payload
         self._received_payload = None
+        self._id = None
 
     def _assert_payload(self):
         assert self._received_payload
         assert self._received_payload == self._awaited_payload
 
-    def set_inputs(self, package):
+    def set_inputs(self, id_tag, package):
+        self._id = id_tag
         self._received_payload = package
 
 
@@ -21,6 +23,7 @@ class AssertPythonProcess(BaseTestProcess, Process):
     def __init__(self, output_prefix, awaited_payload):
         BaseTestProcess.__init__(self, awaited_payload)
         Process.__init__(self, self.__class__.__name__, output_prefix)
+        self.set_process_launcher(Scheduler.Launchers.PYTHON)
 
     def _execute(self, log_file_path, *args, **kwargs):
         self._assert_payload()
