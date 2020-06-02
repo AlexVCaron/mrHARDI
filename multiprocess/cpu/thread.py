@@ -1,6 +1,34 @@
+import asyncio
 import sys
 import queue
+from asyncio import Future
 from threading import Thread
+
+
+class ThreadedAsyncEntity:
+    def __init__(self, main_loop):
+        self._future = None
+        self._ready = Future(loop=main_loop)
+        self._thread = None
+        self._async_loop = None
+
+    def set_completed(self, result):
+        self._future.set_result(result)
+
+    def _start_async_loop(self):
+        self._thread = Thread(target=self._loop)
+        self._thread.start()
+
+    def _loop(self):
+        self._async_loop = asyncio.new_event_loop()
+        self._async_loop.set_debug(True)
+        self._future = Future(loop=self._async_loop)
+        self._ready.set_result(True)
+        self._async_loop.run_forever()
+
+    def _close(self, *args, **kwargs):
+        self._future.set_result(True)
+        self._async_loop.stop()
 
 
 class ThreadManager(queue.Queue):

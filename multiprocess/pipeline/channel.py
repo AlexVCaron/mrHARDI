@@ -1,53 +1,67 @@
+import asyncio
+from asyncio import Future
 from enum import Enum
 from itertools import cycle
 from threading import Thread
 from uuid import uuid4
 
-from multiprocess.pipeline.sentinel import Sentinel
+from multiprocess.cpu.thread import ThreadedAsyncEntity
 from multiprocess.pipeline.subscriber import Subscriber
 
 
-class Channel:
+class Channel(ThreadedAsyncEntity):
     class Sub(Enum):
         IN = "in"
         OUT = "out"
 
-    def __init__(self, package_keys, broadcast_out=False):
+    def __init__(self, main_loop, package_keys, broadcast_out=False):
+        super().__init__(main_loop)
+
         self._package_keys = package_keys
         self._broadcast_out = broadcast_out
-        self._thread = None
+
         self._subscribers = {
             k: [] for k in Channel.Sub
         }
         self._out_iter = None
         self._idle_packages = {}
-        self._sentinel = Sentinel()
 
         if self._broadcast_out:
             self._transmit = self._bcast_out
 
-    def start(self, end_fn=lambda: False):
-        self._thread = Thread(target=self._threaded_run, args=(end_fn,))
-        self._thread.daemon = True
-        self._thread.start()
-
     def running(self):
-        return self._thread and self._thread.is_alive()
+        return self._thread.is_alive()
 
-    def has_inputs(self):
+    def start(self, main_loop, end_fn=lambda: False):
+        self._start_async_loop()
+        if main_loop.run_until_complete(self._ready):
+            self._threaded_run(end_fn, self._async_loop)
+        return self._future
+
+    def _threaded_run(self, end_fn, loop):
+        self.prepare_iterators()
+        f = asyncio.run_coroutine_threadsafe(self._async_run(end_fn), loop)
+
+        f.add_done_callback(lambda *args, **kwargs: self._close(*args, **kwargs))
+
+    async def has_inputs(self):
+        a = len(self._subscribers[Channel.Sub.IN])
+        alive, ready = True, True
+        for s in self._subscribers[Channel.Sub.IN]:
+            alive = alive and await s.is_alive()
+            ready = ready and await s.data_ready()
+        # b = list(await s.is_alive() or await s.data_ready() for s in self._subscribers[Channel.Sub.IN])
+        b = False
         return (
-            len(self._subscribers[Channel.Sub.IN]) > 0 and
-            all(s.is_alive() or s.data_ready() for s in self._subscribers[Channel.Sub.IN])
+            a > 0 and (alive or ready)
         )
 
-    def _threaded_run(self, end_fn):
-        self.prepare_iterators()
-
-        while not end_fn() and self.has_inputs():
-            self.pool_data_package()
+    async def _async_run(self, end_fn):
+        while not end_fn() and await self.has_inputs():
+            await self.pool_data_package()
 
         for sub in self._subscribers[Channel.Sub.OUT]:
-            sub.shutdown()
+            await sub.shutdown()
 
     def prepare_iterators(self):
         self._out_iter = self._subscribers[Channel.Sub.OUT]
@@ -57,38 +71,37 @@ class Channel:
             )
 
     def add_subscriber(self, sub, type=Sub.IN):
-        if type is Channel.Sub.IN:
-            sub.listen_for_data(self._sentinel)
-
         self._subscribers[type].append(sub)
 
-    def pool_data_package(self):
+    async def pool_data_package(self):
         timestamp = uuid4()
         has_transmitted = False
 
-        while self.has_inputs():
-            inputs = self._sentinel.wait()
-            self._sentinel.clear()
+        while await self.has_inputs():
+            inputs = self._subscribers[Channel.Sub.IN]
 
             for i, sub in enumerate(inputs):
-                if not sub.timestamp(timestamp):
-                    while sub.data_ready():
-                        id_tag = self._yield(i, sub)
+                if not await sub.timestamp(timestamp):
+                    while await sub.data_ready():
+                        id_tag = await self._yield(i, sub)
 
                         if id_tag and self._is_complete(id_tag):
-                            self._transmit(id_tag)
+                            await self._transmit(id_tag)
                             has_transmitted = True
-                            break
 
-            if has_transmitted or all(s.timestamp(timestamp) for s in inputs):
+            timestamped = True
+            for s in inputs:
+                timestamped = timestamp and await s.timestamp(timestamp)
+
+            if has_transmitted or timestamped:
                 break
 
     def _is_complete(self, id_tag):
         package_keys = self._idle_packages[id_tag]
         return all(k in package_keys for k in self._package_keys)
 
-    def _yield(self, sub_idx, sub):
-        id_tag, data = sub.yield_data()
+    async def _yield(self, sub_idx, sub):
+        id_tag, data = await sub.yield_data()
 
         if id_tag not in self._idle_packages:
             self._idle_packages[id_tag] = {}
@@ -97,15 +110,15 @@ class Channel:
 
         return id_tag
 
-    def _transmit(self, id_tag):
+    async def _transmit(self, id_tag):
         sub = next(self._out_iter)
         package = self._idle_packages[id_tag]
-        sub.transmit(id_tag, package)
+        await sub.transmit(id_tag, package)
 
-    def _bcast_out(self, id_tag):
+    async def _bcast_out(self, id_tag):
         package = self._idle_packages[id_tag]
         for sub in self._out_iter:
-            sub.transmit(id_tag, package)
+            await sub.transmit(id_tag, package)
 
 
 def create_connection(input_list, package_keys):
