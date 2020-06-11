@@ -1,11 +1,10 @@
-from os import getcwd, makedirs
 from os.path import join
-from pathlib import Path
-
 from unittest import TestCase
 
-from test.tests_pipeline.helpers.process import AssertPythonProcess, AssertShellProcess
-from test.tests_pipeline.helpers.process_test_base import ProcessTestBase, ShellProcessTestBase
+from test.tests_pipeline.helpers.process import AssertPythonProcess, \
+    AssertShellProcess
+from test.tests_pipeline.helpers.process_test_base import ProcessTestBase, \
+    ShellProcessTestBase
 
 
 class TestPythonProcess(ProcessTestBase, TestCase):

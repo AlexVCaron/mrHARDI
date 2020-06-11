@@ -4,7 +4,6 @@ from abc import ABCMeta, abstractmethod
 class Process(metaclass=ABCMeta):
     def __init__(self, name, output_prefix):
         self._name = name
-        self._input = None
         self._output_package = {
             "prefix": output_prefix
         }
@@ -16,6 +15,10 @@ class Process(metaclass=ABCMeta):
 
     @abstractmethod
     def _execute(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def get_input_keys(self):
         pass
 
     @abstractmethod

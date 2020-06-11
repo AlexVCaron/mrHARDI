@@ -1,3 +1,4 @@
+import asyncio
 from unittest import TestCase
 from uuid import uuid4
 
@@ -6,12 +7,8 @@ from multiprocess.pipeline.subscriber import Subscriber
 
 
 class TestSubscriber(TestCase):
-    def test_timestamp(self):
-        sub = Subscriber()
-        timestamp = uuid4()
-
-        assert not sub.timestamp(timestamp)
-        assert sub.timestamp(timestamp)
+    def setUp(self):
+        self._loop = asyncio.get_event_loop()
 
     def test_data_ready(self):
         sub = Subscriber()
@@ -19,11 +16,11 @@ class TestSubscriber(TestCase):
         assert not sub.data_ready()
 
         id_tag, data = uuid4(), {}
-        sub.transmit(id_tag, data)
+        self._loop.run_until_complete(sub.transmit(id_tag, data))
 
         assert sub.data_ready()
 
-        sub.yield_data()
+        self._loop.run_until_complete(sub.yield_data())
 
         assert not sub.data_ready()
 
@@ -31,8 +28,8 @@ class TestSubscriber(TestCase):
         sub = Subscriber()
         id_tag, data = uuid4(), {"data": "data"}
 
-        sub.transmit(id_tag, data)
-        ret_id_tag, ret_data = sub.yield_data()
+        self._loop.run_until_complete(sub.transmit(id_tag, data))
+        ret_id_tag, ret_data = self._loop.run_until_complete(sub.yield_data())
 
         assert ret_id_tag == id_tag
         assert ret_data == data
@@ -43,13 +40,18 @@ class TestSubscriber(TestCase):
 
         assert sub.is_alive()
 
-        sub.transmit(id_tag, data)
+        self._loop.run_until_complete(sub.transmit(id_tag, data))
         assert sub.data_ready()
 
-        sub.shutdown()
-        assert not sub.is_alive()
-        assert sub.data_ready()
+        def assert_after_shutdown(*args):
+            assert not sub.is_alive()
 
-        sub.yield_data()
+        shutdown = self._loop.create_task(sub.shutdown())
+        shutdown.add_done_callback(assert_after_shutdown)
 
-        self.assertRaises(SubscriberClosedException, sub.transmit, id_tag, data)
+        self._loop.run_until_complete(sub.yield_data())
+
+        def assert_raises():
+            self._loop.run_until_complete(sub.transmit(id_tag, data))
+
+        self.assertRaises(SubscriberClosedException, assert_raises)

@@ -1,34 +1,60 @@
 import asyncio
-import sys
+import logging
 import queue
-from asyncio import Future
-from threading import Thread
+import sys
+from threading import Thread, Event
 
 
 class ThreadedAsyncEntity:
-    def __init__(self, main_loop):
-        self._future = None
-        self._ready = Future(loop=main_loop)
+    def __init__(self, main_loop=None, name="ThreadedAsyncEntity"):
+        self._name = name
+        self._done = asyncio.Future(loop=main_loop)
+        self._ready = Event()
         self._thread = None
-        self._async_loop = None
 
-    def set_completed(self, result):
-        self._future.set_result(result)
+    def set_completed(self):
+        asyncio.run_coroutine_threadsafe(
+            self._completed(),
+            loop=self._done.get_loop()
+        )
 
-    def _start_async_loop(self):
-        self._thread = Thread(target=self._loop)
+    async def wait_for_completion(self):
+        await self._done
+
+    def start(self, *args, daemon=True, **kwargs):
+        logger.debug("{} starting thread".format(self._name))
+        self._thread = Thread(target=self._loop, daemon=daemon)
         self._thread.start()
+        return self._ready
+
+    def running(self):
+        return self._async_loop.is_running()
+
+    def has_started(self):
+        return self._thread is not None
+
+    def is_alive(self):
+        return self._thread.is_alive()
 
     def _loop(self):
+        logger.debug("{} starting async loop".format(self._name))
         self._async_loop = asyncio.new_event_loop()
         self._async_loop.set_debug(True)
-        self._future = Future(loop=self._async_loop)
-        self._ready.set_result(True)
+        self._ready.set()
+        logger.debug("{} async loop is running".format(self._name))
         self._async_loop.run_forever()
+        self._async_loop.close()
+        logger.debug("{} async loop closed".format(self._name))
+        self.set_completed()
 
-    def _close(self, *args, **kwargs):
-        self._future.set_result(True)
+    def _close(self):
         self._async_loop.stop()
+
+    async def _completed(self):
+        self._done.set_result(True)
+
+
+logger = logging.getLogger(ThreadedAsyncEntity.__name__)
 
 
 class ThreadManager(queue.Queue):

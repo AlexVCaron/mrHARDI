@@ -2,6 +2,7 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
+  # Get base vm config from vagrant
   config.vm.box = "avcaron/mmy-base-box"
   config.vm.box_version = "0.2.0"
 
@@ -18,7 +19,7 @@ Vagrant.configure("2") do |config|
     vb.name = "MAGIC-MONKEY_vbox"
     vb.linked_clone = true
     vb.memory = "1024"
-    vb.cpus = 2
+    vb.cpus = "2"
     vb.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/shared_python", "1"]
   end
 

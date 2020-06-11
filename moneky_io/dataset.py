@@ -1,8 +1,10 @@
+import asyncio
 import uuid
 from random import randint
 
 import h5py
 
+from multiprocess.exceptions import NotImplementedException
 from multiprocess.pipeline.subscriber import Subscriber
 
 
@@ -11,7 +13,7 @@ class Dataset(Subscriber):
         self, h5_archive, cache_len=3, prepare_data_fn=None,
         single_anat=True, single_mask=True
     ):
-        super().__init__()
+        super().__init__(name="dataset")
         self._archive = h5_archive
         self._cache = {}
         self._cache_len = cache_len
@@ -36,13 +38,19 @@ class Dataset(Subscriber):
     def empty(self):
         return self._empty
 
-    def yield_data(self):
+    async def yield_data(self):
         try:
             id = next(self._ids)
             return id, self._get_package(id)
-        except StopIteration as e:
+        except StopIteration:
             self._empty = True
-            raise e
+            await self.shutdown()
+            raise asyncio.CancelledError()
+
+    async def transmit(self, id_tag, package):
+        raise NotImplementedException(
+            "Dataset does not provide an insert method"
+        )
 
     def __iter__(self):
         for id in self._ids:

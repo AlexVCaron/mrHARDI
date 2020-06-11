@@ -1,11 +1,9 @@
 from os.path import join
 
-from multiprocess.pipeline.block import Block
 from multiprocess.pipeline.channel import Channel, create_connection
 from multiprocess.pipeline.unit import create_unit
-
-from processes.preprocess.preprocess import *
 from processes.preprocess.denoise import *
+from processes.preprocess.preprocess import *
 from processes.preprocess.register import *
 
 
