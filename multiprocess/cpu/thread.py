@@ -12,6 +12,10 @@ class ThreadedAsyncEntity:
         self._ready = Event()
         self._thread = None
 
+    @property
+    def name(self):
+        return self._name
+
     def set_completed(self):
         asyncio.run_coroutine_threadsafe(
             self._completed(),
@@ -46,6 +50,7 @@ class ThreadedAsyncEntity:
         self._async_loop.close()
         logger.debug("{} async loop closed".format(self._name))
         self.set_completed()
+        logger.info("{} has shutdown".format(self._name))
 
     def _close(self):
         self._async_loop.stop()

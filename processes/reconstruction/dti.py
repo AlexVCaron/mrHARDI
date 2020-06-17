@@ -9,16 +9,18 @@ from multiprocess.pipeline.process import Process
 
 
 class DTIProcess(Process):
-    def __init__(self, output_prefix, n_proc=cpu_count()):
-        super().__init__("Mrtrix DTI process", output_prefix)
+    def __init__(
+        self, output_prefix, n_proc=cpu_count(),
+        masked=True, img_key_deriv="img"
+    ):
+        keys = [img_key_deriv, "bvals", "bvecs"]
+        super().__init__(
+            "Mrtrix DTI process", output_prefix,
+            keys + ["mask"] if masked else keys,
+            ["mask"]
+        )
 
         self._n_cores = n_proc
-
-    def set_inputs(self, package):
-        self._input = [
-            package["img"], package["bvals"], package["bvecs"],
-            package.pop("mask", None)
-        ]
 
     def _execute(self, options, img, output_img, *args, **kwargs):
         return "dwi2tensor {} {} {}".format(
@@ -38,16 +40,17 @@ class DTIProcess(Process):
         super().execute(options, img, output_img)
 
         self._output_package.update({
-            "img": output_img
+            self.primary_input_key: output_img
         })
 
 
 class ComputeFAProcess(Process):
-    def __init__(self, output_prefix):
-        super().__init__("Compute FA from DT process", output_prefix)
-
-    def set_inputs(self, package):
-        self._input = [package["img"], package.pop("mask", None)]
+    def __init__(self, output_prefix, masked=True, img_key_deriv="img"):
+        super().__init__(
+            "Compute FA from DT process", output_prefix,
+            [img_key_deriv, "mask"] if masked else [img_key_deriv],
+            ["mask"]
+        )
 
     def _execute(self, log_file_path, *args, **kwargs):
         img, mask = self._input
@@ -77,5 +80,5 @@ class ComputeFAProcess(Process):
             nib.save(nib.Nifti1Image(fa_map, dt_img.affine), output_img)
 
         self._output_package.update({
-            "img": output_img
+            self.primary_input_key: output_img
         })

@@ -4,8 +4,8 @@ from enum import Enum
 from itertools import cycle
 from uuid import uuid4
 
+from multiprocess.comm.subscriber import Subscriber
 from multiprocess.cpu.thread import ThreadedAsyncEntity
-from multiprocess.pipeline.subscriber import Subscriber
 
 
 class Channel(ThreadedAsyncEntity):
@@ -20,6 +20,7 @@ class Channel(ThreadedAsyncEntity):
 
         self._package_keys = package_keys
         self._broadcast_out = broadcast_out
+        self._transmit_futures = []
 
         self._subscribers = {
             k: [] for k in Channel.Sub
@@ -42,8 +43,7 @@ class Channel(ThreadedAsyncEntity):
 
     def has_inputs(self):
         will_be_data = any(list(
-            s.is_alive() or s.data_ready()
-            for s in self._subscribers[Channel.Sub.IN]
+            s.promise_data() for s in self._subscribers[Channel.Sub.IN]
         ))
 
         return (
@@ -88,25 +88,38 @@ class Channel(ThreadedAsyncEntity):
             logger.debug("{} received cancellation call".format(self._name))
             pass
 
+        for fut in asyncio.as_completed(self._transmit_futures):
+            await fut
+
         logger.debug("{} shutting output subscribers".format(self._name))
-        for sub in self._subscribers[Channel.Sub.OUT]:
-            await sub.shutdown()
+        for fut in asyncio.as_completed([
+            s.shutdown() for s in self._subscribers[Channel.Sub.OUT]
+        ]):
+            await fut
 
         logger.debug("{} attempting graceful shutdown".format(self._name))
         self._close()
         logger.info("Goodbye {}".format(self._name))
 
+    def _subscribers_empty(self):
+        return all(
+            not s.promise_data() for s in self._subscribers[Channel.Sub.IN]
+        )
+
     async def pool_data_package(self):
         timestamp = uuid4()
-        has_transmitted = False
-
         while True:
             logger.debug("{} has started looping".format(self._name))
             inputs = list(filter(
                 lambda s: s.timestamp(timestamp),
                 self._subscribers[Channel.Sub.IN]
             ))
+            has_transmitted = False
             inner_cancel = None
+
+            logger.debug(
+                "{} has {} up-to-date inputs".format(self._name, len(inputs))
+            )
 
             for result in asyncio.as_completed([
                 self._yield(i) for i in inputs
@@ -138,12 +151,16 @@ class Channel(ThreadedAsyncEntity):
                 except asyncio.CancelledError as e:
                     inner_cancel = e
 
-            if inner_cancel:
+            if inner_cancel and self._subscribers_empty():
                 raise inner_cancel
 
-            if has_transmitted:
+            await asyncio.sleep(0)
+
+            if has_transmitted and all([not s.promise_data() for s in inputs]):
                 logger.debug("{} is breaking the loop".format(self._name))
                 break
+            else:
+                timestamp = uuid4()
 
     async def _yield(self, sub):
         id_tag, data = await sub.yield_data()
@@ -163,11 +180,19 @@ class Channel(ThreadedAsyncEntity):
 
     async def _transmit(self, id_tag, package):
         sub = next(self._out_iter)
-        await sub.transmit(id_tag, package)
+        task = asyncio.wrap_future(asyncio.run_coroutine_threadsafe(
+            sub.transmit(id_tag, package), self._async_loop
+        ))
+        self._transmit_futures.append(task)
+
+        await task
+        self._transmit_futures.remove(task)
 
     async def _bcast_out(self, id_tag, package):
-        for sub in self._out_iter:
-            await sub.transmit(id_tag, package)
+        for fut in asyncio.as_completed([
+            s.transmit(id_tag, package) for s in self._out_iter
+        ]):
+            await fut
 
 
 logger = logging.getLogger(Channel.__name__)

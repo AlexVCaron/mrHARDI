@@ -107,7 +107,7 @@ class DummyProcess(Process):
     def get_input_keys(self):
         return self._input_keys
 
-    def get_output_keys(self):
+    def get_required_output_keys(self):
         return self._input_keys + self._output_keys
 
     def set_inputs(self, package):

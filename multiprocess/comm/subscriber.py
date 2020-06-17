@@ -19,13 +19,14 @@ class Subscriber(ThreadedAsyncEntity):
         ready_evt = self.start()
         ready_evt.wait()
         self._id_tags = Queue(loop=self._async_loop)
+        self._transmit_futures = []
 
     def timestamp(self, timestamp):
         if self._timestamp == timestamp:
-            return True
+            return False
 
         self._timestamp = timestamp
-        return False
+        return True
 
     def is_alive(self):
         return self._alive
@@ -33,76 +34,85 @@ class Subscriber(ThreadedAsyncEntity):
     def data_ready(self):
         return not self._id_tags.empty()
 
+    def promise_data(self):
+        return self.is_alive() or self.data_ready()
+
     async def transmit(self, id_tag, package):
         logger.debug("{} transmitting".format(self._name))
-        if id_tag not in self._queue:
-            current_loop = asyncio.get_running_loop()
-            future = asyncio.Future(loop=current_loop)
 
+        if id_tag not in self._queue:
             self._queue[id_tag] = package
             logger.debug("{} queuing id".format(self._name))
-            asyncio.run_coroutine_threadsafe(
+
+            task = asyncio.wrap_future(asyncio.run_coroutine_threadsafe(
                 self._put_id(id_tag), self._async_loop
-            ).add_done_callback(lambda fut: set_future_in_loop(future, fut))
+            ))
 
-            for fut in asyncio.as_completed([future]):
-                await fut
-
+            self._transmit_futures.append(task)
+            await task
+            self._transmit_futures.remove(task)
         else:
             self._queue[id_tag].update(package)
 
         logger.debug("{} has finished transmitting".format(self._name))
 
-    async def yield_data(self):
-        yield_task = asyncio.create_task(self._inner_yield())
-        yield_task.add_done_callback(
-            lambda fut: yield_task.cancel() if fut.cancelled() else
-            asyncio.run_coroutine_threadsafe(
-                self._done_signal(), self._async_loop
-            ).result()
-        )
+    def _process_yield_task_callback(self, future, outer_future):
+        try:
+            if future.cancelled():
+                cancel_future_in_loop(outer_future)
+            else:
+                set_future_in_loop(outer_future, future.result())
+        except RuntimeError:
+            pass
 
-        return await yield_task
+    async def yield_data(self):
+        try:
+            task = asyncio.wrap_future(asyncio.run_coroutine_threadsafe(
+                self._inner_yield(), self._async_loop
+            ))
+
+            return await task
+        except RuntimeError as e:
+            if self._async_loop.is_closed():
+                raise asyncio.CancelledError(self)
+            else:
+                raise e
 
     async def _inner_yield(self):
         logger.debug("{} awaiting for data".format(self._name))
-        future = asyncio.Future(loop=asyncio.get_running_loop())
+        id_tag = await self._id_tags.get()
 
-        asyncio.run_coroutine_threadsafe(
-            self._id_tags.get(), self._async_loop
-        ).add_done_callback(
-            lambda fut: cancel_future_in_loop(future) if fut.cancelled() else
-            set_future_in_loop(future, fut.result())
-        )
+        logger.debug("{} returning data".format(self._name))
+        self._id_tags.task_done()
 
-        for fut in asyncio.as_completed([future]):
-            id_tag = await fut
-
-            logger.debug("{} returning data".format(self._name))
-            return id_tag, self._queue.pop(id_tag)
+        return id_tag, self._queue.pop(id_tag)
 
     async def wait_for_dequeuing(self):
         logger.debug("{} waiting for dequeue : {} ids in queue".format(
             self._name, self._id_tags.qsize()
         ))
         await self._id_tags.join()
+        self.yield_data = self._shutdown_yield_data
         logger.debug("{} dequeued".format(self._name))
 
     async def shutdown(self):
         logger.info("{} shutdown initiated".format(self._name))
         self._alive = False
         self.transmit = self._shutdown_exception
-        task = asyncio.run_coroutine_threadsafe(
-            self.wait_for_dequeuing(), self._async_loop
-        )
-        task.add_done_callback(lambda *args: self._cancel_tasks())
 
-    def _cancel_tasks(self):
+        for fut in asyncio.as_completed(self._transmit_futures):
+            await fut
+
+        await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(
+            self.wait_for_dequeuing(), self._async_loop
+        ))
+
         logger.debug("{} cancelling tasks".format(self._name))
-        task = asyncio.run_coroutine_threadsafe(
+        await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(
             self._cancel_tasks_job(), self._async_loop
-        )
-        task.add_done_callback(lambda *args: self._close())
+        ))
+
+        self._close()
 
     async def _put_id(self, id_tag):
         logger.debug("{} putting tag in queue".format(self._name))
@@ -125,10 +135,7 @@ class Subscriber(ThreadedAsyncEntity):
             "{} cancelling {} tasks".format(self._name, len(running_tasks))
         )
         is_cancelled = all([task.cancel() for task in running_tasks])
-        await asyncio.gather(
-            *filter(lambda task: not task.done(), running_tasks),
-            loop=self._async_loop
-        )
+
         return is_cancelled
 
     def _close(self):

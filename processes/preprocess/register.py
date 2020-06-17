@@ -1,4 +1,5 @@
 from multiprocessing import cpu_count
+
 from numpy import array
 
 from config import append_image_extension
@@ -85,7 +86,9 @@ class AntsRegisterProcess(Process):
         self, output_prefix,
         steps, params, add_init_moving=True, verbose=False
     ):
-        super().__init__("Ants registration", output_prefix)
+        super().__init__(
+            "Ants registration", output_prefix, ["img_from", "img_to"]
+        )
 
         self._ants_steps = (
             [self._generate_moving()] if add_init_moving else []
@@ -94,9 +97,6 @@ class AntsRegisterProcess(Process):
         self._params = params
         self._n_cores = cpu_count()
         self._verbose = verbose
-
-    def set_inputs(self, package):
-        self._input = [package["img_from"], package["img_to"]]
 
     def _execute(
         self, img_frm, img_to, prefix, warped_output,
@@ -147,15 +147,16 @@ class AntsRegisterProcess(Process):
 class AntsApplyTransformProcess(Process):
     def __init__(
         self, output_prefix, dimension=3, input_type=0,
-        interpolation="Linear", fill_value=0, verbose=False
+        interpolation="Linear", fill_value=0, verbose=False,
+        img_key_deriv="img"
     ):
-        super().__init__("Apply Ants transform", output_prefix)
+        super().__init__(
+            "Apply Ants transform", output_prefix,
+            [img_key_deriv, "affine", "ref"]
+        )
 
         self._params = [input_type, dimension, interpolation, fill_value]
         self._verbose = verbose
-
-    def set_inputs(self, package):
-        self._input = [package["img"], package["affine"], package["ref"]]
 
     def _execute(self, img, affine, ref, output, *args, **kwargs):
         return " ".join([
@@ -169,9 +170,9 @@ class AntsApplyTransformProcess(Process):
         img, affine, ref = self._input
         prefix = self._get_prefix()
         output = {
-            "img": append_image_extension(prefix)
+            self.primary_input_key: append_image_extension(prefix)
         }
 
-        super().execute(img, affine, ref, output["img"])
+        super().execute(img, affine, ref, output[self.primary_input_key])
 
         self._output_package.update(output)

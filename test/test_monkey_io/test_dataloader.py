@@ -1,19 +1,18 @@
 import asyncio
 from unittest import TestCase
 
-from moneky_io.dataloader import Dataloader
-from moneky_io.dataset import Dataset
-from multiprocess.pipeline.channel import Channel
-from multiprocess.pipeline.close_condition import CloseCondition
-from multiprocess.pipeline.collector import Collector
-from multiprocess.pipeline.subscriber import Subscriber
+from monkey_io.dataloader import Dataloader
+from monkey_io.dataset import Dataset
+from multiprocess.comm.channel import Channel
+from multiprocess.comm.close_condition import CloseCondition
+from multiprocess.comm.collector import Collector
+from multiprocess.comm.subscriber import Subscriber
 from test.test_monkey_io.helpers.data import DATA_KEYS, assert_data_point
 from test.test_monkey_io.helpers.monkey_io_test_base import MonkeyIOTestBase
 
 
 class TestDataloader(TestCase, MonkeyIOTestBase):
     def setUp(self):
-        #logging.basicConfig(level="DEBUG")
         self._loop = asyncio.new_event_loop()
         self.dataset_handles = []
         self.data_shape = (10, 10, 10, 32)
@@ -141,15 +140,12 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
 
     def _assert_output_subs(self, output_subs, i):
         for output_sub in output_subs:
-            j = 0
-            while output_sub.data_ready():
+            while output_sub.promise_data():
                 id, data = self._loop.run_until_complete(
                     output_sub.yield_data()
                 )
                 assert_data_point(data, self.data_shape)
                 i += 1
-                j += 1
-            print("Got j value of {}".format(j))
 
         return i
 
@@ -157,11 +153,8 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
         results = []
         while True:
             try:
-                print("Wait result")
                 results.append(await sub.yield_data())
-                print("Got result")
             except asyncio.CancelledError as e:
-                print("Got cancelled")
                 break
 
         return results

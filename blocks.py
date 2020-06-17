@@ -1,122 +1,169 @@
-from os.path import join
-
-from multiprocess.pipeline.channel import Channel, create_connection
-from multiprocess.pipeline.unit import create_unit
+from multiprocess.pipeline.layer import SequenceLayer
+from multiprocess.pipeline.unit import Unit
 from processes.preprocess.denoise import *
 from processes.preprocess.preprocess import *
 from processes.preprocess.register import *
 
 
-def eddy_block(channel_in, topup_in, config, output_root, output_prefix="data", reduce_b0=True, vebose=True):
-    cat_ap_pa = ConcatenateDatasets(join(output_root, "eddy", output_prefix))
-    out_cat_ap_pa_c = Channel(["img", "bvals", "bvecs"])
+###################################################
+# Concatenate block :
+#  - Input : {partial_datapoint}, {partial_datapoint}, ..., {partial_datapoint}
+#      - Data can come from multiple channels, it will be gathered
+#        respecting the data_ready_fn argument
+#  - Steps :
+#     Gather all inputs from the channels and test them, when a
+#     package is ready, it is submitted to the concatenation process
+###################################################
+# def concatenate_input_block(
+#     main_loop, input_channels, output_prefix, data_ready_fn,
+#     base_name="cat_block", img_key_deriv="img", log_prefix=None,
+#     pre_connect_unit=False
+# ):
+#     log_prefix = log_prefix if log_prefix else output_prefix
+#
+#     gatherer = Gatherer(
+#         main_loop, data_ready_fn,
+#         lambda datapoints: ConcatenateDatasets.prepare_input(datapoints),
+#         name="{}_input".format(base_name)
+#     )
+#
+#     for in_channel in input_channels:
+#         subscriber = Subscriber(
+#             "sub_{}_to_{}".format(in_channel.name, gatherer.name)
+#         )
+#         in_channel.add_subscriber(subscriber, Channel.Sub.OUT)
+#         gatherer.add_subscriber(subscriber)
+#
+#     cat_unit = Unit(
+#         ConcatenateDatasets(output_prefix, img_key_deriv),
+#         log_prefix, "{}_cat_process".format(base_name)
+#     )
+#
+#     if pre_connect_unit:
+#         cat_unit.connect_input(gatherer)
+#
+#     return gatherer, cat_unit
 
-    unit_list = [create_unit(cat_ap_pa, channel_in, out_cat_ap_pa_c)]
-    channel_list = [out_cat_ap_pa_c]
 
-    if reduce_b0:
-        squash_b0 = SquashB0Process(join(output_root, "eddy", output_prefix))
-        out_squash_b0_c = Channel(["img", "bvals", "bvecs"])
+###################################################
+# Eddy sequence :
+#  - Input : {dwi,bvals,bvecs}, {dwi,bvals,bvecs}, ..., {dwi,bvals,bvecs}
+#      - (Optional) : mask
+#  - Steps :
+#     1. Concatenate datasets => {dwi_cat,bvals_cat,bvecs_cat}
+#     2. (Optional) Average contiguous b0 volumes
+#                             => {dwi_avg,bvals_avg,bvecs_avg}
+#     3. Prepare eddy script => {eddy_script,eddy_params}
+#     4. Run eddy process => {dwi_eddy,bvals_eddy,bvecs_eddy}
+###################################################
+def eddy_sequence(
+    main_loop, input_channel, output_channel, output_prefix,
+    base_name="eddy_sequence", log_prefix=None, img_key_deriv="img",
+    avg_contiguous_b0=True, dtype=np.float
+):
+    log_prefix = log_prefix if log_prefix else output_prefix
 
-        channel_list.append(out_squash_b0_c)
-        unit_list.append(create_unit(squash_b0, out_cat_ap_pa_c, out_squash_b0_c))
+    layer = SequenceLayer(input_channel, output_channel, main_loop, base_name)
 
-        in_prepare_eddy_c = out_squash_b0_c
-    else:
-        in_prepare_eddy_c = out_cat_ap_pa_c
-
-    in_prepare_eddy_c = create_connection([topup_in, in_prepare_eddy_c], ["bvals", "param_topup"])
-    prepare_eddy = PrepareEddyProcess(
-        join(output_root, "eddy", output_prefix), **config["prepare_eddy"]
+    cat_unit = Unit(
+        ConcatenateDatasets(output_prefix, img_key_deriv),
+        log_prefix, "{}_cat_process".format(base_name)
     )
-    out_prepare_eddy_c = Channel(["script_eddy", "param_eddy"])
 
-    in_run_eddy_c = create_connection(
-        [channel_in, in_prepare_eddy_c, out_prepare_eddy_c],
-        ["script_eddy", "img", "mask", "bvals", "bvecs", "param_eddy", "param_topup"]
+    layer.add_unit(cat_unit)
+
+    if avg_contiguous_b0:
+        layer.add_unit(Unit(SquashB0Process(
+            output_prefix, dtype, img_key_deriv=img_key_deriv
+        ), log_prefix, "{}_avg_process".format(base_name)))
+
+    layer.add_unit(Unit(
+        PrepareEddyProcess(output_prefix),
+        log_prefix, "{}_prep_eddy_process".format(base_name)
+    ))
+
+    layer.add_unit(Unit(
+        EddyProcess(output_prefix, img_key_deriv),
+        log_prefix, "{}_run_eddy_process".format(base_name)
+    ), [cat_unit])
+
+    return layer
+
+
+###################################################
+# Topup sequence :
+#  - Input : {b0_vol}, {b0_vol}, ..., {b0_vol}
+#  - Steps :
+#     1. Concatenate datasets => {b0_vol_cat}
+#     2. Prepare topup script => {topup_script,topup_params}
+#     3. Run topup process => {b0_vol_topup,topup_field_params}
+###################################################
+def topup_sequence(
+    main_loop, input_channel, output_channel, output_prefix, dwell_time,
+    base_name="topup_sequence", log_prefix=None, img_key_deriv="img",
+    base_topup_config="b02b0.cnf", extra_topup_params=None
+):
+    log_prefix = log_prefix if log_prefix else output_prefix
+
+    layer = SequenceLayer(input_channel, output_channel, main_loop, base_name)
+
+    cat_unit = Unit(
+        ConcatenateDatasets(output_prefix, img_key_deriv, False),
+        log_prefix, "{}_cat_process".format(base_name)
     )
-    run_eddy = EddyProcess(join(output_root, "eddy", output_prefix))
-    out_run_eddy_c = Channel(["img", "bvals", "bvecs"])
 
-    unit_list += [
-        create_unit(prepare_eddy, in_prepare_eddy_c, out_prepare_eddy_c),
-        create_unit(run_eddy, in_run_eddy_c, out_run_eddy_c)
-    ]
+    layer.add_unit(cat_unit)
 
-    channel_list += [
-        in_prepare_eddy_c, out_prepare_eddy_c,
-        in_run_eddy_c, out_run_eddy_c
-    ]
+    layer.add_unit(Unit(
+        PrepareTopupProcess(
+            output_prefix, dwell_time, base_topup_config,
+            extra_topup_params, img_key_deriv
+        ), log_prefix, "{}_prep_topup_process".format(base_name)
+    ))
 
-    return Block(unit_list), channel_list
+    layer.add_unit(Unit(
+        TopupProcess(output_prefix, img_key_deriv),
+        log_prefix, "{}_run_topup_process".format(base_name)
+    ), [cat_unit])
 
-
-def topup_block(channel_in, config, output_root, output_prefix="data", verbose=True):
-    prepare_topup = PrepareTopupProcess(
-        join(output_root, "topup", output_prefix), **config["prepare_topup"]
-    )
-    out_prepare_topup_c = Channel(["param_topup", "config_topup", "script_topup"])
-
-    cat_ap_pa = ConcatenateDatasets(join(output_root, "topup", output_prefix))
-    out_cat_ap_pa_c = Channel(["img"])
-
-    in_run_topup_c = create_connection([out_prepare_topup_c, out_cat_ap_pa_c], ["script_topup", "img"])
-    run_topup = TopupProcess(join(output_root, "topup", output_prefix))
-    out_run_topup_c = Channel(["param_topup", "img"])
-
-    return Block([
-        create_unit(prepare_topup, channel_in, out_prepare_topup_c),
-        create_unit(cat_ap_pa, channel_in, out_cat_ap_pa_c),
-        create_unit(run_topup, in_run_topup_c, out_run_topup_c)
-    ]), [out_prepare_topup_c, out_cat_ap_pa_c, in_run_topup_c, out_run_topup_c]
+    return layer
 
 
-def denoised_b0_block(channel_in, output_root, output_prefix="data", masked_data=True, verbose=True):
-    init_mean_B0 = ExtractB0Process(
-        join(output_root, "init_mean_B0", output_prefix),
-        mean_post_proc=B0PostProcess.whole
-    )
-    out_init_mean_b0_c = Channel(["img"])
+###################################################
+# Registration sequence :
+#  - Input : {img0,...,imgN}, {img0,...,imgN}, ..., {img0,...,imgN}
+#  - Steps :
+#     1. Register using ants and the provided steps => {ref,affine}
+#     2. Apply ants transformation => {img}
+#
+#    NOTICE : Ants requires its inputs to be named "img_from" and "img_to"
+#             be sure to use the required channels or modify your package
+#             namings before this step !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+###################################################
+def registration_sequence(
+    main_loop, input_channel, output_channel, output_prefix, ants_steps,
+    base_name="registration_sequence", log_prefix=None, img_key_deriv="img",
+    ants_params=ants_global_params(), ants_do_init_moving_reg=True,
+    ants_input_type=0, img_dim=3, fill_value=0, interpolation="Linear"
 
-    unit_list = [create_unit(init_mean_B0, channel_in, out_init_mean_b0_c)]
-    channel_list = [out_init_mean_b0_c]
+):
+    log_prefix = log_prefix if log_prefix else output_prefix
 
-    if masked_data:
-        rigid_step, affine_step = ants_rigid_step(), ants_affine_step()
-        global_params = ants_global_params()
+    layer = SequenceLayer(input_channel, output_channel, main_loop, base_name)
 
-        in_reg_t1_b0_c = create_connection([channel_in, out_init_mean_b0_c], ["img", "anat"])
-        reg_t1_b0 = AntsRegisterProcess(
-            join(output_root, "reg_t1_b0", output_prefix),
-            [rigid_step, affine_step], global_params, verbose=verbose
-        )
-        out_reg_t1_b0_c = Channel(["ref", "affine"])
+    layer.add_unit(Unit(
+        AntsRegisterProcess(
+            output_prefix, ants_steps, ants_params,
+            ants_do_init_moving_reg, img_key_deriv
+        ), log_prefix, "{}_ants_reg_process".format(base_name)
+    ))
 
-        in_reg_mask_c = create_connection([channel_in, out_reg_t1_b0_c], ["img", "ref", "affine"])
-        reg_mask = AntsApplyTransformProcess(
-            join(output_root, "reg_t1_b0", output_prefix),
-            interpolation="NearestNeighbor",
-            verbose=verbose
-        )
-        out_reg_mask_c = Channel(["img"])
+    layer.add_unit(Unit(
+        AntsApplyTransformProcess(
+            output_prefix, img_dim, ants_input_type, interpolation,
+            fill_value, img_key_deriv=img_key_deriv
+        ), log_prefix, "{}_apply_reg_process".format(base_name)
+    ), [input_channel])
 
-        unit_list += [
-            create_unit(reg_t1_b0, in_reg_t1_b0_c, out_reg_t1_b0_c),
-            create_unit(reg_mask, in_reg_mask_c, out_reg_mask_c)
-        ]
+    return layer
 
-        in_denoise_b0_c = create_connection([channel_in, out_reg_mask_c], ["img", "mask"])
-
-        channel_list += [
-            in_reg_t1_b0_c, out_reg_t1_b0_c, in_reg_mask_c, out_reg_mask_c
-        ]
-    else:
-        in_denoise_b0_c = out_init_mean_b0_c
-
-    denoise_b0 = DenoiseProcess(join(output_root, "b0_denoised", output_prefix))
-    out_denoise_b0_c = Channel(["img"])
-
-    unit_list.append(create_unit(denoise_b0, in_denoise_b0_c, out_denoise_b0_c))
-    channel_list.append(out_denoise_b0_c)
-
-    return Block(unit_list), channel_list

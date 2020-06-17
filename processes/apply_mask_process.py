@@ -1,4 +1,5 @@
 import sys
+
 import nibabel as nib
 
 from config import append_image_extension
@@ -7,11 +8,8 @@ from multiprocess.pipeline.process import Process
 
 
 class ApplyMaskProcess(Process):
-    def __init__(self, output_prefix):
-        super().__init__("Apply mask", output_prefix)
-
-    def set_inputs(self, package):
-        self._input = [package["img"], package["mask"]]
+    def __init__(self, output_prefix, img_key_deriv="img"):
+        super().__init__("Apply mask", output_prefix, [img_key_deriv, "mask"])
 
     def _execute(self, log_file_path, *args, **kwargs):
         img, mask = self._input
@@ -33,5 +31,5 @@ class ApplyMaskProcess(Process):
             nib.save(nib.Nifti1Image(out_data, data.affine), output_img)
 
         self._output_package.update({
-            "img": output_img
+            self.primary_input_key: output_img
         })

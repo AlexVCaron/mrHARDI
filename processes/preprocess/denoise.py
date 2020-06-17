@@ -12,17 +12,19 @@ from multiprocess.pipeline.process import Process
 
 
 class DenoiseProcess(Process):
-    def __init__(self, output_prefix):
+    def __init__(self, output_prefix, masked=True, img_key_deriv="img"):
         super().__init__(
-            "Denoising process via Mrtrix dwidenoise", output_prefix
+            "Denoising process via Mrtrix dwidenoise", output_prefix,
+            [img_key_deriv, "mask"] if masked else [img_key_deriv],
+            ["mask"]
         )
 
         self._n_cores = cpu_count()
 
         self._mask = None
 
-    def set_inputs(self, package):
-        self._input = [package["img"], package.pop("mask", None)]
+    def get_required_output_keys(self):
+        return [self.primary_input_key]
 
     def _execute(self, *args, **kwargs):
         return "dwidenoise " + " ".join(args)
@@ -39,22 +41,28 @@ class DenoiseProcess(Process):
         super().execute(*args)
 
         self._output_package.update({
-            "img": output
+            self.primary_input_key: output
         })
 
 
 class PrepareTopupProcess(Process):
     def __init__(
-            self, out_prefix,
-            dwell_time, base_config="b02b0.cnf", extra_params=""):
-        super().__init__("Preparing topup process", out_prefix)
+        self, out_prefix, dwell_time, base_config="b02b0.cnf",
+        extra_params="", img_key_deriv="img"
+    ):
+        super().__init__(
+            "Preparing topup process", out_prefix, [img_key_deriv]
+        )
 
         self._dwell = dwell_time
         self._config = base_config
         self._extra = extra_params
 
+    def get_required_output_keys(self):
+        return ["script_topup", "param_topup", "config_topup"]
+
     def set_inputs(self, package):
-        self._input = package["img"]
+        self._input = package[self.primary_input_key]
 
     def _execute(self, log_file_path, *args, **kwargs):
         ap_b0, pa_b0 = self._input
@@ -135,7 +143,6 @@ class PrepareTopupProcess(Process):
                         output["config_topup"],
                         "{}_topup_results".format(prefix),
                         "{}_topup_field".format(prefix),
-                        output["img"],
                         self._extra
                     ))
 
@@ -145,14 +152,21 @@ class PrepareTopupProcess(Process):
 
 
 class TopupProcess(Process):
-    def __init__(self, output_prefix):
-        super().__init__("Applying Topup on image", output_prefix)
+    def __init__(self, output_prefix, img_key_deriv="img"):
+        super().__init__(
+            "Applying Topup on image", output_prefix,
+            [img_key_deriv, "script_topup", "param_topup"]
+        )
+
+    def get_required_output_keys(self):
+        return [self.primary_input_key, "param_topup"]
 
     def set_inputs(self, package):
-        self._input = [package["script_topup"], package["img"]]
+        super().set_inputs(package)
         self._output_package.update({
-            "param_topup": package["param_topup"]
+            "param_topup": self._input[-1]
         })
+        self._input.pop(-1)
 
     def _execute(self, *args, **kwargs):
         return "{} {}".format(*self._input, *args)
@@ -163,7 +177,7 @@ class TopupProcess(Process):
         super().execute(output_img)
 
         self._output_package.update({
-            "img": output_img
+            self.primary_input_key: output_img
         })
 
 
@@ -171,15 +185,17 @@ class PrepareEddyProcess(Process):
     def __init__(
         self, out_prefix, repol=True, mporder=4, slspec=None, use_cuda=True
     ):
-        super().__init__("Prepare Eddy process", out_prefix)
+        super().__init__(
+            "Prepare Eddy process", out_prefix, ["bvals", "param_topup"]
+        )
 
         self._repol = repol
         self._mporder = mporder
         self._slspec = slspec
         self._use_cuda = use_cuda
 
-    def set_inputs(self, package):
-        self._input = [package["bvals"], package["param_topup"]]
+    def get_required_output_keys(self):
+        return ["script_eddy", "param_eddy"]
 
     def _execute(self, log_file_path, *args, **kwargs):
         bvals, param_topup = self._input
@@ -233,7 +249,7 @@ class PrepareEddyProcess(Process):
                     "Eddy (Cuda 9.1)" if self._use_cuda else "Eddy (CPU)"
                 ))
 
-                base_args = self._get_base_eddy_arguments()
+                base_args = self._get_base_eddy_arguments(param_topup)
 
                 if self._use_cuda:
                     cuda_args = []
@@ -266,10 +282,10 @@ class PrepareEddyProcess(Process):
         with open(file, "w+") as f:
             f.write(" ".join([str(i) for i in indexes]))
 
-    def _get_base_eddy_arguments(self):
+    def _get_base_eddy_arguments(self, topup):
         return " ".join([
             "--imain=$in_dwi --mask=$in_mask",
-            "--acqp={} --index=$in_index".format(self._topup),
+            "--acqp={} --index=$in_index".format(topup),
             "--bvecs=$in_bvecs --bvals=$in_bvals",
             "--topup=$in_topup --out=$out_eddy",
             "--data_is_shelled -v"
@@ -277,33 +293,33 @@ class PrepareEddyProcess(Process):
 
 
 class EddyProcess(Process):
-    def __init__(self, output_prefix):
-        super().__init__("Applying Eddy", output_prefix)
+    def __init__(self, output_prefix, img_key_deriv="img"):
+        super().__init__("Applying Eddy", output_prefix, [
+            img_key_deriv, "mask", "bvals", "bvecs",
+            "script_eddy", "param_eddy", "param_topup"
+        ])
 
         self._n_cores = cpu_count()
 
-    def set_inputs(self, package):
-        self._input = [
-            package["script_eddy"], package["img"], package["mask"],
-            package["bvals"], package["bvecs"],
-            package["param_eddy"], package["param_topup"]
-        ]
+    def get_required_output_keys(self):
+        return [self.primary_input_key, "bvals", "bvecs"]
 
     def _execute(self, *args, **kwargs):
         "{} {} {} {} {} {} {}_topup_results {}".format(*args)
 
     def execute(self, *args, **kwargs):
-        script, img, mask, bvals, bvecs, index, topup = self._input
+        img, mask, bvals, bvecs, script, index, topup = self._input
         prefix = self._get_prefix()
 
         output = {
-            "img": append_image_extension(prefix),
+            self.primary_input_key: append_image_extension(prefix),
             "bvals": "{}.bvals".format(prefix),
             "bvecs": "{}.bvecs".format(prefix)
         }
 
         super().execute(
-            script, img, bvals, bvecs, mask, index, topup, output["img"]
+            script, img, bvals, bvecs, mask, index, topup,
+            output[self.primary_input_key]
         )
 
         self._output_package.append(output)

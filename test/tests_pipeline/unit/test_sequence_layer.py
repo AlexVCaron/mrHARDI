@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from multiprocess.pipeline.channel import Channel
+from multiprocess.comm.channel import Channel
 from multiprocess.pipeline.layer import SequenceLayer
 from test.tests_pipeline.helpers.layer_test_base import LayerTestBase
 from test.tests_pipeline.helpers.process import AddUniqueArgProcess
@@ -41,5 +41,5 @@ class SequenceLayerTest(LayerTestBase, TestCase):
         lst.append(process)
 
         return self._chain_process(AddUniqueArgProcess(
-            "process", "process", process.get_output_keys()
+            "process", "process", process.get_required_output_keys()
         ), n, lst)

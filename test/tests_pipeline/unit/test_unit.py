@@ -3,9 +3,9 @@ from tempfile import TemporaryDirectory
 from unittest import TestCase
 from uuid import uuid4
 
-from multiprocess.pipeline.channel import Channel
-from multiprocess.pipeline.close_condition import CloseCondition
-from multiprocess.pipeline.subscriber import Subscriber
+from multiprocess.comm.channel import Channel
+from multiprocess.comm.close_condition import CloseCondition
+from multiprocess.comm.subscriber import Subscriber
 from multiprocess.pipeline.unit import Unit
 from test.tests_pipeline.helpers.async_helpers import \
     async_close_channels_callback
@@ -97,7 +97,7 @@ class TestUnit(TestCase):
 
     async def _collect_outputs(self):
         results = []
-        while self.sub_out.is_alive() or self.sub_out.data_ready():
+        while self.sub_out.promise_data():
             try:
                 res_id_tag, result = await self.sub_out.yield_data()
                 results.append((res_id_tag, result))

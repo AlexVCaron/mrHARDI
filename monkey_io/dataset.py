@@ -4,8 +4,8 @@ from random import randint
 
 import h5py
 
+from multiprocess.comm.subscriber import Subscriber
 from multiprocess.exceptions import NotImplementedException
-from multiprocess.pipeline.subscriber import Subscriber
 
 
 class Dataset(Subscriber):

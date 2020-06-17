@@ -1,9 +1,11 @@
 import asyncio
+import logging
+from functools import partial
 from unittest import TestCase
 from uuid import uuid4
 
+from multiprocess.comm.subscriber import Subscriber
 from multiprocess.exceptions import SubscriberClosedException
-from multiprocess.pipeline.subscriber import Subscriber
 
 
 class TestSubscriber(TestCase):
@@ -35,6 +37,7 @@ class TestSubscriber(TestCase):
         assert ret_data == data
 
     def test_shutdown_sub(self):
+        logging.basicConfig(level="DEBUG")
         sub = Subscriber()
         id_tag, data = uuid4(), {"data": "data"}
 
@@ -49,9 +52,13 @@ class TestSubscriber(TestCase):
         shutdown = self._loop.create_task(sub.shutdown())
         shutdown.add_done_callback(assert_after_shutdown)
 
-        self._loop.run_until_complete(sub.yield_data())
+        yield_task = self._loop.create_task(sub.yield_data())
 
-        def assert_raises():
-            self._loop.run_until_complete(sub.transmit(id_tag, data))
+        self._loop.run_until_complete(yield_task)
 
-        self.assertRaises(SubscriberClosedException, assert_raises)
+        def assert_raises(loop):
+            loop.run_until_complete(sub.transmit(id_tag, data))
+
+        self.assertRaises(
+            SubscriberClosedException, partial(assert_raises, self._loop)
+        )

@@ -26,7 +26,7 @@ def cancel_future_in_loop(future):
     asyncio.run_coroutine_threadsafe(
         _cancel_future(future),
         future.get_loop()
-    )
+    ).result()
 
 
 async def _set_future(result, future):

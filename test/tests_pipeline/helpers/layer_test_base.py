@@ -3,8 +3,8 @@ from abc import abstractmethod, ABCMeta
 from tempfile import TemporaryDirectory
 from uuid import uuid4
 
-from multiprocess.pipeline.channel import Channel
-from multiprocess.pipeline.subscriber import Subscriber
+from multiprocess.comm.channel import Channel
+from multiprocess.comm.subscriber import Subscriber
 from multiprocess.pipeline.unit import Unit
 from test.tests_pipeline.helpers.async_helpers import \
     async_close_channels_callback
@@ -34,7 +34,7 @@ class LayerTestBase(metaclass=ABCMeta):
             )
 
     def test_process(self):
-        self.layer.process()
+        self._loop.create_task(self.layer.process())
         id_tag = uuid4()
         task = self._loop.create_task(
             self.sub_in.transmit(id_tag, {"init": None})

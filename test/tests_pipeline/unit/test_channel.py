@@ -4,9 +4,9 @@ from itertools import cycle
 from unittest import TestCase
 from uuid import uuid4
 
-from multiprocess.pipeline.channel import Channel
-from multiprocess.pipeline.close_condition import CloseCondition
-from multiprocess.pipeline.subscriber import Subscriber
+from multiprocess.comm.channel import Channel
+from multiprocess.comm.close_condition import CloseCondition
+from multiprocess.comm.subscriber import Subscriber
 from test.tests_pipeline.helpers.async_helpers import \
     async_close_channels_callback
 
@@ -162,17 +162,21 @@ class TestChannel(TestCase):
             self._transmit_data(data_points)
         )
         trans.add_done_callback(
-            async_close_channels_callback(self._close_connections, self._loop,
-                                          end_cnd))
+            async_close_channels_callback(
+                self._close_connections,
+                self._loop,
+                end_cnd
+            )
+        )
 
         results = self._loop.create_task(
             self._get_results()
         )
-
+        self._loop.run_until_complete(results)
         self._loop.run_until_complete(
             self.channel.wait_for_completion()
         )
-        self._loop.run_until_complete(results)
+
         return results.result()
 
     async def _collect_results(self, task, end_cnd):
@@ -212,28 +216,27 @@ class TestChannel(TestCase):
             await trans
 
     async def _close_connections(self):
-        for sub in self.sub_in:
-            await sub.shutdown()
+        for fut in asyncio.as_completed([
+            s.shutdown() for s in self.sub_in
+        ]):
+            await fut
 
     async def _get_results(self):
         results = []
-        alive = True
-        for s in self.sub_out:
-            alive = alive and s.is_alive()
 
-        while alive:
-            for input in filter(lambda s: s.is_alive() or s.data_ready(), self.sub_out):
-                try:
-                    ret_id_tag, ret_data = await input.yield_data()
+        while any(list(s.promise_data() for s in self.sub_out)):
+            try:
+                for fut in asyncio.as_completed([
+                    o.yield_data() for o in filter(
+                        lambda s: s.promise_data(), self.sub_out
+                    )
+                ]):
+                    ret_id_tag, ret_data = await fut
+                    print("Got data !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                     results.append((ret_id_tag, ret_data))
-                except asyncio.CancelledError:
-                    pass
-
-            for s in self.sub_out:
-                alive = alive and s.is_alive()
-
-            await asyncio.sleep(0)
-
+            except asyncio.CancelledError:
+                print("CANCELLED !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print("----------------------------------------------------------------------------------------------------------------------")
         return results
 
     def _basic_data_package(self, value="data"):
@@ -253,7 +256,7 @@ class TestChannel(TestCase):
     def _assert_output_subscribers(self):
         time.sleep(1)
         for sub in self.sub_out:
-            assert not sub.is_alive()
+            assert not sub.promise_data()
 
     def _assert_channel(self):
         self._loop.run_until_complete(

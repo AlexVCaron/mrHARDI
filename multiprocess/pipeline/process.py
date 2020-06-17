@@ -2,11 +2,14 @@ from abc import ABCMeta, abstractmethod
 
 
 class Process(metaclass=ABCMeta):
-    def __init__(self, name, output_prefix):
+    def __init__(self, name, output_prefix, input_keys=[], optional_keys=[]):
         self._name = name
         self._output_package = {
             "prefix": output_prefix
         }
+        self._input_keys = input_keys
+        self._opt_keys = optional_keys
+        self._input = None
         self._n_cores = 1
 
     def set_process_launcher(self, launcher):
@@ -17,13 +20,20 @@ class Process(metaclass=ABCMeta):
     def _execute(self, *args, **kwargs):
         pass
 
-    @abstractmethod
+    @property
+    def primary_input_key(self):
+        return self.get_input_keys()[0]
+
     def get_input_keys(self):
-        pass
+        return self._input_keys
 
     @abstractmethod
-    def set_inputs(self, package):
+    def get_required_output_keys(self):
         pass
+
+    def set_inputs(self, package):
+        pkg = self._fill_optional(package)
+        self._input = [pkg[key] for key in self._input_keys]
 
     def get_outputs(self):
         return self._output_package
@@ -41,10 +51,15 @@ class Process(metaclass=ABCMeta):
         self._n_cores = n_cores
 
     def execute(self, *args, **kwargs):
-        self._launch_process(self._execute, *args, **kwargs)
+        result = self._launch_process(self._execute, *args, **kwargs)
+        if result and isinstance(result, dict):
+            self._output_package.update(result)
 
     def _get_prefix(self):
         return self._output_package["prefix"]
 
-    def _launch_process(self, command):
+    def _fill_optional(self, package):
+        return {**{opt: None for opt in self._opt_keys}, **package}
+
+    def _launch_process(self, command, *args, **kwargs):
         pass

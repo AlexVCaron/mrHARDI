@@ -1,7 +1,7 @@
 import asyncio
 from unittest import TestCase
 
-from moneky_io.dataset import Dataset
+from monkey_io.dataset import Dataset
 from test.test_monkey_io.helpers.data import assert_data_point
 from test.test_monkey_io.helpers.monkey_io_test_base import MonkeyIOTestBase
 

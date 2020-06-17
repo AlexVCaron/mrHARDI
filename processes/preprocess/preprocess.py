@@ -11,17 +11,20 @@ from multiprocess.pipeline.process import Process
 
 class ExtractB0Process(Process):
     def __init__(
-        self, output_prefix,
-        strides=None, mean_post_proc=B0PostProcess.batch
+        self, output_prefix, strides=None,
+        mean_post_proc=B0PostProcess.batch, img_key_deriv="img"
     ):
-        super().__init__("ExtractB0 from a dwi volume", output_prefix)
+        super().__init__(
+            "ExtractB0 from a dwi volume", output_prefix,
+            [img_key_deriv, "bvals"]
+        )
 
         self._params = [strides, mean_post_proc]
 
         self._input = None
 
-    def set_inputs(self, package):
-        self._input = [package["img"], package["bvals"]]
+    def get_required_output_keys(self):
+        return [self.primary_input_key]
 
     def _execute(self, log_file_path, *args, **kwargs):
         img, bvals = self._input
@@ -44,24 +47,27 @@ class ExtractB0Process(Process):
             nib.save(nib.Nifti1Image(data, in_dwi.affine), output)
 
         self._output_package.update({
-            "img": output
+            self.primary_input_key: output
         })
 
 
 class SquashB0Process(Process):
     def __init__(
-        self, output_prefix,
-        dtype=np.float, mean_post_proc=B0PostProcess.batch
+        self, output_prefix, dtype=np.float,
+        mean_post_proc=B0PostProcess.batch, img_key_deriv="img"
     ):
-        super().__init__("Squash B0 of a dwi volume", output_prefix)
+        super().__init__(
+            "Squash B0 of a dwi volume", output_prefix,
+            [img_key_deriv, "bvals", "bvecs"]
+        )
 
         self._mean_strat = mean_post_proc
         self._dtype = dtype
 
         self._input = None
 
-    def set_inputs(self, package):
-        self._input = [package["img"], package["bvals"], package["bvecs"]]
+    def get_required_output_keys(self):
+        return [self.primary_input_key, "bvals", "bvecs"]
 
     def _execute(self, log_file_path, *args, **kwargs):
         img, bvals, bvecs = self._input
@@ -93,24 +99,23 @@ class SquashB0Process(Process):
             np.savetxt("{}.bvecs".format(prefix), bvecs, fmt="%.6f")
 
         self._output_package.update({
-            "img": output_img,
+            self.primary_input_key: output_img,
             "bvals": "{}.bvals".format(prefix),
             "bvecs": "{}.bvecs".format(prefix)
         })
 
 
 class ConcatenateDatasets(Process):
-    def __init__(self, output_prefix):
+    def __init__(self, output_prefix, img_key_deriv="img", with_grads=True):
+        keys = [img_key_deriv, "bvals", "bvecs"]
         super().__init__(
-            "Concatenating DWI volumes", "{}.nii.gz".format(output_prefix)
+            "Concatenating DWI volumes", "{}.nii.gz".format(output_prefix),
+            keys if with_grads else [img_key_deriv],
+            ["bvals", "bvecs"]
         )
 
-    def set_inputs(self, package):
-        self._input = [
-            package["img"],
-            package.pop("bvals", None),
-            package.pop("bvecs", None)
-        ]
+    def get_required_output_keys(self):
+        return [self.primary_input_key]
 
     def _execute(self, log_file_path, *args, **kwargs):
         in_dwi, in_bvals, in_bvecs = self._input
@@ -141,10 +146,15 @@ class ConcatenateDatasets(Process):
             )
             sys.stdout = std_out
 
-            output = {"img": append_image_extension(prefix)}
-            log_file.write("Saving volume to file {}\n".format(output["img"]))
+            output = {self.primary_input_key: append_image_extension(prefix)}
+            log_file.write("Saving volume to file {}\n".format(
+                output[self.primary_input_key])
+            )
 
-            nib.save(nib.Nifti1Image(out_dwi, reference_affine), output["img"])
+            nib.save(
+                nib.Nifti1Image(out_dwi, reference_affine),
+                output[self.primary_input_key]
+            )
 
             if out_bvals is not None:
                 output["bvals"] = "{}.bvals".format(prefix)
@@ -157,3 +167,10 @@ class ConcatenateDatasets(Process):
                 np.savetxt(output["bvecs"], out_bvecs.T, fmt="%.6f")
 
         self._output_package.update(output)
+
+    @classmethod
+    def prepare_input(cls, datapoints):
+        return {
+            k: {kk: [d[kk] for d in v] for kk in v[0]}
+            for k, v in datapoints.items()
+        }

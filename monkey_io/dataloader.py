@@ -1,4 +1,4 @@
-from multiprocess.pipeline.channel import Channel
+from multiprocess.comm.channel import Channel
 
 
 class Dataloader(Channel):

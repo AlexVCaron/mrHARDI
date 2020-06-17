@@ -1,7 +1,7 @@
 import logging
 
-from multiprocess.pipeline.channel import Channel
-from multiprocess.pipeline.subscriber import Subscriber
+from multiprocess.comm.channel import Channel
+from multiprocess.comm.subscriber import Subscriber
 
 
 class Collector(Channel):

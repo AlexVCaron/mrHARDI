@@ -2,9 +2,9 @@ import asyncio
 from unittest import TestCase
 from uuid import uuid4
 
-from multiprocess.pipeline.channel import Channel
-from multiprocess.pipeline.close_condition import CloseCondition
-from multiprocess.pipeline.subscriber import Subscriber
+from multiprocess.comm.channel import Channel
+from multiprocess.comm.close_condition import CloseCondition
+from multiprocess.comm.subscriber import Subscriber
 from test.tests_pipeline.helpers.async_helpers import \
     async_close_channels_callback
 
