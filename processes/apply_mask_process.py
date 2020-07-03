@@ -4,12 +4,15 @@ import nibabel as nib
 
 from config import append_image_extension
 from magic_monkey.apply_mask import apply_mask_on_data
-from multiprocess.pipeline.process import Process
+from piper.pipeline.process import PythonProcess
 
 
-class ApplyMaskProcess(Process):
+class ApplyMaskProcess(PythonProcess):
     def __init__(self, output_prefix, img_key_deriv="img"):
         super().__init__("Apply mask", output_prefix, [img_key_deriv, "mask"])
+
+    def get_required_output_keys(self):
+        return [self.primary_input_key]
 
     def _execute(self, log_file_path, *args, **kwargs):
         img, mask = self._input

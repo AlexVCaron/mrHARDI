@@ -1,9 +1,9 @@
-from multiprocess.comm.channel import Channel
+from piper.comm import Channel
 
 
 class Dataloader(Channel):
-    def __init__(self, main_loop, datasets, package_keys):
-        super().__init__(main_loop, package_keys, True, name="dataloader")
+    def __init__(self, datasets, package_keys):
+        super().__init__(package_keys, True, name="dataloader")
 
         for dataset in datasets:
             self.add_subscriber(dataset)

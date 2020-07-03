@@ -3,7 +3,7 @@ from multiprocessing import cpu_count
 from numpy import array
 
 from config import append_image_extension
-from multiprocess.pipeline.process import Process
+from piper.pipeline.process import ShellProcess
 
 
 def ants_rigid_step(
@@ -81,7 +81,7 @@ def ants_global_params(
     ])
 
 
-class AntsRegisterProcess(Process):
+class AntsRegisterProcess(ShellProcess):
     def __init__(
         self, output_prefix,
         steps, params, add_init_moving=True, verbose=False
@@ -97,6 +97,9 @@ class AntsRegisterProcess(Process):
         self._params = params
         self._n_cores = cpu_count()
         self._verbose = verbose
+
+    def get_required_output_keys(self):
+        return ["ref", "affine"]
 
     def _execute(
         self, img_frm, img_to, prefix, warped_output,
@@ -144,7 +147,7 @@ class AntsRegisterProcess(Process):
         return "--initial-moving-transform [{in1},1]"
 
 
-class AntsApplyTransformProcess(Process):
+class AntsApplyTransformProcess(ShellProcess):
     def __init__(
         self, output_prefix, dimension=3, input_type=0,
         interpolation="Linear", fill_value=0, verbose=False,
@@ -157,6 +160,9 @@ class AntsApplyTransformProcess(Process):
 
         self._params = [input_type, dimension, interpolation, fill_value]
         self._verbose = verbose
+
+    def get_required_output_keys(self):
+        return [self.primary_input_key]
 
     def _execute(self, img, affine, ref, output, *args, **kwargs):
         return " ".join([

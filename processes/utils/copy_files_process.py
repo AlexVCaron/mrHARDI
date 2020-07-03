@@ -1,15 +1,18 @@
 import sys
 from shutil import copyfile
 
-from multiprocess.pipeline.process import Process
+from piper.pipeline.process import PythonProcess
 
 
-class CopyFilesProcess(Process):
+class CopyFilesProcess(PythonProcess):
     def __init__(self):
         super().__init__(
             "Copy {} files",
             ["files_in", "files_out"]
         )
+
+    def get_required_output_keys(self):
+        return [self.primary_input_key]
 
     def execute(self):
         self._launch_process(self._execute)
@@ -24,3 +27,7 @@ class CopyFilesProcess(Process):
                 sys.stdout = log_file
                 copyfile(input, output)
                 sys.stdout = std_out
+
+        self._output_package.update({
+            self.primary_input_key: [o_img for o_img in self._input[1]]
+        })

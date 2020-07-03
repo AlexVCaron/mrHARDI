@@ -8,10 +8,10 @@ import numpy as np
 from config import append_image_extension
 from magic_monkey.prepare_eddy_command import prepare_eddy_index
 from magic_monkey.prepare_topup_command import prepare_topup_params
-from multiprocess.pipeline.process import Process
+from piper.pipeline.process import ShellProcess, PythonProcess
 
 
-class DenoiseProcess(Process):
+class DenoiseProcess(ShellProcess):
     def __init__(self, output_prefix, masked=True, img_key_deriv="img"):
         super().__init__(
             "Denoising process via Mrtrix dwidenoise", output_prefix,
@@ -45,7 +45,7 @@ class DenoiseProcess(Process):
         })
 
 
-class PrepareTopupProcess(Process):
+class PrepareTopupProcess(PythonProcess):
     def __init__(
         self, out_prefix, dwell_time, base_config="b02b0.cnf",
         extra_params="", img_key_deriv="img"
@@ -151,7 +151,7 @@ class PrepareTopupProcess(Process):
         self._output_package.update(output)
 
 
-class TopupProcess(Process):
+class TopupProcess(ShellProcess):
     def __init__(self, output_prefix, img_key_deriv="img"):
         super().__init__(
             "Applying Topup on image", output_prefix,
@@ -181,7 +181,7 @@ class TopupProcess(Process):
         })
 
 
-class PrepareEddyProcess(Process):
+class PrepareEddyProcess(PythonProcess):
     def __init__(
         self, out_prefix, repol=True, mporder=4, slspec=None, use_cuda=True
     ):
@@ -292,7 +292,7 @@ class PrepareEddyProcess(Process):
         ])
 
 
-class EddyProcess(Process):
+class EddyProcess(ShellProcess):
     def __init__(self, output_prefix, img_key_deriv="img"):
         super().__init__("Applying Eddy", output_prefix, [
             img_key_deriv, "mask", "bvals", "bvecs",

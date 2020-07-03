@@ -1,24 +1,22 @@
 import asyncio
 import uuid
+from abc import ABCMeta, abstractmethod
 from random import randint
 
-import h5py
-
-from multiprocess.comm.subscriber import Subscriber
-from multiprocess.exceptions import NotImplementedException
+from piper.comm import Subscriber
+from piper.exceptions import NotImplementedException
 
 
-class Dataset(Subscriber):
+class Dataset(Subscriber, metaclass=ABCMeta):
     def __init__(
-        self, h5_archive, cache_len=3, prepare_data_fn=None,
-        single_anat=True, single_mask=True
+        self, cache_len=3, prepare_data_fn=None, add_subject_info_fn=None,
+        single_anat=True, single_mask=True, name="dataset"
     ):
-        super().__init__(name="dataset")
-        self._archive = h5_archive
+        super().__init__(name)
+
         self._cache = {}
         self._cache_len = cache_len
         self._infos = {}
-        self._ids = None
         self._subject_infos = {}
         self._single_anat = single_anat
         self._single_mask = single_mask
@@ -27,7 +25,19 @@ class Dataset(Subscriber):
         if prepare_data_fn:
             self._prepare_data = prepare_data_fn
 
+        if add_subject_info_fn:
+            self._additional_subject_infos = add_subject_info_fn
+
         self._initialize()
+        self._ids = iter(self._infos.keys())
+
+    @abstractmethod
+    def _initialize(self):
+        pass
+
+    @abstractmethod
+    def _load_into_cache(self, id, subject, rep, **kwargs):
+        pass
 
     def __len__(self):
         return len(self._infos)
@@ -60,10 +70,7 @@ class Dataset(Subscriber):
 
     def _get_package(self, id):
         if id not in self._cache.keys():
-            with h5py.File(self._archive, "r") as archive:
-                infos = self._infos[id]
-                data = archive[infos["subject"]][infos["rep"]]
-                self._add_to_cache(id, data)
+            self._load_into_cache(id, **self._infos[id])
 
         extras, subject_id = {}, self._infos[id]["subject"]
         if subject_id in self._subject_infos.keys():
@@ -71,42 +78,45 @@ class Dataset(Subscriber):
 
         return {**self._cache[id], **extras}
 
-    def _initialize(self):
-        ids = []
+    def _add_subject_info(
+        self, subject_id, rep_list, load_rep_fn,
+        single_anat=None, single_mask=None
+    ):
+        self._subject_infos[subject_id] = {}
 
-        with h5py.File(self._archive, "r") as archive:
-            for subject, group in archive.items():
-                gp = dict(group)
-                self._subject_infos[subject] = {}
-                if self._single_anat:
-                    self._subject_infos[subject]["anat"] = gp.pop("anat")[()]
-                if self._single_mask:
-                    self._subject_infos[subject]["mask"] = gp.pop("mask")[()]
+        if single_anat is not None:
+            self._subject_infos[subject_id]["anat"] = single_anat
+        if single_mask is not None:
+            self._subject_infos[subject_id]["mask"] = single_mask
 
-                for rep, data in gp.items():
-                    id = uuid.uuid4()
-                    self._infos[id] = {
-                        "subject": subject,
-                        "rep": rep
-                    }
-                    ids.append(id)
+        self._subject_infos[subject_id]["n_rep"] = len(rep_list)
 
-                    if len(self._cache) < self._cache_len:
-                        self._add_to_cache(id, data)
+        self._subject_infos[subject_id] = self._additional_subject_infos(
+            subject_id, self._subject_infos[subject_id]
+        )
 
-        self._ids = iter(ids)
+        for rep_id in rep_list:
+            id = uuid.uuid4()
+            self._infos[id] = {
+                "subject": subject_id,
+                "rep": rep_id
+            }
+
+            if len(self._cache) < self._cache_len:
+                self._add_to_cache(id, load_rep_fn(rep_id))
 
     def _add_to_cache(self, id, data):
         if len(self._cache) == self._cache_len:
             del_key = list(self._cache.keys())[randint(0, self._cache_len - 1)]
             self._cache.pop(del_key)
 
-        self._cache[id] = self._prepare_data(self._unpack(data))
+        self._cache[id] = self._prepare_data(self._data_to_dict(data))
 
-    def _unpack(self, data):
-        return {
-            k: v[()] for k, v in data.items()
-        }
+    def _additional_subject_infos(self, subject_id, subject_infos):
+        return subject_infos
 
     def _prepare_data(self, data):
         return data
+
+    def _data_to_dict(self, data):
+        return dict(data)

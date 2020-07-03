@@ -1,14 +1,14 @@
 import asyncio
 from unittest import TestCase
 
+from helpers.data import DATA_KEYS, assert_data_point
+from helpers.monkey_io_test_base import MonkeyIOTestBase
 from monkey_io.dataloader import Dataloader
-from monkey_io.dataset import Dataset
-from multiprocess.comm.channel import Channel
-from multiprocess.comm.close_condition import CloseCondition
-from multiprocess.comm.collector import Collector
-from multiprocess.comm.subscriber import Subscriber
-from test.test_monkey_io.helpers.data import DATA_KEYS, assert_data_point
-from test.test_monkey_io.helpers.monkey_io_test_base import MonkeyIOTestBase
+from monkey_io.h5dataset import H5Dataset
+from piper.comm import Channel
+from piper.comm import Collector
+from piper.comm import Subscriber
+from piper.comm.close_condition import CloseCondition
 
 
 class TestDataloader(TestCase, MonkeyIOTestBase):
@@ -26,11 +26,15 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
         self._loop.close()
 
     def test_pool_data_package(self):
+        self.dataloader = self._create_dataloader(1, 1)
         output_sub = Subscriber()
         self.dataloader.add_subscriber(output_sub, Channel.Sub.OUT)
         self.dataloader.prepare_iterators()
 
-        self._loop.run_until_complete(self.dataloader.pool_data_package())
+        try:
+            self._loop.run_until_complete(self.dataloader.pool_data_package())
+        except asyncio.CancelledError:
+            pass
 
         assert output_sub.data_ready()
         id, data = self._loop.run_until_complete(output_sub.yield_data())
@@ -50,7 +54,7 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
                 self.generate_hdf5_dataset(10, 5, self.data_shape)
             )
             self.dataloader.add_subscriber(
-                Dataset(self.dataset_handles[-1]),
+                H5Dataset(self.dataset_handles[-1]),
                 Channel.Sub.IN
             )
 
@@ -73,7 +77,7 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
                 self.generate_hdf5_dataset(10, 5, self.data_shape)
             )
             self.dataloader.add_subscriber(
-                Dataset(self.dataset_handles[-1]),
+                H5Dataset(self.dataset_handles[-1]),
                 Channel.Sub.IN
             )
 
@@ -89,7 +93,7 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
                 self.generate_hdf5_dataset(10, 5, self.data_shape)
             )
             self.dataloader.add_subscriber(
-                Dataset(self.dataset_handles[-1]),
+                H5Dataset(self.dataset_handles[-1]),
                 Channel.Sub.IN
             )
 
@@ -113,7 +117,7 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
                 self.generate_hdf5_dataset(10, 5, self.data_shape)
             )
             self.dataloader.add_subscriber(
-                Dataset(self.dataset_handles[-1]),
+                H5Dataset(self.dataset_handles[-1]),
                 Channel.Sub.IN
             )
 
@@ -131,7 +135,7 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
                 )
             )
             self.dataloader.add_subscriber(
-                Dataset(self.dataset_handles[-1]),
+                H5Dataset(self.dataset_handles[-1]),
                 Channel.Sub.IN
             )
 
@@ -160,12 +164,13 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
         return results
 
     def _run_threaded_test(self, output_subs, stop_cond, awaited_outputs):
-        channel = Collector(self._loop, self.dataloader.package_keys())
+        channel = Collector(self.dataloader.package_keys)
         close_cnd = CloseCondition()
         for sub in output_subs:
             channel.add_subscriber(sub, Channel.Sub.IN)
 
-        out_sub = channel.get_output_subscriber()
+        out_sub = Subscriber()
+        channel.add_subscriber(out_sub, Channel.Sub.OUT)
 
         self.dataloader.start(stop_cond)
         channel.start(lambda: close_cnd)
@@ -195,10 +200,8 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
         for sub in subs:
             assert not sub.is_alive()
 
-    def _create_dataloader(self):
+    def _create_dataloader(self, n_sub=10, n_rep=5):
         self.dataset_handles.append(
-            self.generate_hdf5_dataset(10, 5, self.data_shape)
+            self.generate_hdf5_dataset(n_sub, n_rep, self.data_shape)
         )
-        return Dataloader(
-            self._loop, [Dataset(self.dataset_handles[-1])], DATA_KEYS
-        )
+        return Dataloader([H5Dataset(self.dataset_handles[-1])], DATA_KEYS)

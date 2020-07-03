@@ -1,20 +1,25 @@
 import json
+from functools import partial
 from os import getcwd, makedirs
 from os.path import join
-from functools import partial
+
 import numpy as np
+from old_remove_multiprocess.gpu.cuda_logger import log_gpu_usage_callback
+from old_remove_multiprocess.shell.shell_process import launch_python_process
+from old_remove_multiprocess.utils.scheduler import Scheduler
 
 from magic_monkey.dataloader import Dataloader
-from multiprocess.gpu.cuda_logger import log_gpu_usage_callback
-from multiprocess.scheduler import Scheduler
-from multiprocess.shell.shell_process import launch_shell_process, launch_python_process, launch_singularity_process
+from piper.drivers.shell import launch_shell_process, \
+    launch_singularity_process
 from processes.apply_mask_process import ApplyMaskProcess
 from processes.compute_mask_process import ComputeMaskProcess
-from processes.preprocess.preprocess import ExtractB0Process, B0PostProcess, \
-    ConcatenateDatasets, SquashB0Process
 from processes.preprocess.denoise import DenoiseProcess, PrepareTopupProcess, \
     TopupProcess, PrepareEddyProcess, EddyProcess
-from processes.preprocess.register import AntsApplyTransformProcess, AntsRegisterProcess, ants_rigid_step, ants_affine_step, ants_syn_step, ants_global_params
+from processes.preprocess.preprocess import ExtractB0Process, B0PostProcess, \
+    ConcatenateDatasets, SquashB0Process
+from processes.preprocess.register import AntsApplyTransformProcess, \
+    AntsRegisterProcess, ants_rigid_step, ants_affine_step, ants_syn_step, \
+    ants_global_params
 from processes.reconstruction.dti import DTIProcess, ComputeFAProcess
 from processes.utils.copy_files_process import CopyFilesProcess
 

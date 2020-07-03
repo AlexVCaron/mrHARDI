@@ -1,8 +1,9 @@
 import random
 import time
 
-from multiprocess.scheduler import Scheduler
-from multiprocess.pipeline.process import Process
+from old_remove_multiprocess.utils.scheduler import Scheduler
+
+from piper.pipeline.process import Process
 
 
 class DummyWaiter(Process):

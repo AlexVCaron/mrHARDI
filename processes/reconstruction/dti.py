@@ -5,10 +5,10 @@ from numpy import zeros, apply_along_axis, ones
 
 from config import append_image_extension
 from magic_monkey.compute_fa_from_mrtrix_dt import compute_eigens, compute_fa
-from multiprocess.pipeline.process import Process
+from piper.pipeline.process import ShellProcess, PythonProcess
 
 
-class DTIProcess(Process):
+class DTIProcess(ShellProcess):
     def __init__(
         self, output_prefix, n_proc=cpu_count(),
         masked=True, img_key_deriv="img"
@@ -21,6 +21,9 @@ class DTIProcess(Process):
         )
 
         self._n_cores = n_proc
+
+    def get_required_output_keys(self):
+        return [self.primary_input_key]
 
     def _execute(self, options, img, output_img, *args, **kwargs):
         return "dwi2tensor {} {} {}".format(
@@ -44,13 +47,16 @@ class DTIProcess(Process):
         })
 
 
-class ComputeFAProcess(Process):
+class ComputeFAProcess(PythonProcess):
     def __init__(self, output_prefix, masked=True, img_key_deriv="img"):
         super().__init__(
             "Compute FA from DT process", output_prefix,
             [img_key_deriv, "mask"] if masked else [img_key_deriv],
             ["mask"]
         )
+
+    def get_required_output_keys(self):
+        return [self.primary_input_key]
 
     def _execute(self, log_file_path, *args, **kwargs):
         img, mask = self._input

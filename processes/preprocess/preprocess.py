@@ -6,10 +6,10 @@ import numpy as np
 from config import append_image_extension
 from magic_monkey.b0_process import B0PostProcess, extract_b0, squash_b0
 from magic_monkey.concatenate_dwi import concatenate_dwi
-from multiprocess.pipeline.process import Process
+from piper.pipeline.process import PythonProcess
 
 
-class ExtractB0Process(Process):
+class ExtractB0Process(PythonProcess):
     def __init__(
         self, output_prefix, strides=None,
         mean_post_proc=B0PostProcess.batch, img_key_deriv="img"
@@ -51,7 +51,7 @@ class ExtractB0Process(Process):
         })
 
 
-class SquashB0Process(Process):
+class SquashB0Process(PythonProcess):
     def __init__(
         self, output_prefix, dtype=np.float,
         mean_post_proc=B0PostProcess.batch, img_key_deriv="img"
@@ -105,7 +105,7 @@ class SquashB0Process(Process):
         })
 
 
-class ConcatenateDatasets(Process):
+class ConcatenateDatasets(PythonProcess):
     def __init__(self, output_prefix, img_key_deriv="img", with_grads=True):
         keys = [img_key_deriv, "bvals", "bvecs"]
         super().__init__(

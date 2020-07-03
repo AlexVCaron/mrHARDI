@@ -1,3 +1,4 @@
+neomodel
 atomicwrites==1.4.0
 attrs==19.3.0
 bids-validator==1.3.12
