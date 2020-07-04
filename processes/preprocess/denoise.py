@@ -33,12 +33,12 @@ class DenoiseProcess(ShellProcess):
         img, mask = self._input
         output = append_image_extension(self._get_prefix())
 
-        args = [img, output, "-nthreads {}".format(self._n_cores)]
+        add_args = (img, output, "-nthreads {}".format(self._n_cores))
 
         if mask:
-            args += ["-mask {}".format(mask)]
+            add_args += ("-mask {}".format(mask),)
 
-        super().execute(*args)
+        super().execute(*args, *add_args, **kwargs)
 
         self._output_package.update({
             self.primary_input_key: output
@@ -174,7 +174,7 @@ class TopupProcess(ShellProcess):
     def execute(self, *args, **kwargs):
         output_img = append_image_extension(self._get_prefix())
 
-        super().execute(output_img)
+        super().execute(*args, output_img, **kwargs)
 
         self._output_package.update({
             self.primary_input_key: output_img
@@ -318,8 +318,8 @@ class EddyProcess(ShellProcess):
         }
 
         super().execute(
-            script, img, bvals, bvecs, mask, index, topup,
-            output[self.primary_input_key]
+            *args, script, img, bvals, bvecs, mask, index,
+            topup, output[self.primary_input_key], **kwargs
         )
 
         self._output_package.append(output)

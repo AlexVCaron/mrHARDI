@@ -116,6 +116,8 @@ def launch_shell_process(
             process.stderr.close()
 
         raise e
+    except BaseException as e:
+        raise e
 
 
 def test_process_launcher(command, *args, **kwargs):

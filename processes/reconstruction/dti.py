@@ -40,7 +40,7 @@ class DTIProcess(ShellProcess):
         if mask:
             options += " -mask {}".format(mask)
 
-        super().execute(options, img, output_img)
+        super().execute(*args, options, img, output_img, **kwargs)
 
         self._output_package.update({
             self.primary_input_key: output_img

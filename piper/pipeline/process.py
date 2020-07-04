@@ -80,17 +80,18 @@ class Process(Serializable, metaclass=ABCMeta):
         return {**{opt: None for opt in self._opt_keys}, **package}
 
     @abstractmethod
-    def _launch_process(self, command, *args, **kwargs):
+    def _launch_process(self, runnable, *args, **kwargs):
         pass
 
 
 class PythonProcess(Process, metaclass=ABCMeta):
-    def _launch_process(self, command, *args, **kwargs):
-        return command(*args, **kwargs)
+    def _launch_process(self, py_method, *args, **kwargs):
+        return py_method(*args, **kwargs)
 
 
 class ShellProcess(Process, metaclass=ABCMeta):
-    def _launch_process(self, command, *args, **kwargs):
-        assert "log_conf" in kwargs
-        log_conf = kwargs.pop("log_conf")
-        return launch_shell_process(command(*args, **kwargs), **log_conf)
+    def _launch_process(self, command, log_file, *args, **kwargs):
+        log_conf = kwargs.pop("log_conf", {})
+        return launch_shell_process(
+            command(*args, **kwargs), log_file, **log_conf
+        )

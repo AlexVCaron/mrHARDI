@@ -132,7 +132,9 @@ class AntsRegisterProcess(ShellProcess):
         )
 
         super().execute(
-            img_frm, img_to, prefix, warped_output, inv_warped_output
+            *args, img_frm, img_to, prefix,
+            warped_output, inv_warped_output,
+            **kwargs
         )
 
         self._output_package.update({

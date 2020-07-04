@@ -24,16 +24,7 @@ class DoneEvent:
 
     async def wait_on_future(self):
         self._t_man.protect_task(asyncio.current_task())
-        await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(
-            self._wait_on_future(),
-            self._loop
-        ))
-
-    async def _wait_on_future(self):
-        self._t_man.protect_task(asyncio.current_task())
-        wait_task = self._loop.create_task(self._event.wait())
-        self._t_man.protect_task(wait_task)
-        await wait_task
+        await queue_task_from_other_thread(self._wait_on_future(), self._loop)
 
     def init_future(self, loop):
         self._event = asyncio.Event(loop=loop)
@@ -53,6 +44,12 @@ class DoneEvent:
 
     def done(self):
         return self._event is not None and self._event.is_set()
+
+    async def _wait_on_future(self):
+        self._t_man.protect_task(asyncio.current_task())
+        wait_task = self._loop.create_task(self._event.wait())
+        self._t_man.protect_task(wait_task)
+        await wait_task
 
 
 class AsyncLoopManager(ThreadManager):

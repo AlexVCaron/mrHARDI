@@ -16,20 +16,12 @@ class ThreadManager(Serializable, metaclass=ABCMeta):
     def name(self):
         return self._name
 
-    def start(self, *args, daemon=True, **kwargs):
-        logger.debug("{} starting thread".format(self._name))
-        self._thread = Thread(target=self._thread_loop, daemon=daemon)
-        self._thread.start()
-
-    @abstractmethod
-    def _thread_loop(self):
-        self._trigger_callbacks('thread_started')
-
-    def add_thread_started_callback(self, fn):
-        self._callbacks['thread_started'].append(fn)
-
-    def add_thread_stopped_callback(self, fn):
-        self._callbacks['thread_stopped'].append(fn)
+    @property
+    def serialize(self):
+        return {**super().serialize, **{
+            'name': self.name,
+            'thread_started': self.has_started()
+        }}
 
     def has_started(self):
         return self._thread is not None
@@ -37,18 +29,26 @@ class ThreadManager(Serializable, metaclass=ABCMeta):
     def is_alive(self):
         return self._thread.is_alive()
 
+    def add_thread_started_callback(self, fn):
+        self._callbacks['thread_started'].append(fn)
+
+    def add_thread_stopped_callback(self, fn):
+        self._callbacks['thread_stopped'].append(fn)
+
+    def start(self, *args, daemon=True, **kwargs):
+        logger.debug("{} starting thread".format(self._name))
+        self._thread = Thread(target=self._thread_loop, daemon=daemon)
+        self._thread.start()
+
     def stop(self, join=True):
         if join:
             self._thread.join()
 
         self._trigger_callbacks('thread_stopped')
 
-    @property
-    def serialize(self):
-        return {**super().serialize, **{
-            'name': self.name,
-            'thread_started': self.has_started()
-        }}
+    @abstractmethod
+    def _thread_loop(self):
+        self._trigger_callbacks('thread_started')
 
     def _trigger_callbacks(self, key):
         for cbk in self._callbacks[key]:
