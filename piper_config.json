@@ -1,0 +1,12 @@
+{
+    "PiperConfig": {
+      "neo4j_db_connection": {
+        "username": "user_monkey",
+        "password": "magicmonkey",
+        "address": ["localhost", 7687]
+      },
+      "singularity": {
+        "image": "I:/magic_monkey/repo/dumb_singularity.simg"
+      }
+    }
+}

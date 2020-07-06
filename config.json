@@ -1,8 +1,0 @@
-{
-  "singularity": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/singularity/magic_monkey/magic_monkey_singularity.simg",
-  "base_paths": "/media/vala2004/b1f812ac-9843-4a1f-877a-f1f3bd303399/data/mcgill/amir_schmuel",
-  "datasets" : "dataset.h5",
-  "process_paths": {
-    "preproc": "processing/preprocessing"
-  }
-}

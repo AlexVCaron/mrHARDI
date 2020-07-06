@@ -23,7 +23,7 @@ from processes.preprocess.register import AntsApplyTransformProcess, \
 from processes.reconstruction.dti import DTIProcess, ComputeFAProcess
 from processes.utils.copy_files_process import CopyFilesProcess
 
-config = json.load(open(join(getcwd(), "config.json")))
+config = json.load(open(join(getcwd(), "piper_config.json")))
 
 singularity_process_launcher = partial(
     launch_singularity_process,

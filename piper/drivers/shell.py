@@ -60,25 +60,30 @@ def basic_error_manager(process):
 
 
 def launch_shell_process(
-    command, log_file_path, keep_log=False, poll_timer=4,
-    logging_callback=None, init_logger=None, error_manager=basic_error_manager
+    command, log_file_path, overwrite=False, sleep=4, logging_callback=None,
+    init_logger=None, error_manager=basic_error_manager, **kwargs
 ):
-    with open(log_file_path, "a+" if keep_log else "w+") as log_file:
+    with open(log_file_path, "w+" if overwrite else "a+") as log_file:
         log_file.write("Running command {}\n".format(command))
 
     process = None
 
     try:
-        process = Popen(
-            command.split(" "),
-            stdout=PIPE,
-            stderr=PIPE
-        )
+        try:
+            process = Popen(
+                command.split(" "),
+                stdout=PIPE,
+                stderr=PIPE
+            )
+        except FileNotFoundError as e:
+            e.filename = command
+            raise e
+
 
         if init_logger:
             init_logger(log_file_path)
 
-        logging_args = (process, log_file_path, poll_timer)
+        logging_args = (process, log_file_path, sleep)
         if logging_callback:
             logging_args += (logging_callback,)
 
@@ -127,14 +132,14 @@ def test_process_launcher(command, *args, **kwargs):
 
 
 def launch_singularity_process(
-    command, log_file_path, keep_log=False, poll_timer=4,
+    command, log_file_path, overwrite=False, sleep=4,
     logging_callback=None, init_logger=None, error_manager=basic_error_manager,
-    container=None, bind_paths=None
+    image=None, bind_paths=None, **kwargs
 ):
     command = "singularity exec -B {} {} {}".format(
-        ",".join(bind_paths), container, command
+        ",".join(bind_paths), image, command
     )
     launch_shell_process(
-        command, log_file_path, keep_log, poll_timer,
+        command, log_file_path, overwrite, sleep,
         logging_callback, init_logger, error_manager
     )

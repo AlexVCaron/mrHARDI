@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 
+from piper import piper_config
 from piper.drivers.shell import launch_shell_process
 from piper.graph.serializable import Serializable
 
@@ -91,7 +92,7 @@ class PythonProcess(Process, metaclass=ABCMeta):
 
 class ShellProcess(Process, metaclass=ABCMeta):
     def _launch_process(self, command, log_file, *args, **kwargs):
-        log_conf = kwargs.pop("log_conf", {})
+        log_conf = piper_config.generate_shell_config()
         return launch_shell_process(
             command(*args, **kwargs), log_file, **log_conf
         )

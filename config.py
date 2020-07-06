@@ -6,7 +6,7 @@ def get_img_extension():
     global IMG_EXT
     if "IMG_EXT" not in globals() or IMG_EXT is None:
         import json
-        config = json.load(open("config.json"))
+        config = json.load(open("piper_config.json"))
 
         IMG_EXT = config["image_extension"] \
             if "image_extension" in config else ".nii.gz"
@@ -27,7 +27,7 @@ def _load_process_paths():
     global PROCESS_PATHS
     if "PROCESS_PATHS" not in globals() or PROCESS_PATHS is None:
         import json
-        config = json.load(open("config.json"))
+        config = json.load(open("piper_config.json"))
 
         PROCESS_PATHS = config["process_paths"]
 

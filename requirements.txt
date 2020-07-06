@@ -1,3 +1,4 @@
+traitlets
 neomodel
 atomicwrites==1.4.0
 attrs==19.3.0

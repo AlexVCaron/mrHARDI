@@ -1,6 +1,6 @@
 from neomodel import config, db, install_all_labels
 
-from piper.config import NEO4J_DB_URL
+from piper import NEO4J_DB_URL
 
 
 def db_config():
