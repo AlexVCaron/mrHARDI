@@ -6,7 +6,8 @@ from functools import partial
 from piper.drivers.asyncio import AsyncLoopManager, \
     set_future_in_loop, \
     cancel_future_in_loop
-from piper.exceptions import TransmitClosedException, YieldClosedException
+from piper.exceptions import TransmitClosedException, YieldClosedException, \
+    AlreadyShutdownException
 
 
 class Subscriber(AsyncLoopManager):
@@ -130,7 +131,18 @@ class Subscriber(AsyncLoopManager):
         self.yield_data = self._shutdown_yield_data
         logger.warning("{} dequeued".format(self._name))
 
+    async def _acquire_lock(self):
+        await self._shutdown_lock.acquire()
+
     async def shutdown(self, force=False):
+        try:
+            shutdown_fn = self._inner_shutdown
+            self._inner_shutdown = self._already_shut_bypass
+            await shutdown_fn(force)
+        except AlreadyShutdownException:
+            pass
+
+    async def _inner_shutdown(self, force):
         try:
             if not self._closing:
                 self._closing = force
@@ -157,6 +169,9 @@ class Subscriber(AsyncLoopManager):
                 logger.warning("{} closed".format(self._name))
         except RuntimeError:
             pass
+
+    async def _already_shut_bypass(self, *args, **kwargs):
+        raise AlreadyShutdownException(self)
 
     async def _put_id(self, id_tag):
         logger.debug("{} putting tag in queue".format(self._name))

@@ -50,3 +50,8 @@ class TransmitClosedException(UnrecoverableException):
 class YieldClosedException(RecoverableException):
     def __init__(self, sub):
         super().__init__(sub, self)
+
+
+class AlreadyShutdownException(RecoverableException):
+    def __init__(self, sub):
+        super().__init__(sub, self)
