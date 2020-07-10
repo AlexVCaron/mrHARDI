@@ -2,18 +2,19 @@ import json
 import os
 import shutil
 
-from blocks import registration_sequence, topup_sequence, eddy_sequence
-from magic_monkey.b0_process import B0PostProcess
-from monkey_io.dataloader import Dataloader
-from monkey_io.dirdataset import DirDataset
 from piper.comm.channel import Channel
 from piper.comm.channel_filter import ChannelFilter
 from piper.comm.gatherer import Gatherer
 from piper.comm.subscriber import Subscriber
-from piper.executor import Executor
+from piper.executor.executor import Executor
 from piper.pipeline.layer import SequenceLayer
 from piper.pipeline.pipeline import Pipeline
 from piper.pipeline.unit import Unit
+
+from blocks import registration_sequence, topup_sequence, eddy_sequence
+from magic_monkey.b0_process import B0PostProcess
+from monkey_io.dataloader import Dataloader
+from monkey_io.dirdataset import DirDataset
 from processes.preprocess.denoise import DenoiseProcess
 from processes.preprocess.preprocess import ExtractB0Process
 from processes.preprocess.register import ants_rigid_step, \

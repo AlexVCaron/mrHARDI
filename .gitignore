@@ -129,3 +129,11 @@ dmypy.json
 external/
 /vm/python/
 /.vagrant/
+
+data/
+output/
+venv*/
+
+*.simg
+*.img
+*.iso
