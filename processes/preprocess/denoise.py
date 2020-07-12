@@ -4,11 +4,11 @@ from os import chmod
 
 import nibabel as nib
 import numpy as np
+from piper.pipeline.process import ShellProcess, PythonProcess
 
 from config import append_image_extension
 from magic_monkey.prepare_eddy_command import prepare_eddy_index
 from magic_monkey.prepare_topup_command import prepare_topup_params
-from piper.pipeline.process import ShellProcess, PythonProcess
 
 
 class DenoiseProcess(ShellProcess):
@@ -23,7 +23,8 @@ class DenoiseProcess(ShellProcess):
 
         self._mask = None
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return [self.primary_input_key]
 
     def _execute(self, *args, **kwargs):
@@ -58,7 +59,8 @@ class PrepareTopupProcess(PythonProcess):
         self._config = base_config
         self._extra = extra_params
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return ["script_topup", "param_topup", "config_topup"]
 
     def set_inputs(self, package):
@@ -158,7 +160,8 @@ class TopupProcess(ShellProcess):
             [img_key_deriv, "script_topup", "param_topup"]
         )
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return [self.primary_input_key, "param_topup"]
 
     def set_inputs(self, package):
@@ -194,7 +197,8 @@ class PrepareEddyProcess(PythonProcess):
         self._slspec = slspec
         self._use_cuda = use_cuda
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return ["script_eddy", "param_eddy"]
 
     def _execute(self, log_file_path, *args, **kwargs):
@@ -301,7 +305,8 @@ class EddyProcess(ShellProcess):
 
         self._n_cores = cpu_count()
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return [self.primary_input_key, "bvals", "bvecs"]
 
     def _execute(self, *args, **kwargs):

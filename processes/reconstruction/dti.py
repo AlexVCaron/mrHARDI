@@ -2,10 +2,10 @@ from multiprocessing import cpu_count
 
 import nibabel as nib
 from numpy import zeros, apply_along_axis, ones
+from piper.pipeline.process import ShellProcess, PythonProcess
 
 from config import append_image_extension
 from magic_monkey.compute_fa_from_mrtrix_dt import compute_eigens, compute_fa
-from piper.pipeline.process import ShellProcess, PythonProcess
 
 
 class DTIProcess(ShellProcess):
@@ -22,7 +22,8 @@ class DTIProcess(ShellProcess):
 
         self._n_cores = n_proc
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return [self.primary_input_key]
 
     def _execute(self, options, img, output_img, *args, **kwargs):
@@ -47,7 +48,7 @@ class DTIProcess(ShellProcess):
         })
 
 
-class ComputeFAProcess(PythonProcess):
+class ComputeFAFromDTIProcess(PythonProcess):
     def __init__(self, output_prefix, masked=True, img_key_deriv="img"):
         super().__init__(
             "Compute FA from DT process", output_prefix,
@@ -55,7 +56,8 @@ class ComputeFAProcess(PythonProcess):
             ["mask"]
         )
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return [self.primary_input_key]
 
     def _execute(self, log_file_path, *args, **kwargs):

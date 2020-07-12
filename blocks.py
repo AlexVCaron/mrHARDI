@@ -1,12 +1,10 @@
-from piper.comm import Channel
-from piper.comm import Collector
-from piper.comm.channel_filter import ChannelFilter
-from piper.pipeline import SequenceLayer, ParallelLayer
-from piper.pipeline.unit import Unit
-from processes.compute_mask_process import ComputeMaskProcess
+from piper.comm import Channel, Collector, ChannelFilter
+from piper.pipeline import SequenceLayer, ParallelLayer, Unit
+
 from processes.preprocess.denoise import *
 from processes.preprocess.preprocess import *
 from processes.preprocess.register import *
+from processes.utils.compute_mask_process import ComputeMaskProcess
 
 
 ###################################################

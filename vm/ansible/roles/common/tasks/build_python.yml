@@ -38,12 +38,11 @@
     creates: "{{ pysrc_dir }}/build/scripts-{{ pysrc_ver_s }}/pyvenv-{{ pysrc_ver_s }}"
 
 - name: Make Python install
-  command: make install -j "{{ n_procs }}"
+  command: make altinstall -j "{{ n_procs }}"
   args:
     chdir: "{{ pysrc_dir }}"
-    creates: "{{ pydest_dir }}/bin/python{{ pysrc_ver_s }}m"
+    creates: "{{ pydest_dir }}/bin/pip{{ pysrc_ver_s }}"
   register: py_bin_installed
-  become: yes
 
 - name: Give rights to Python to vagrant vm user
   file:
@@ -93,6 +92,8 @@
     src: "{{ pydest_dir }}/bin/python{{ pysrc_ver_s }}m"
     dest: "{{ pydest_dir }}/bin/python{{ pysrc_ver_s }}"
     state: link
+    owner: vagrant
+  become: yes
   when: py_bin_installed is not skipped
 
 - name: Set Pip as main alternative
@@ -101,7 +102,7 @@
       - "update-alternatives"
       - "--set"
       - "pip{{ pysrc_ver_major }}"
-      - "{{ pydest_dir }}/bin/pip{{ pysrc_ver_major }}"
+      - "{{ pydest_dir }}/bin/pip{{ pysrc_ver_s }}"
       - "--force"
   when: py_bin_installed is not skipped
 

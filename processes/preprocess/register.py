@@ -1,9 +1,9 @@
 from multiprocessing import cpu_count
 
 from numpy import array
+from piper.pipeline.process import ShellProcess
 
 from config import append_image_extension
-from piper.pipeline.process import ShellProcess
 
 
 def ants_rigid_step(
@@ -98,7 +98,8 @@ class AntsRegisterProcess(ShellProcess):
         self._n_cores = cpu_count()
         self._verbose = verbose
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return ["ref", "affine"]
 
     def _execute(
@@ -163,7 +164,8 @@ class AntsApplyTransformProcess(ShellProcess):
         self._params = [input_type, dimension, interpolation, fill_value]
         self._verbose = verbose
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return [self.primary_input_key]
 
     def _execute(self, img, affine, ref, output, *args, **kwargs):

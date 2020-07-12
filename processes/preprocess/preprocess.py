@@ -2,11 +2,11 @@ import sys
 
 import nibabel as nib
 import numpy as np
+from piper.pipeline.process import PythonProcess
 
 from config import append_image_extension
 from magic_monkey.b0_process import B0PostProcess, extract_b0, squash_b0
 from magic_monkey.concatenate_dwi import concatenate_dwi
-from piper.pipeline.process import PythonProcess
 
 
 class ExtractB0Process(PythonProcess):
@@ -23,7 +23,8 @@ class ExtractB0Process(PythonProcess):
 
         self._input = None
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return [self.primary_input_key]
 
     def _execute(self, log_file_path, *args, **kwargs):

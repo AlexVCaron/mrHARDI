@@ -1,5 +1,6 @@
-from config import append_image_extension
 from piper.pipeline.process import ShellProcess
+
+from config import append_image_extension
 
 
 class ComputeMaskProcess(ShellProcess):
@@ -9,7 +10,8 @@ class ComputeMaskProcess(ShellProcess):
     def set_inputs(self, package):
         self._input = package[self.primary_input_key]
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return ["mask"]
 
     def _execute(self, cmd, *args, **kwargs):

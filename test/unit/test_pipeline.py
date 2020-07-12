@@ -2,17 +2,12 @@ import asyncio
 import time
 from unittest import TestCase
 
+from piper.comm import Channel, Collector, Subscriber
+from piper.pipeline import SequenceLayer, Pipeline, PythonProcess, Unit
+
 from helpers.data import DATA_KEYS, assert_data_point
 from helpers.monkey_io_test_base import MonkeyIOTestBase
-from monkey_io.dataloader import Dataloader
-from monkey_io.h5dataset import H5Dataset
-from piper.comm import Channel
-from piper.comm import Collector
-from piper.comm import Subscriber
-from piper.pipeline import SequenceLayer
-from piper.pipeline.pipeline import Pipeline
-from piper.pipeline.process import PythonProcess
-from piper.pipeline.unit import Unit
+from monkey_io import Dataloader, H5Dataset
 
 
 # TODO : remove dependencies on MonkeyIO and move to piper
@@ -29,7 +24,8 @@ class AwaitAndPassProcess(PythonProcess):
         time.sleep(self.sleep)
         return self.package
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return self.get_input_keys()
 
     def get_input_keys(self):
@@ -50,16 +46,19 @@ class TestPipeline(MonkeyIOTestBase, TestCase):
         self.dataset_handles = []
         self.data_shape = (10, 10, 10, 32)
         self.channel_in = self._create_dataloader()
-        self.channel_out = Collector(self.loop, DATA_KEYS)
+        self.channel_out = Collector(DATA_KEYS)
         self.sub_out = Subscriber()
         self.channel_out.add_subscriber(self.sub_out, Channel.Sub.OUT)
         self.pipeline = Pipeline(self.channel_in, self.channel_out)
 
+    def tearDown(self):
+        self.loop.close()
+
     def test_linear_pipeline_unique_units(self):
         for i in range(5):
             layer = SequenceLayer(
-                Channel(self.loop, DATA_KEYS, name="l{}_chan_in".format(i)),
-                Channel(self.loop, DATA_KEYS, name="l{}_chan_out".format(i)),
+                Channel(DATA_KEYS, name="l{}_chan_in".format(i)),
+                Channel(DATA_KEYS, name="l{}_chan_out".format(i)),
                 name="layer_{}".format(i)
             )
             layer.add_unit(
@@ -71,6 +70,7 @@ class TestPipeline(MonkeyIOTestBase, TestCase):
 
         dequeue_task = self.loop.create_task(self._dequeue_pipeline_output())
 
+        self.pipeline.initialize(self.loop)
         self.pipeline.run()
         results = self.loop.run_until_complete(dequeue_task)
         self.pipeline.wait_for_completion()
@@ -102,7 +102,7 @@ class TestPipeline(MonkeyIOTestBase, TestCase):
             self.generate_hdf5_dataset(10, 5, self.data_shape)
         )
         return Dataloader(
-            self.loop, [H5Dataset(self.dataset_handles[-1])], DATA_KEYS
+            [H5Dataset(self.dataset_handles[-1])], DATA_KEYS
         )
 
     def _assert_results(self, results):

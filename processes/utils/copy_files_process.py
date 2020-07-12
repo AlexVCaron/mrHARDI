@@ -11,7 +11,8 @@ class CopyFilesProcess(PythonProcess):
             ["files_in", "files_out"]
         )
 
-    def get_required_output_keys(self):
+    @property
+    def required_output_keys(self):
         return [self.primary_input_key]
 
     def execute(self):

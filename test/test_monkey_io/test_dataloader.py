@@ -1,14 +1,11 @@
 import asyncio
 from unittest import TestCase
 
+from piper.comm import Channel, Collector, Subscriber, CloseCondition
+
 from helpers.data import DATA_KEYS, assert_data_point
 from helpers.monkey_io_test_base import MonkeyIOTestBase
-from monkey_io.dataloader import Dataloader
-from monkey_io.h5dataset import H5Dataset
-from piper.comm import Channel
-from piper.comm import Collector
-from piper.comm import Subscriber
-from piper.comm.close_condition import CloseCondition
+from monkey_io import Dataloader, H5Dataset
 
 
 class TestDataloader(TestCase, MonkeyIOTestBase):
@@ -68,7 +65,7 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
         self._run_threaded_test(output_subs, lambda: False, 150)
 
     def test_threaded_multi_source_multi_output_all(self):
-        output_subs = [Subscriber() for i in range(3)]
+        output_subs = [Subscriber() for _ in range(3)]
         for sub in output_subs:
             self.dataloader.add_subscriber(sub, Channel.Sub.OUT)
 
@@ -84,7 +81,7 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
         self._run_threaded_test(output_subs, lambda: False, 450)
 
     def test_threaded_multi_source_multi_output(self):
-        output_subs = [Subscriber() for i in range(3)]
+        output_subs = [Subscriber() for _ in range(3)]
         for sub in output_subs:
             self.dataloader.add_subscriber(sub, Channel.Sub.OUT)
 
@@ -101,7 +98,7 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
         self._run_threaded_test(output_subs, lambda: stop_cond.pop(0), 36)
 
     def test_threaded_multi_output(self):
-        output_subs = [Subscriber() for i in range(3)]
+        output_subs = [Subscriber() for _ in range(3)]
         for sub in output_subs:
             self.dataloader.add_subscriber(sub, Channel.Sub.OUT)
 
@@ -158,7 +155,7 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
         while True:
             try:
                 results.append(await sub.yield_data())
-            except asyncio.CancelledError as e:
+            except asyncio.CancelledError:
                 break
 
         return results
@@ -179,8 +176,6 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
         task.add_done_callback(lambda *args: close_cnd.set())
 
         self._loop.run_until_complete(task)
-        self._loop.run_until_complete(self.dataloader.wait_for_completion())
-        self._loop.run_until_complete(channel.wait_for_completion())
 
         result = task.result()
         for id_tag, data in result:
@@ -188,8 +183,6 @@ class TestDataloader(TestCase, MonkeyIOTestBase):
 
         for output_sub in output_subs:
             assert not output_sub.data_ready()
-
-        assert not self.dataloader.running()
 
         self._assert_subs_closed(output_subs)
 

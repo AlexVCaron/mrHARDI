@@ -2,14 +2,9 @@ import json
 import os
 import shutil
 
-from piper.comm.channel import Channel
-from piper.comm.channel_filter import ChannelFilter
-from piper.comm.gatherer import Gatherer
-from piper.comm.subscriber import Subscriber
+from piper.comm import Channel, ChannelFilter, Gatherer, Subscriber
 from piper.executor.executor import Executor
-from piper.pipeline.layer import SequenceLayer
-from piper.pipeline.pipeline import Pipeline
-from piper.pipeline.unit import Unit
+from piper.pipeline import SequenceLayer, Pipeline, Unit
 
 from blocks import registration_sequence, topup_sequence, eddy_sequence
 from magic_monkey.b0_process import B0PostProcess
@@ -83,7 +78,7 @@ b0_extract = ExtractB0Process(
 t1_to_b0 = registration_sequence(
     Gatherer(
         lambda data: all(
-            k in data for k in b0_extract.get_required_output_keys()
+            k in data for k in b0_extract.required_output_keys
         ),
         lambda data: {
             **{"img_from": data.pop("anat"), "img_to": data.pop("img")},
@@ -149,7 +144,7 @@ preproc_layer.add_unit(
     Unit(b0_extract, config["diff_mask"], name="b0_extract_unit")
 )
 preproc_layer.add_unit(t1_to_b0, [ChannelFilter(
-    preproc_layer.input, excludes=b0_extract.get_required_output_keys()
+    preproc_layer.input, excludes=b0_extract.required_output_keys
 )])
 preproc_layer.add_unit(
     Unit(dwi_denoise, config["dwi_denoise"], name="dwi_denoise_unit"),
@@ -170,6 +165,7 @@ pipeline.add_item(preproc_layer)
 
 executor = Executor(pipeline, name="test_executor")
 # executor.profile()
+executor.set_using_singularity()
 executor.execute_pipeline()
 
 

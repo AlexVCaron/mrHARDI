@@ -3,7 +3,7 @@ from unittest import TestCase
 
 from helpers.data import assert_data_point
 from helpers.monkey_io_test_base import MonkeyIOTestBase
-from monkey_io.h5dataset import H5Dataset
+from monkey_io import H5Dataset
 
 
 class TestH5Dataset(TestCase, MonkeyIOTestBase):
@@ -17,6 +17,7 @@ class TestH5Dataset(TestCase, MonkeyIOTestBase):
 
     def tearDown(self):
         self.dataset_handle.close()
+        self._loop.close()
 
     def test_create_dataset(self):
         loaded_ids = []
