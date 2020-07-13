@@ -122,17 +122,6 @@ dwi_eddy = eddy_sequence(
 )
 
 
-# async def collect_outputs(subscriber):
-#     results = []
-#     while subscriber.promise_data():
-#         try:
-#             results.append(await subscriber.yield_data())
-#         except asyncio.CancelledError:
-#             pass
-#
-#     return results
-
-
 # Create preprocessing layer
 preproc_layer = SequenceLayer(
     Channel(dataloader.package_keys, True, name="preproc_chan_in"),
@@ -165,7 +154,6 @@ pipeline.add_item(preproc_layer)
 
 executor = Executor(pipeline, name="test_executor")
 # executor.profile()
-executor.set_using_singularity()
 executor.execute_pipeline()
 
 

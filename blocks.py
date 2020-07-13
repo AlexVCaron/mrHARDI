@@ -4,6 +4,9 @@ from piper.pipeline import SequenceLayer, ParallelLayer, Unit
 from processes.preprocess.denoise import *
 from processes.preprocess.preprocess import *
 from processes.preprocess.register import *
+from processes.reconstruction.spherical_deconv import ComputeResponseProcess, \
+    ResponseAlgorithms, SphericalDeconvAlgorithms, \
+    SphericalDeconvolutionProcess
 from processes.utils.compute_mask_process import ComputeMaskProcess
 
 
@@ -226,5 +229,55 @@ def registration_sequence(
 
     layer.add_unit(reg_unit)
     layer.add_unit(trans_unit, [input_channel])
+
+    return layer
+
+
+###################################################
+# Spherical deconvolution sequence :
+#  - Input : {dwi,bvals,bvecs}, {dwi,bvals,bvecs}, ..., {dwi,bvals,bvecs}
+#  - Steps :
+#     1. Compute response according to the right algorithm and context
+#     2. Compute fODFs using spherical deconvolution
+#
+###################################################
+def _unpack_if_tuple(val, n):
+    return val if isinstance(val, tuple) else (val for _ in range(n))
+
+
+def spherical_deconv_sequence(
+    input_channel, output_prefix, response_alg=ResponseAlgorithms.tax,
+    res_alg_options=None, deconv_alg=SphericalDeconvAlgorithms.csd,
+    deconv_alg_options=None, shells=None, lmax=None, masked=False,
+    img_key_deriv="img", output_key_to_odf=True, log_prefix=None,
+    base_name="spherical_deconv_sequence"
+):
+    log_prefix = log_prefix if log_prefix else output_prefix
+
+    res_shells, deconv_shells = _unpack_if_tuple(shells, 2)
+    res_lmax, deconv_lmax = _unpack_if_tuple(lmax, 2)
+
+    response_unit = Unit(
+        ComputeResponseProcess(
+            output_prefix, response_alg, res_shells, res_lmax,
+            masked, img_key_deriv, res_alg_options
+        ), log_prefix, "{}_response_process".format(base_name)
+    )
+
+    deconv_unit = Unit(
+        SphericalDeconvolutionProcess(
+            output_prefix, deconv_alg, deconv_shells, deconv_lmax,
+            img_key_deriv, output_key_to_odf, masked, deconv_alg_options
+        ), log_prefix, "{}_deconv_process".format(base_name)
+    )
+
+    output_channel = Channel(
+        deconv_unit.package_keys,
+        name="{}_output_channel".format(base_name)
+    )
+
+    layer = SequenceLayer(input_channel, output_channel, base_name)
+    layer.add_unit(response_unit)
+    layer.add_unit(deconv_unit, [input_channel])
 
     return layer

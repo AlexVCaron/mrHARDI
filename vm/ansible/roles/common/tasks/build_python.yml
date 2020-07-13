@@ -8,6 +8,7 @@
 
 - name: Download Python tar
   get_url: url="{{ pysrc_url }}" dest="{{ pysrc_pkg }}"
+  when: "'FAILED' not in py_installed.stderr"
 
 - name: Untar Python package
   unarchive:
@@ -16,6 +17,7 @@
     copy: no
     creates: "{{ pysrc_dir }}"
   become: yes
+  when: "'FAILED' not in py_installed.stderr"
 
 - name: Configure Python
   command:
@@ -28,20 +30,20 @@
       - "--enable-shared"
       - "--with-system-ffi"
     chdir: "{{ pysrc_dir }}"
-    creates: "{{ pysrc_dir }}/Makefile"
   become: yes
+  when: "'FAILED' not in py_installed.stderr"
 
 - name: Make Python
   command: make -j "{{ n_procs }}"
   args:
     chdir: "{{ pysrc_dir }}"
-    creates: "{{ pysrc_dir }}/build/scripts-{{ pysrc_ver_s }}/pyvenv-{{ pysrc_ver_s }}"
+  when: "'FAILED' not in py_installed.stderr"
 
 - name: Make Python install
   command: make altinstall -j "{{ n_procs }}"
   args:
     chdir: "{{ pysrc_dir }}"
-    creates: "{{ pydest_dir }}/bin/pip{{ pysrc_ver_s }}"
+  when: "'FAILED' not in py_installed.stderr"
   register: py_bin_installed
 
 - name: Give rights to Python to vagrant vm user
@@ -51,7 +53,7 @@
     recurse: yes
     owner: vagrant
   become: yes
-  when: py_bin_installed is not skipped
+  when: py_bin_installed is not skipped and "'FAILED' not in py_installed.stderr"
 
 - name: Add Python alternative
   command:
@@ -63,7 +65,7 @@
       - "{{ pydest_dir }}/bin/python{{ pysrc_ver_s }}m"
       - "1"
   become: yes
-  when: py_bin_installed is not skipped
+  when: py_bin_installed is not skipped and "'FAILED' not in py_installed.stderr"
 
 - name: Add Pip alternative
   command:
@@ -75,7 +77,7 @@
       - "{{ pydest_dir }}/bin/pip{{ pysrc_ver_s }}"
       - "1"
   become: yes
-  when: py_bin_installed is not skipped
+  when: py_bin_installed is not skipped and "'FAILED' not in py_installed.stderr"
 
 - name: Set Python as main alternative
   command:
@@ -85,7 +87,7 @@
       - "python{{ pysrc_ver_major }}"
       - "{{ pydest_dir }}/bin/python{{ pysrc_ver_s }}m"
       - "--force"
-  when: py_bin_installed is not skipped
+  when: py_bin_installed is not skipped and "'FAILED' not in py_installed.stderr"
 
 - name: Create Python non minimal symbolic link
   file:
@@ -94,7 +96,7 @@
     state: link
     owner: vagrant
   become: yes
-  when: py_bin_installed is not skipped
+  when: py_bin_installed is not skipped and "'FAILED' not in py_installed.stderr"
 
 - name: Set Pip as main alternative
   command:
@@ -104,11 +106,11 @@
       - "pip{{ pysrc_ver_major }}"
       - "{{ pydest_dir }}/bin/pip{{ pysrc_ver_s }}"
       - "--force"
-  when: py_bin_installed is not skipped
+  when: py_bin_installed is not skipped and "'FAILED' not in py_installed.stderr"
 
 - name: Clean up sources
   command: rm "{{ item }}"
   with_items:
     - "-r {{ pysrc_pkg }}"
     - "-rf {{ pysrc_dir }}"
-  when: pysrc_cleanup
+  when: pysrc_cleanup and "'FAILED' not in py_installed.stderr"

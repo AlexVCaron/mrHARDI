@@ -5,6 +5,11 @@
   args:
     chdir: "{{ mmy_dir }}"
 
+- name: Force piper package to upgrade
+  command: pip{{ pysrc_ver_major }} install --upgrade git+https://avcaron@bitbucket.org/avcaron/piper.git#egg=piper
+  args:
+    chdir: "{{ mmy_dir }}"
+
 - name: Install Magic monkey inside Python
   command: python{{ pysrc_ver_major }} setup.py {{ mmy_setup_install }}
   args:
