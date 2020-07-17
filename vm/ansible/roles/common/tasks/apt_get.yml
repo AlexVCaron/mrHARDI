@@ -41,3 +41,20 @@
 - name: Update ldconfig with new installed dev libraries
   command: ldconfig
   become: yes
+
+- name: Resize main partition to 100% of the disk
+  command: parted /dev/sda resizepart 1 100%
+  become: yes
+
+- name: Extend volume
+  command: pvresize /dev/sda1
+  become: yes
+
+- name: Extend logical group
+  command: lvextend -l +100%FREE /dev/vagrant-vg/root
+  become: yes
+  ignore_errors: yes
+
+- name: Resize root file
+  command: resize2fs /dev/vagrant-vg/root
+  become: yes
