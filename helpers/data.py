@@ -1,9 +1,38 @@
+import json
+import os
 import tempfile
 
 import h5py
+import nibabel as nib
 import numpy as np
 
 DATA_KEYS = ["img", "bvals", "bvecs", "affine", "mask", "anat"]
+
+
+def load_dwi_repetition(subject, repetition, repetition_path):
+    base_name = os.path.join(
+        repetition_path, "{}_".format(repetition) + "{}.{}"
+    )
+
+    with open(os.path.join(repetition_path, "rep_config.json")) as f:
+        rep_config = json.load(f)
+
+    affine = nib.load(base_name.format("dwi", "nii.gz")).affine
+
+    data = {
+        "img": base_name.format("dwi", "nii.gz"),
+        "bvals": base_name.format("dwi", "bvals"),
+        "bvecs": base_name.format("dwi", "bvecs"),
+        "dir": rep_config["acq_direction"],
+        "affine": affine
+    }
+
+    if os.path.exists(base_name.format("mask", "nii.gz")):
+        data["mask"] = base_name.format("mask", "nii.gz")
+    if os.path.exists(base_name.format("anat", "nii.gz")):
+        data["anat"] = base_name.format("anat", "nii.gz")
+
+    return data
 
 
 def create_hdf5_dataset(
@@ -104,4 +133,3 @@ def assert_data_point(data, data_shape, key_modifiers={}, dtype=float):
             np.arange(0, data_shape[-1])[:, None], 3, axis=1
         ).astype(dtype)
     )
-
