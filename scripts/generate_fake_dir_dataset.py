@@ -45,9 +45,9 @@ def generate_fake_dir_dataset(
             os.makedirs(r_root)
 
             config = {"acq_direction": "AP" if r % 2 == 0 else "PA"}
-            json.dump(
-                config, open(os.path.join(r_root, "rep_config.json"), "w+")
-            )
+            with open(os.path.join(r_root, "rep_config.json"), "w+") as f:
+                json.dump(config, f)
+
             data = create_pipeline_input_rep_dict(
                 s, r, shape, dtype, init_value,
                 not global_subject_mask, not global_subject_anat

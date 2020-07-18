@@ -1,8 +1,10 @@
 import asyncio
 import uuid
+
 from abc import ABCMeta, abstractmethod
 from random import randint
 
+from piper import metadata_manager
 from piper.comm import Subscriber
 from piper.exceptions import NotImplementedException
 
@@ -95,12 +97,23 @@ class Dataset(Subscriber, metaclass=ABCMeta):
             subject_id, self._subject_infos[subject_id]
         )
 
+        metadata_manager.register_category(
+            subject_id, self._subject_infos[subject_id]
+        )
+
         for rep_id in rep_list:
-            id = uuid.uuid4()
+            id = str(uuid.uuid4())
+
             self._infos[id] = {
                 "subject": subject_id,
                 "rep": rep_id
             }
+
+            metadata_manager.register_category(
+                id, self._infos[id], lambda meta, manager: {
+                    **meta, **manager.get_category(meta["subject"])
+                }
+            )
 
             if len(self._cache) < self._cache_len:
                 self._add_to_cache(id, load_rep_fn(rep_id))
