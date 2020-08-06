@@ -1,12 +1,18 @@
 from collections import MutableMapping
+from typing import Iterable
 
 
 class ListValuedDict(MutableMapping):
-    def __init__(self):
-        self._dict = {}
+    def __init__(self, init_attributes=dict()):
+        self._dict = {k: self._as_list(v) for k, v in init_attributes.items()}
 
     def _as_list(self, item):
-        return item if type(item) is list else [item]
+        if isinstance(item, list):
+            return item
+        if isinstance(item, Iterable):
+            return list(item)
+
+        return [item]
 
     def __setitem__(self, k, v):
         self._dict[k] = self._as_list(v)
@@ -26,3 +32,7 @@ class ListValuedDict(MutableMapping):
 
     def __iter__(self):
         return iter(self._dict)
+
+    def update(self, mapping, **kwargs):
+        for k, v in mapping.items():
+            self[k].extend(self._as_list(v))

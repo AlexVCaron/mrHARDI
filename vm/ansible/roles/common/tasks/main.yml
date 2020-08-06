@@ -9,3 +9,6 @@
 
 - name: Run MMY installation block
   include: install_mmy.yml
+
+- name: Run Nextflow installation block
+  include: install_nxf.yml

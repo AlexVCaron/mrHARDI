@@ -51,7 +51,7 @@
     path: "{{ pydest_dir }}"
     state: directory
     recurse: yes
-    owner: vagrant
+    owner: 'vagrant'
   become: yes
   when: py_bin_installed is not skipped and "'FAILED' not in py_installed.stderr"
 

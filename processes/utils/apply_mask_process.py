@@ -4,7 +4,7 @@ import nibabel as nib
 from piper.pipeline.process import PythonProcess
 
 from config import append_image_extension
-from magic_monkey.apply_mask import apply_mask_on_data
+from magic_monkey.config.utils import apply_mask_on_data
 
 
 class ApplyMaskProcess(PythonProcess):

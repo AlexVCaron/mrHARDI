@@ -1,49 +1,36 @@
-import sys
-from multiprocessing import cpu_count
-from os import chmod
-
-import nibabel as nib
-import numpy as np
-from piper.pipeline.process import ShellProcess, PythonProcess
-
-from config import append_image_extension
-from magic_monkey.prepare_eddy_command import prepare_eddy_index
-from magic_monkey.prepare_topup_command import prepare_topup_params
-
-
-class DenoiseProcess(ShellProcess):
-    def __init__(self, output_prefix, masked=True, img_key_deriv="img"):
-        super().__init__(
-            "Denoising process via Mrtrix dwidenoise", output_prefix,
-            [img_key_deriv, "mask"] if masked else [img_key_deriv],
-            ["mask"]
-        )
-
-        self._n_cores = cpu_count()
-
-        self._mask = None
-
-    @property
-    def required_output_keys(self):
-        return [self.primary_input_key]
-
-    def _execute(self, *args, **kwargs):
-        return "dwidenoise " + " ".join(args)
-
-    def execute(self, *args, **kwargs):
-        img, mask = self._input
-        output = append_image_extension(self._get_prefix())
-
-        add_args = (img, output, "-nthreads {}".format(self._n_cores))
-
-        if mask:
-            add_args += ("-mask {}".format(mask),)
-
-        super().execute(*args, *add_args, **kwargs)
-
-        self._output_package.update({
-            self.primary_input_key: output
-        })
+# class DenoiseProcess(ShellProcess):
+#     def __init__(self, output_prefix, masked=True, img_key_deriv="img"):
+#         super().__init__(
+#             "Denoising process via Mrtrix dwidenoise", output_prefix,
+#             [img_key_deriv, "mask"] if masked else [img_key_deriv],
+#             ["mask"]
+#         )
+#
+#         self._n_cores = cpu_count()
+#
+#         self._mask = None
+#
+#     @property
+#     def required_output_keys(self):
+#         return [self.primary_input_key]
+#
+#     def _execute(self, *args, **kwargs):
+#         return "dwidenoise " + " ".join(args)
+#
+#     def execute(self, *args, **kwargs):
+#         img, mask = self._input
+#         output = append_image_extension(self._get_prefix())
+#
+#         add_args = (img, output, "-nthreads {}".format(self._n_cores))
+#
+#         if mask:
+#             add_args += ("-mask {}".format(mask),)
+#
+#         super().execute(*args, *add_args, **kwargs)
+#
+#         self._output_package.update({
+#             self.primary_input_key: output
+#         })
 
 
 class PrepareTopupProcess(PythonProcess):

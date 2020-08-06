@@ -2,7 +2,7 @@ import argparse
 import nibabel as nib
 import numpy as np
 
-from magic_monkey.b0_process import B0PostProcess, extract_b0
+from magic_monkey.config.algorithms.b0 import B0PostProcess, extract_b0
 
 
 def get_parser():

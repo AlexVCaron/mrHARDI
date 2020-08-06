@@ -1,25 +1,9 @@
-from enum import Enum
-
 from piper.pipeline import ShellProcess
 
 from config import append_image_extension
 
-
-def _format_response_names(responses):
-    return ["{}_response".format(r) for r in responses]
-
-
-class SphericalDeconvAlgorithms(Enum):
-    csd = {
-        "responses": ["wm"],
-        "options": [
-            "filter", "neg_lambda", "norm_lambda", "threshold", "niter"
-        ]
-    }
-    msmt_csd = {
-        "responses": ["wm", "gm", "csf"],
-        "options": ["neg_lambda", "norm_lambda"]
-    }
+from magic_monkey.config.algorithms.csd import _format_response_names, \
+    SphericalDeconvAlgorithms, ResponseAlgorithms
 
 
 class SphericalDeconvolutionProcess(ShellProcess):
@@ -91,29 +75,6 @@ class SphericalDeconvolutionProcess(ShellProcess):
         return "dwi2fod {} {} {} {} {}".format(
             method, img, response, output, options
         )
-
-
-class ResponseAlgorithms(Enum):
-    dhollander = {
-        "responses": ["wm", "gm", "csf"],
-        "options": ["erode", "fa", "sfwm", "gm", "csf", "wm_algo"]
-    }
-    msmt_5tt = {
-        "responses": ["wm", "gm", "csf"],
-        "options": ["dirs", "fa", "pvf", "wm_algo", "sfwm_fa_threshold"]
-    }
-    fa = {
-        "responses": ["wm"],
-        "options": ["erode", "number", "threshold"]
-    }
-    tax = {
-        "responses": ["wm"],
-        "options": ["peak_ratio", "max_iters", "convergence"]
-    }
-    tournier = {
-        "responses": ["wm"],
-        "options": ["number", "iter_voxels", "dilate", "max_iters"]
-    }
 
 
 class ComputeResponseProcess(ShellProcess):

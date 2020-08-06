@@ -5,7 +5,7 @@ from numpy import zeros, apply_along_axis, ones
 from piper.pipeline.process import ShellProcess, PythonProcess
 
 from config import append_image_extension
-from magic_monkey.compute_fa_from_mrtrix_dt import compute_eigens, compute_fa
+from magic_monkey.config.metrics.dti import compute_eigens, compute_fa
 
 
 class DTIProcess(ShellProcess):

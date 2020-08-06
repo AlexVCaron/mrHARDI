@@ -5,8 +5,8 @@ import numpy as np
 from piper.pipeline.process import PythonProcess
 
 from config import append_image_extension
-from magic_monkey.b0_process import B0PostProcess, extract_b0, squash_b0
-from magic_monkey.concatenate_dwi import concatenate_dwi
+from magic_monkey.config.algorithms.b0 import B0PostProcess, extract_b0, squash_b0
+from magic_monkey.config.utils import concatenate_dwi
 
 
 class ExtractB0Process(PythonProcess):
