@@ -1,7 +1,7 @@
 from enum import Enum
 
 from traitlets import Integer
-from traitlets.config import Bool, Instance
+from traitlets.config import Bool, Instance, default
 from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.ListValuedDict import ListValuedDict
@@ -17,7 +17,7 @@ class OutlierReplacement(ListValuedDict):
         both = "both"
 
     def __init__(
-        self, n_std, n_vox, mb_factor=1, mb_offset=0,
+        self, n_std=4, n_vox=250, mb_factor=1, mb_offset=0,
         method=Method.slice, pos_neg=False, sum_squared=False
     ):
         super().__init__(dict(
@@ -69,6 +69,26 @@ class SusceptibilityCorrection(ListValuedDict):
         return serialize_fsl(self, " ", True)
 
 
+_flags = dict(
+    cuda=(
+        {'EddyConfiguration': {'enable_cuda': True}},
+        "Enables computing using a cuda compatible gpu"
+    ),
+    shelled=(
+        {'EddyConfiguration': {'check_if_shelled': False}},
+        "Disable sanity check on multishell data"
+    ),
+    skip_end=(
+        {'EddyConfiguration': {'skip_end_alignment': True}},
+        "Disable last gradient shell alignment"
+    ),
+    link_move=(
+        {'EddyConfiguration': {'separate_subject_field', False}},
+        "Link subject movement and field DC component"
+    )
+)
+
+
 class EddyConfiguration(MagicMonkeyConfigurable):
     class FieldModel(Enum):
         linear = "linear"
@@ -88,7 +108,10 @@ class EddyConfiguration(MagicMonkeyConfigurable):
         jacobian = "jac"
         lsquare = "lsr"
 
-    enable_cuda = Bool(False).tag(config=True)
+    @default('app_flags')
+    def _app_flags_default(self):
+        return _flags
+
     field_model = convert_enum(
         FieldModel, FieldModel.quadratic
     ).tag(config=True)
@@ -104,19 +127,31 @@ class EddyConfiguration(MagicMonkeyConfigurable):
     resampling = convert_enum(Resampling, Resampling.jacobian).tag(config=True)
     n_voxels_hp = Integer(1000).tag(config=True)
     qspace_smoothing = BoundedInt(10, 1, 10).tag(config=True)
+
     skip_end_alignment = Bool(False).tag(config=True)
     separate_subject_field = Bool(True).tag(config=True)
     check_if_shelled = Bool(True).tag(config=True)
 
+    enable_cuda = Bool(False).tag(config=True)
     outlier_model = Instance(
         OutlierReplacement, allow_none=True
-    ).tag(config=True)
+    ).tag(config=True, none_to_default=True, cuda_required=True)
     slice_to_vol = Instance(
         IntraVolMotionCorrection, allow_none=True
-    ).tag(config=True)
+    ).tag(config=True, none_to_default=True, cuda_required=True)
     susceptibility = Instance(
         SusceptibilityCorrection, allow_none=True
-    ).tag(config=True)
+    ).tag(config=True, none_to_default=True, cuda_required=True)
+
+    def _config_section(self):
+        if self.enable_cuda:
+            for trait in self.traits(
+                none_to_default=True, cuda_required=True
+            ).values():
+                if isinstance(trait, Instance):
+                    trait.set(self, trait.klass())
+
+        return super()._config_section()
 
     def validate(self):
         if not self.enable_cuda and (self.outlier_model or self.slice_to_vol):

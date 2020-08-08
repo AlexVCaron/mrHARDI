@@ -1,5 +1,5 @@
 from collections import MutableMapping
-from typing import Iterable
+from typing import Generator
 
 
 class ListValuedDict(MutableMapping):
@@ -9,7 +9,7 @@ class ListValuedDict(MutableMapping):
     def _as_list(self, item):
         if isinstance(item, list):
             return item
-        if isinstance(item, Iterable):
+        if isinstance(item, Generator):
             return list(item)
 
         return [item]
@@ -36,3 +36,6 @@ class ListValuedDict(MutableMapping):
     def update(self, mapping, **kwargs):
         for k, v in mapping.items():
             self[k].extend(self._as_list(v))
+
+    def __str__(self):
+        return str(self._dict)

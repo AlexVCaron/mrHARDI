@@ -4,7 +4,8 @@ import nibabel as nib
 
 from traitlets import Instance, List, default, Unicode, Float
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication
+from magic_monkey.base.application import MagicMonkeyBaseApplication, \
+    MultipleArguments
 from magic_monkey.config.topup import TopupConfiguration
 from magic_monkey.config.algorithms.fsl import prepare_acqp_file
 
@@ -19,11 +20,12 @@ _aliases = dict(
 
 class Topup(MagicMonkeyBaseApplication):
     configuration = Instance(TopupConfiguration).tag(config=True)
-    output_prefix = Unicode(u'topup').tag(config=True)
 
-    b0 = List(Unicode, []).tag(config=True, required=True)
-    rev = List(Unicode, []).tag(config=True)
+    b0 = MultipleArguments(Unicode, []).tag(config=True, ignore_write=True, required=True)
+    rev = MultipleArguments(Unicode, []).tag(config=True, ignore_write=True)
     dwell = Float().tag(config=True, required=True)
+
+    output_prefix = Unicode(u'topup').tag(config=True, ignore_write=True)
 
     extra_arguments = Unicode(u'').tag(config=True)
 
@@ -32,14 +34,13 @@ class Topup(MagicMonkeyBaseApplication):
 
     @default('classes')
     def _classes_default(self):
-        return [Topup, self.__class__, TopupConfiguration]
+        return [Topup, self.__class__]
 
-    def initialize(self, argv=None):
-        super().initialize(argv)
+    def __init__(self, **kwargs):
         self.configuration = TopupConfiguration(parent=self)
+        super().__init__(**kwargs)
 
     def _start(self):
-
         ap_shapes = [nib.load(b0).shape for b0 in self.b0]
         pa_shapes = [nib.load(b0).shape for b0 in self.rev]
 

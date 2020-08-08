@@ -4,7 +4,9 @@ from enum import Enum as BaseEnum
 from traitlets.config import Instance, List, Bool, Unicode
 
 from magic_monkey.base.ListValuedDict import ListValuedDict
-from magic_monkey.base.application import convert_enum, MagicMonkeyConfigurable
+from magic_monkey.base.application import convert_enum, \
+    MagicMonkeyConfigurable, SelfInstantiatingInstance, \
+    DictInstantiatingInstance
 from magic_monkey.config.utils import serialize_fsl
 
 
@@ -26,6 +28,21 @@ class Mergeable(ListValuedDict):
             pass
 
 
+def _key_trans(dictionary, key_trans):
+    return dict(map(lambda k, v: (key_trans[k], v), *dictionary.items()))
+
+
+_topup_pass_key_trans = {
+    "warpres=": "warp_resolution",
+    "subsamp": "subsampling",
+    "fwhm": "blur_fwhm",
+    "miter": "n_iter",
+    "estmov": "estimate_motion",
+    "minmet": "minimizer",
+    "lambda": "w_reg"
+}
+
+
 class TopupPass(Mergeable):
     class Minimizer(BaseEnum):
         Levenberg_Marquardt = 0
@@ -35,19 +52,33 @@ class TopupPass(Mergeable):
         self, warp_resolution, subsampling, blur_fwhm, n_iter,
         w_reg, estimate_motion=True, minimizer=Minimizer.Levenberg_Marquardt
     ):
+        if isinstance(minimizer, TopupPass.Minimizer):
+            minimizer = minimizer.value
+
+        if isinstance(estimate_motion, bool):
+            estimate_motion = int(estimate_motion)
+        elif (
+            isinstance(estimate_motion, list) and
+            any(isinstance(e, bool) for e in estimate_motion)
+        ):
+            estimate_motion = [int(e) for e in estimate_motion]
+
         super().__init__(dict(
             warpres=warp_resolution,
             subsamp=subsampling,
             fwhm=blur_fwhm,
             miter=n_iter,
-            estmov=int(estimate_motion),
-            minmet=minimizer.value
+            estmov=estimate_motion,
+            minmet=minimizer
         ))
 
         self["lambda"] = w_reg
 
     def serialize(self):
         return serialize_fsl(self)
+
+    def __repr__(self):
+        return str(_key_trans(self._dict, _topup_pass_key_trans))
 
 
 _default_passes = [
@@ -90,7 +121,8 @@ class TopupConfiguration(MagicMonkeyConfigurable):
         spline = "spline"
 
     passes = List(
-        Instance(TopupPass), default_value=_default_passes
+        DictInstantiatingInstance(klass=TopupPass),
+        default_value=_default_passes
     ).tag(config=True)
 
     ssq_scale_lambda = Bool(default_value=True).tag(config=True)
@@ -101,7 +133,9 @@ class TopupConfiguration(MagicMonkeyConfigurable):
     spl_order = convert_enum(
         SplineOrder, SplineOrder.quadratic
     ).tag(config=True)
-    interpolation = convert_enum(Interpolation, Interpolation.linear)
+    interpolation = convert_enum(
+        Interpolation, Interpolation.linear
+    ).tag(config=True)
     precision = Unicode(u'double').tag(config=True)
 
     def serialize(self):

@@ -44,27 +44,39 @@ _eddy_script = """
 class Eddy(MagicMonkeyBaseApplication):
     configuration = Instance(EddyConfiguration).tag(config=True)
 
-    output_prefix = Unicode(u'eddy').tag(config=True)
+    bvals = Unicode().tag(config=True, required=True, ignore_write=True)
 
-    bvals = Unicode().tag(config=True, required=True)
+    output_prefix = Unicode().tag(
+        config=True, ignore_write=True, required=True
+    )
 
     acquisition_file = Unicode().tag(
-        config=True, required=True, exclusive_group="acqp", group_index=0
+        config=True, required=True, ignore_write=True,
+        exclusive_group="acqp", group_index=0
     )
     b0 = Unicode().tag(
-        config=True, required=True, exclusive_group="acqp", group_index=1
+        config=True, required=True, ignore_write=True,
+        exclusive_group="acqp", group_index=1
     )
     rev = Unicode().tag(
-        config=True, required=True, exclusive_group="acqp", group_index=1
+        config=True, required=True, ignore_write=True,
+        exclusive_group="acqp", group_index=1
     )
-    dwell = Float().tag(config=True)
+    dwell = Float().tag(
+        config=True, required=True, ignore_write=True,
+        exclusive_group="acqp", group_index=1
+    )
 
     aliases = _aliases
     classes = List()
 
     @default('classes')
     def _classes_default(self):
-        return [Eddy, self.__class__, EddyConfiguration]
+        return [Eddy, self.__class__]
+
+    def __init__(self, **kwargs):
+        self.configuration = EddyConfiguration(parent=self)
+        super().__init__(**kwargs)
 
     def _validate_required(self):
         if self.rev:
