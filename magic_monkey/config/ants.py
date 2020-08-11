@@ -1,151 +1,32 @@
-from traitlets import Float, TraitType, Integer
-from traitlets.config import List, default, Unicode, Enum, Bool
+from traitlets import Float, Integer, default
+from traitlets.config import List, Enum, Bool
 from traitlets.config.loader import ConfigError
 
-from magic_monkey.base.application import MagicMonkeyConfigurable, \
-    SelfInstantiatingInstance
+from magic_monkey.base.application import MagicMonkeyConfigurable
+from magic_monkey.traits.ants import InitialTransform, AntsPass
 
 
-class InitialTransform(TraitType):
-    def get(self, obj, cls=None):
-        value = super().get(obj, cls)
-
-        if value is None:
-            return ""
-
-        target_index, moving_index, strat = value
-        return "--initial-moving-transform [$t{}%,$m{}%,{}]".format(
-            target_index, moving_index, strat
-        ).replace("$", "{").replace("%", "}")
-
-    def validate(self, obj, value):
-        if isinstance(value, tuple):
-            if len(value) == 3:
-                t, m, strat = value
-                if isinstance(t, int) and isinstance(m, int):
-                    if isinstance(strat, int) and (0 <= strat <= 2):
-                        return value
-
-        if value is not None:
-            self.error(obj, value)
-
-
-class AntsMetric(TraitType):
-    name = ""
-
-    def get(self, obj, cls=None):
-        value = super().get(obj, cls)
-        target_index, moving_index = value[:2]
-        return self.name + "[$t{}%,$m{}%".format(
-            target_index, moving_index
-        ).replace("$", "{").replace("%", "}") + ",".join(
-            str(v) for v in value[2:]
-        ) + "]"
-
-
-class MetricMI(AntsMetric):
-    name = "MI"
-    default_value = (0, 0, 1, 32, "Regular", 0.25)
-
-    def validate(self, obj, value):
-        if isinstance(value, tuple):
-            if len(value) == 6:
-                t, m, weight, bins, sampling, sampling_percentage = value
-                if isinstance(t, int) and isinstance(m, int):
-                    if isinstance(weight, int) and isinstance(bins, int):
-                        if isinstance(sampling, str):
-                            if isinstance(sampling_percentage, float):
-                                return value
-
-        self.error(obj, value)
-
-
-class MetricCC(AntsMetric):
-    name = "CC"
-    default_value = (0, 0, 1, 4)
-
-    def validate(self, obj, value):
-        if isinstance(value, tuple):
-            if len(value) == 4:
-                t, m, weight, radius = value
-                if isinstance(weight, int) and isinstance(radius, int):
-                    return value
-
-        self.error(obj, value)
-
-
-class AntsPass(SelfInstantiatingInstance):
-    grad_step = Float(0.1).tag(config=True)
-    metrics = List(AntsMetric).tag(config=True)
-    conv_eps = Float(1E-6).tag(config=True)
-    conv_win = Integer(10).tag(config=True)
-    conv_max_iter = List(Integer).tag(config=True)
-    shrinks = List(Integer, [8, 4, 2, 1]).tag(config=True)
-    smoothing = List(Integer, [3, 2, 1, 0]).tag(config=True)
-
-    def serialize(self):
-        return " ".join([
-            " ".join(
-                "--metric {}".format(metric)
-                for i, metric in enumerate(self.metrics)
-            ),
-            "--convergence [{},{},{}] ".format(
-                "x".join(str(i) for i in self.conv_max_iter),
-                self.conv_eps,
-                self.conv_win
-            ),
-            "--shrink-factors {} ".format(
-                "x".join(str(s) for s in self.shrinks)
-            ),
-            "--smoothing-sigmas {}vox".format(
-                "x".join(str(s) for s in self.smoothing)
-            )
-        ])
-
-
-class AntsRigid(AntsPass):
-    @default("metrics")
-    def _metrics_default(self):
-        return [MetricMI()]
-
-    def serialize(self):
-        return " ".join([
-            "--transform Rigid[{}] ".format(self.grad_step),
-            super().serialize()
-        ])
-
-
-class AntsAffine(AntsPass):
-    @default("metrics")
-    def _metrics_default(self):
-        return [MetricMI()]
-
-    def serialize(self):
-        return " ".join([
-            "--transform Affine[{}] ".format(self.grad_step),
-            super().serialize()
-        ])
-
-
-class AntsSyN(AntsPass):
-    type = Unicode(u'SyN').tag(config=True)
-    var_penality = Integer(3).tag(config=True)
-    var_total = Integer(0).tag(config=True)
-
-    @default("metrics")
-    def _metrics_default(self):
-        return [MetricCC()]
-
-    def serialize(self):
-        return " ".join([
-            "--transform {}[{},{},{}] ".format(
-                self.type, self.grad_step, self.var_penality, self.var_total
-            ),
-            super().serialize()
-        ])
+_flags = {
+    "no-HM": (
+        {"AntsConfiguration": {"match_histogram": False}},
+        "Disable histogram matching between input and output image"
+    ),
+    "one-modal": (
+        {"AntsConfiguration": {"accross_modalities": False}},
+        "Use if fixed and moving come from same modalities"
+    ),
+    "init-t": (
+        {"AntsConfiguration": {"init_transform": InitialTransform(0, 0, 1)}},
+        "Add basic initial transform aligning centers of "
+        "mass os two images. The images for this transformation "
+        "must be the first ones in the list of images supplied "
+        "(for both fixed and moving)"
+    )
+}
 
 
 class AntsConfiguration(MagicMonkeyConfigurable):
+    # TODO : Untested, need to check how config behaves
     passes = List(AntsPass, [], minlen=1, allow_none=True).tag(config=True)
     interpolation = Enum(
         ["Linear", "NearestNeighbor", "Gaussian",  "BSpline"], "Linear"
@@ -155,7 +36,12 @@ class AntsConfiguration(MagicMonkeyConfigurable):
     use_float = Bool(False).tag(config=True)
     match_histogram = Bool(True).tag(config=True)
     accross_modalities = Bool(True).tag(config=True)
+    # TODO : How does this behaves when we want to config ?
     init_transform = InitialTransform(None, allow_none=True).tag(config=True)
+
+    @default('app_flags')
+    def _app_flags_default(self):
+        return _flags
 
     def validate(self):
         if not 2 <= self.dimension <= 4:
@@ -187,6 +73,15 @@ class AntsConfiguration(MagicMonkeyConfigurable):
         ]) + " ".join(optionals)
 
 
+_aliases = {
+    "type": "AntsTransformConfiguration.input_type",
+    "dim": "AntsTransformConfiguration.dimension",
+    "interp": "AntsTransformConfiguration.interpolation",
+    "fill": "AntsTransformConfiguration.fill_value"
+}
+
+
+# TODO : Check if interesting to add aliases and flags to cmdline
 class AntsTransformConfiguration(MagicMonkeyConfigurable):
     input_type = Integer(0).tag(config=True)
     dimension = Integer(3).tag(config=True)
@@ -194,6 +89,10 @@ class AntsTransformConfiguration(MagicMonkeyConfigurable):
         ["Linear", "NearestNeighbor", "Gaussian", "BSpline"], "Linear"
     ).tag(config=True)
     fill_value = Integer(0).tag(config=True)
+
+    @default('app_aliases')
+    def _app_aliases_default(self):
+        return _aliases
 
     def validate(self):
         pass

@@ -1,9 +1,11 @@
-from os import cpu_count, getcwd
+from os import getcwd
 
-from traitlets import Instance, Unicode, List, Integer
+from traitlets import Instance, Unicode
 from traitlets.config import ArgumentError, Dict
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication
+from magic_monkey.base.application import MagicMonkeyBaseApplication, \
+    MultipleArguments, required_file, required_arg, output_prefix_argument, \
+    nthreads_arg, mask_arg
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.csd import SphericalDeconvConfiguration, \
     FiberResponseConfiguration
@@ -14,7 +16,7 @@ _csd_aliases = {
     'bvals': 'CSD.bvals',
     'bvecs': 'CSD.bvecs',
     'responses': 'CSD.responses',
-    'out': 'CSD.out',
+    'out': 'CSD.output_prefix',
     'mask': 'CSD.mask',
     'nn_dirs': 'CSD.non_neg_directions',
     'dc_freq': 'CSD.deconv_frequencies',
@@ -25,21 +27,33 @@ _csd_aliases = {
 class CSD(MagicMonkeyBaseApplication):
     configuration = Instance(SphericalDeconvConfiguration).tag(config=True)
 
-    image = Unicode().tag(config=True, required=True)
-    bvals = Unicode().tag(config=True, required=True)
-    bvecs = Unicode().tag(config=True, required=True)
+    image = required_file(help="Input dwi image")
+    bvals = required_file(help="Input b-values")
+    bvecs = required_file(help="Input b-vectors")
 
-    responses = List(Unicode, minlen=1, maxlen=3).tag(
-        config=True, required=True
+    responses = required_arg(
+        MultipleArguments,
+        help="Response names for the different tissues "
+             "(depending on the algorithm of choice)",
+        traits_args=(Unicode,), traits_kwargs=dict(minlen=1, maxlen=3)
     )
 
-    output_prefix = Unicode().tag(config=True, required=True)
+    output_prefix = output_prefix_argument()
 
-    mask = Unicode().tag(config=True)
-    non_neg_directions = Unicode().tag(config=True)
-    deconv_frequencies = Unicode().tag(config=True)
+    mask = mask_arg()
 
-    n_threads = Integer(cpu_count()).tag(config=True)
+    non_neg_directions = Unicode(
+        help="Text file containing directions upon which the non-negativity "
+             "constraint is applied, spread on a sphere of radius 1. Supply "
+             "a list of (azimuth, elevation) tuples"
+    ).tag(config=True)
+    deconv_frequencies = Unicode(
+        help="List of weights on spherical harmonics coefficients. Used to "
+             "initialize deconvolution, supply a file containing the values "
+             "separated by spaces"
+    ).tag(config=True)
+
+    n_threads = nthreads_arg()
 
     aliases = Dict(_csd_aliases)
 
@@ -77,7 +91,7 @@ class CSD(MagicMonkeyBaseApplication):
                 )
             )
 
-    def start(self):
+    def _start(self):
         current_path = getcwd()
         optionals = []
 
@@ -113,26 +127,26 @@ class CSD(MagicMonkeyBaseApplication):
 
 
 _fr_aliases = {
-    'in': 'CSD.image',
-    'bvals': 'CSD.bvals',
-    'bvecs': 'CSD.bvecs',
-    'out': 'CSD.out',
-    'mask': 'CSD.mask',
-    'p': 'CSD.n_threads'
+    'in': 'FiberResponse.image',
+    'bvals': 'FiberResponse.bvals',
+    'bvecs': 'FiberResponse.bvecs',
+    'out': 'FiberResponse.output_prefix',
+    'mask': 'FiberResponse.mask',
+    'p': 'FiberResponse.n_threads'
 }
 
 
 class FiberResponse(MagicMonkeyBaseApplication):
     configuration = Instance(FiberResponseConfiguration).tag(config=True)
 
-    image = Unicode().tag(config=True, required=True)
-    bvals = Unicode().tag(config=True, required=True)
-    bvecs = Unicode().tag(config=True, required=True)
+    image = required_file(help="Input dwi image")
+    bvals = required_file(help="Input b-values")
+    bvecs = required_file(help="Input b-vectors")
 
-    output_prefix = Unicode().tag(config=True, required=True)
+    output_prefix = output_prefix_argument()
 
-    mask = Unicode().tag(config=True)
-    n_threads = Integer(cpu_count()).tag(config=True)
+    mask = mask_arg()
+    n_threads = nthreads_arg()
 
     aliases = Dict(_fr_aliases)
 

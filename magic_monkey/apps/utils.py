@@ -1,37 +1,41 @@
 import nibabel as nib
 import numpy as np
 
-from traitlets import Instance, Unicode, Integer, Enum, List, Dict
+from traitlets import Instance, Unicode, Integer, Enum, Dict
 
-from magic_monkey.config.algorithms.b0 import extract_b0, squash_b0
-from magic_monkey.base.application import MagicMonkeyBaseApplication
-from magic_monkey.config.utils import B0UtilsConfiguration, apply_mask_on_data, \
-    concatenate_dwi
+from magic_monkey.compute.b0 import extract_b0, squash_b0
+from magic_monkey.base.application import MagicMonkeyBaseApplication, \
+    required_file, output_prefix_argument, output_file_argument, required_arg, \
+    MultipleArguments
+from magic_monkey.config.utils import B0UtilsConfiguration
+from magic_monkey.compute.utils import apply_mask_on_data, concatenate_dwi
+
+_b0_aliases = {
+    'in': 'B0Utils.image',
+    'bvals': 'B0Utils.bvals',
+    'bvecs': 'B0Utils.bvecs',
+    'out': 'B0Utils.prefix'
+}
 
 
 class B0Utils(MagicMonkeyBaseApplication):
-    configuration = Instance(B0UtilsConfiguration).tag(
-        config=True, required=True
-    )
+    configuration = Instance(B0UtilsConfiguration).tag(config=True)
 
-    image = Unicode().tag(config=True, required=True)
-    bvals = Unicode().tag(config=True, required=True)
-    bvecs = Unicode().tag(config=True, required=True)
+    image = required_file(help="Input dwi image")
+    bvals = required_file(help="Input b-values")
+    bvecs = required_file(help="Input b-vectors")
 
-    prefix = Unicode().tag(config=True, required=True)
+    prefix = output_prefix_argument()
 
-    aliases = Dict({
-        'in': 'B0Utils.image',
-        'bvals': 'B0Utils.bvals',
-        'bvecs': 'B0Utils.bvecs',
-        'out': 'B0Utils.prefix'
-    })
+    aliases = Dict(_b0_aliases)
 
     def _start(self):
         if self.configuration.current_util == "extract":
             self._extract_b0()
-        if self.configuration.current_util == "squash":
-            self._extract_b0()
+        elif self.configuration.current_util == "squash":
+            self._squash_b0()
+        else:
+            self.print_help()
 
     def _extract_b0(self):
         in_dwi = nib.load(self.image)
@@ -68,23 +72,29 @@ class B0Utils(MagicMonkeyBaseApplication):
         np.savetxt("{}.bvecs".format(self.prefix), bvecs, fmt="%.6f")
 
 
+_apply_mask_aliases = {
+    'in': 'ApplyMask.image',
+    'out': 'ApplyMask.output',
+    'mask': 'ApplyMask.mask',
+    'fill': 'ApplyMask.fill_value',
+    'type': 'ApplyMask.dtype'
+}
+
+
 class ApplyMask(MagicMonkeyBaseApplication):
-    image = Unicode().tag(config=True, required=True)
-    mask = Unicode().tag(config=True, required=True)
-    fill_value = Integer(0).tag(config=True, required=True)
+    image = required_file(help="Input image to mask")
+    mask = required_file(help="Mask to apply on image ")
+
+    fill_value = Integer(
+        0, help="Value used to fill the image outside the mask"
+    ).tag(config=True, required=True)
     dtype = Enum(
-        [np.int, np.long, np.float], np.int
+        [np.int, np.long, np.float], np.int, help="Output type"
     ).tag(config=True, required=True)
 
-    output = Unicode().tag(config=True, required=True)
+    output = output_file_argument()
 
-    aliases = Dict({
-        'in': 'ApplyMask.image',
-        'out': 'ApplyMask.output',
-        'mask': 'ApplyMask.mask',
-        'fill': 'ApplyMask.fill_falue',
-        'type': 'ApplyMask.dtype'
-    })
+    aliases = Dict(_apply_mask_aliases)
 
     def _start(self):
         data = nib.load(self.image)
@@ -95,19 +105,30 @@ class ApplyMask(MagicMonkeyBaseApplication):
         nib.save(nib.Nifti1Image(out_data, data.affine), self.output)
 
 
+_cat_aliases = {
+    'in': 'Concatenate.images',
+    'out': 'Concatenate.prefix',
+    'bvals': 'Concatenate.bvals',
+    'bvecs': 'Concatenate.bvecs'
+}
+
+
 class Concatenate(MagicMonkeyBaseApplication):
-    images = List(Unicode).tag(config=True, required=True)
-    bvals = List(Unicode).tag(config=True)
-    bvecs = List(Unicode).tag(config=True)
+    images = required_arg(
+        MultipleArguments, traits_args=(Unicode,),
+        help="Input images to concatenate"
+    )
 
-    prefix = Unicode().tag(config=True, required=True)
+    bvals = MultipleArguments(
+        Unicode, help="If provided, will be also concatenated"
+    ).tag(config=True)
+    bvecs = MultipleArguments(
+        Unicode, help="If provided, will be also concatenated"
+    ).tag(config=True)
 
-    aliases = Dict({
-        'in': 'Concatenate.images',
-        'out': 'Concatenate.prefix',
-        'bvals': 'Concatenate.bvals',
-        'bvecs': 'Concatenate.bvecs'
-    })
+    prefix = output_prefix_argument()
+
+    aliases = Dict(_cat_aliases)
 
     def _start(self):
         dwi_list = [nib.load(dwi) for dwi in self.images]

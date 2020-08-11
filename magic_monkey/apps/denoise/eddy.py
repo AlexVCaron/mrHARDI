@@ -3,18 +3,18 @@ from os import chmod
 import nibabel as nib
 import numpy as np
 
-from traitlets import Instance, Unicode, List, default, Float
+from traitlets import Instance, Float, Dict
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication
+from magic_monkey.base.application import MagicMonkeyBaseApplication, \
+    output_prefix_argument, required_file, required_number
 from magic_monkey.base.scripting import build_script
 from magic_monkey.config.eddy import EddyConfiguration
-from magic_monkey.config.algorithms.fsl import prepare_eddy_index, \
-    prepare_acqp_file
+from magic_monkey.base.fsl import prepare_eddy_index, prepare_acqp_file
 
 _aliases = dict(
     bvals='Eddy.bvals',
     acqp='Eddy.acquisition_file',
-    b0='Eddy.b0',
+    dwi='Eddy.dwi',
     rev='Eddy.rev',
     dwell='Eddy.dwell',
     out='Eddy.output_prefix'
@@ -44,39 +44,31 @@ _eddy_script = """
 class Eddy(MagicMonkeyBaseApplication):
     configuration = Instance(EddyConfiguration).tag(config=True)
 
-    bvals = Unicode().tag(config=True, required=True, ignore_write=True)
+    bvals = required_file(help="B-value file following fsl format")
+    output_prefix = output_prefix_argument()
 
-    output_prefix = Unicode().tag(
-        config=True, ignore_write=True, required=True
-    )
-
-    acquisition_file = Unicode().tag(
-        config=True, required=True, ignore_write=True,
+    acquisition_file = required_file(
+        help="Acquisition file describing the "
+             "orientation and dwell of the volumes",
         exclusive_group="acqp", group_index=0
     )
-    b0 = Unicode().tag(
-        config=True, required=True, ignore_write=True,
+
+    dwi = required_file(
+        help="Principal dwi volume used to configure "
+             "the acquisition parameters file",
         exclusive_group="acqp", group_index=1
     )
-    rev = Unicode().tag(
-        config=True, required=True, ignore_write=True,
+    rev = required_file(
+        help="Reverse dwi volume used to configure "
+             "the acquisition parameters file",
         exclusive_group="acqp", group_index=1
     )
-    dwell = Float().tag(
-        config=True, required=True, ignore_write=True,
+    dwell = required_number(
+        Float, help="Dwell time of the acquisitions",
         exclusive_group="acqp", group_index=1
     )
 
-    aliases = _aliases
-    classes = List()
-
-    @default('classes')
-    def _classes_default(self):
-        return [Eddy, self.__class__]
-
-    def __init__(self, **kwargs):
-        self.configuration = EddyConfiguration(parent=self)
-        super().__init__(**kwargs)
+    aliases = Dict(_aliases)
 
     def _validate_required(self):
         if self.rev:
@@ -86,8 +78,8 @@ class Eddy(MagicMonkeyBaseApplication):
 
     def _start(self):
         if self.rev:
-            ap_shapes = [nib.load(b0).shape for b0 in self.image]
-            pa_shapes = [nib.load(b0).shape for b0 in self.rev]
+            ap_shapes = [nib.load(dwi).shape for dwi in self.dwi]
+            pa_shapes = [nib.load(vol).shape for vol in self.rev]
 
             acqp = prepare_acqp_file(ap_shapes, pa_shapes, self.dwell)
             with open("{}_acqp.txt".format(self.output_prefix), 'w+') as f:

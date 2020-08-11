@@ -5,7 +5,9 @@ from magic_monkey.config.algorithms.csd import SphericalDeconvAlgorithm, \
     ResponseAlgorithm
 
 
+# TODO : Check if interesting to add aliases and flags to cmdline
 class SphericalDeconvConfiguration(MagicMonkeyConfigurable):
+    # TODO : Check the behaviour of those instances
     algorithm = Instance(SphericalDeconvAlgorithm).tag(config=True)
 
     shells = List(Float).tag(config=True)
@@ -36,7 +38,9 @@ class SphericalDeconvConfiguration(MagicMonkeyConfigurable):
         return " ".join([self.algorithm.serialize()] + optionals)
 
 
+# TODO : Check if interesting to add aliases and flags to cmdline
 class FiberResponseConfiguration(MagicMonkeyConfigurable):
+    # TODO : Check the behaviour of those instances
     algorithm = Instance(ResponseAlgorithm).tag(config=True)
 
     shells = List(Float).tag(config=True)

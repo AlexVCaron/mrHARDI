@@ -1,8 +1,10 @@
 from os import getcwd
 
-from traitlets import Instance, List, Unicode, Dict
+from traitlets import Instance, Unicode, Dict
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication
+from magic_monkey.base.application import MagicMonkeyBaseApplication, \
+    MultipleArguments, required_arg, output_prefix_argument, \
+    output_file_argument, required_file
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.ants import AntsConfiguration, \
                                      AntsTransformConfiguration
@@ -18,14 +20,26 @@ _reg_aliases = {
 class AntsRegistration(MagicMonkeyBaseApplication):
     configuration = Instance(AntsConfiguration).tag(config=True)
 
-    target_images = List(Unicode).tag(config=True, required=True)
-    moving_images = List(Unicode).tag(config=True, required=True)
+    target_images = required_arg(
+        MultipleArguments, traits_args=(Unicode,),
+        help="List of target images used in the passes of registration. "
+             "Those must equal the number of metric evaluations of the "
+             "resulting output command, including the initial transform "
+             "(if selected) as well as repetitions"
+    )
+    moving_images = required_arg(
+        MultipleArguments, traits_args=(Unicode,),
+        help="List of moving images used in the passes of registration. "
+             "Those must equal the number of metric evaluations of the "
+             "resulting output command, including the initial transform "
+             "(if selected) as well as repetitions"
+    )
 
-    output_prefix = Unicode().tag(config=True, required=True)
+    output_prefix = output_prefix_argument()
 
     aliases = Dict(_reg_aliases)
 
-    def start(self):
+    def _start(self):
         current_path = getcwd()
 
         ants_config_fmt = self.configuration.serialize()
@@ -36,7 +50,7 @@ class AntsRegistration(MagicMonkeyBaseApplication):
             config_dict["t{}".format(i)] = target
             config_dict["m{}".format(i)] = moving
 
-        ants_config_fmt.format(config_dict)
+        ants_config_fmt.format(**config_dict)
 
         ants_config_fmt += " --output [{},{}]".format(
             "{}.mat".format(self.output_prefix),
@@ -57,15 +71,18 @@ _tr_aliases = {
 
 
 class AntsTransform(MagicMonkeyBaseApplication):
-    configuration = Instance(AntsTransformConfiguration).tag(
-        config=True, required=True
+    configuration = Instance(AntsTransformConfiguration).tag(config=True)
+
+    image = required_file(help="Input image to transform")
+    transformation_matrix = required_file(
+        help="Input transformation matrix computed by ants to apply"
+    )
+    transformation_ref = required_file(
+        help="Input transformation field computed by ants to apply "
+             "or reference image for affine/rigid transformation"
     )
 
-    image = Unicode().tag(config=True, required=True)
-    transformation_matrix = Unicode().tag(config=True, required=True)
-    transformation_ref = Unicode().tag(config=True, required=True)
-
-    output = Unicode().tag(config=True, required=True)
+    output = output_file_argument()
 
     aliases = Dict(_tr_aliases)
 

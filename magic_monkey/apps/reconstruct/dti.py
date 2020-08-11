@@ -1,8 +1,9 @@
 from os import getcwd
 
-from traitlets import Unicode, Instance, Bool, Dict
+from traitlets import Instance, Bool, Dict
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication
+from magic_monkey.base.application import MagicMonkeyBaseApplication, \
+    required_file, output_prefix_argument, mask_arg
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.dti import DTIConfiguration
 
@@ -11,7 +12,7 @@ _aliases = {
     'in': 'DTI.image',
     'bvals': 'DTI.bvals',
     'bvecs': 'DTI.bvecs',
-    'out': 'DTI.out',
+    'out': 'DTI.output_prefix',
     'mask': 'DTI.mask',
 }
 
@@ -31,16 +32,22 @@ _flags = dict(
 class DTI(MagicMonkeyBaseApplication):
     configuration = Instance(DTIConfiguration).tag(config=True)
 
-    image = Unicode().tag(config=True, required=True)
-    bvals = Unicode().tag(config=True, required=True)
-    bvecs = Unicode().tag(config=True, required=True)
+    image = required_file(help="Input dwi image")
+    bvals = required_file(help="Input b-values")
+    bvecs = required_file(help="Input b-vectors")
 
-    output_prefix = Unicode().tag(config=True, required=True)
+    output_prefix = output_prefix_argument()
 
-    mask = Unicode().tag(config=True)
+    mask = mask_arg()
 
-    output_b0 = Bool(False).tag(config=True)
-    output_dkt = Bool(False).tag(config=True)
+    output_b0 = Bool(
+        False,
+        help="Outputs the b0 volume computed by the DTI estimation algorithm"
+    ).tag(config=True)
+    output_dkt = Bool(
+        False,
+        help="Outputs the kurtosis moment estimations"
+    ).tag(config=True)
 
     aliases = Dict(_aliases)
     flags = Dict(_flags)

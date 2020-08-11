@@ -1,23 +1,23 @@
-from numpy.ma import clump_masked, clump_unmasked, masked_array
-from numpy import isclose, floor, ceil
+from numpy import isclose
+from numpy.ma import masked_array, clump_masked, clump_unmasked
+
+from magic_monkey.compute.utils import value_first, value_closest
 
 
-def value_first(indexes, s, j):
-    for i in range(s.stop - s.start):
-        indexes += [j]
-    j += 1
+def serialize_fsl_args(args_dict, separator="\n", bool_as_flags=False):
+    base_string = ""
+    if bool_as_flags:
+        base_string = separator.join([
+            "--{}".format(args_dict.pop(key)) for key, val in filter(
+                lambda kv: isinstance(kv[1], bool) and kv[1], args_dict
+            )
+        ])
+        base_string += separator
 
-    return indexes, j
-
-
-def value_closest(indexes, s, j):
-    for i in range(int(floor(0.5 * (s.stop - s.start)))):
-        indexes += [j]
-    j += 1
-    for i in range(int(ceil(0.5 * (s.stop - s.start)))):
-        indexes += [j]
-
-    return indexes, j
+    return base_string + separator.join(
+        "--{}={}".format(name, ",".join(str(v) for v in val).strip(","))
+        for name, val in args_dict.items()
+    )
 
 
 def prepare_eddy_index(bvals, dir0=1, strategy="closest"):

@@ -2,7 +2,8 @@ from os import getcwd
 
 from traitlets import Instance, Unicode, Dict
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication
+from magic_monkey.base.application import MagicMonkeyBaseApplication, \
+    required_file, output_prefix_argument, mask_arg
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.diamond import DiamondConfiguration
 
@@ -19,12 +20,22 @@ _aliases = {
 class Diamond(MagicMonkeyBaseApplication):
     configuration = Instance(DiamondConfiguration).tag(config=True)
 
-    image = Unicode().tag(config=True, required=True)
-    output = Unicode().tag(config=True, required=True)
+    image = required_file(
+        help="Input dwi volume. B-values, b-vectors "
+             "(and encoding file if using Magic Diamond) must "
+             "use the same base filename for them to be detected by diamond"
+    )
+    output = output_prefix_argument()
 
-    mask = Unicode().tag(config=True)
-    model_selection = Unicode().tag(config=True)
-    initial_dti = Unicode().tag(config=True)
+    mask = mask_arg()
+
+    model_selection = Unicode(
+        help="Pre-computed model selection for the dataset"
+    ).tag(config=True)
+    initial_dti = Unicode(
+        help="Pre-computed dti reconstruction used to initialize "
+             "the stick model of the diamond algorithms"
+    ).tag(config=True)
 
     aliases = Dict(_aliases)
 

@@ -1,2 +1,2 @@
-from .dti import DTIMetrics
+from .dti import TensorMetrics
 from .diamond import DiamondMetrics

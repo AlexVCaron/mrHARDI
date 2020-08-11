@@ -1,26 +1,48 @@
-from magic_monkey.apps import *
+# from magic_monkey.apps. import *
 
 from magic_monkey.base.application import MagicMonkeyBaseApplication
 
 
 class MagicMonkeyApplication(MagicMonkeyBaseApplication):
+    def _start(self):
+        if self.subapp:
+            self.subapp.start()
+        else:
+            super().start()
+
     subcommands = dict(
-        ants_registration=(AntsRegistration, 'Register images via ants'),
-        ants_transform=(AntsTransform, 'Apply a registration transform'),
-        apply_mask=(ApplyMask, 'Apply mask to image'),
-        b0=(B0Utils, 'Basic processing on B0 slices of dwi volumes'),
-        concatenate=(Concatenate, 'Concatenates images together'),
-        csd=(CSD, 'Perform constrained spherical deconvolution'),
-        diamond=(Diamond, 'Perform diamond reconstruction'),
-        diamond_metrics=(DiamondMetrics, 'Compute DTI metrics'),
-        dti=(DTI, 'Perform dti reconstruction'),
-        dti_metrics=(DTIMetrics, 'Compute DTI metrics'),
-        eddy=(Eddy, 'Execute eddy correction'),
+        ants_registration=(
+            "magic_monkey.apps.AntsRegistration", 'Register images via ants'
+        ),
+        ants_transform=(
+            "magic_monkey.apps.AntsTransform", 'Apply a registration transform'
+        ),
+        apply_mask=("magic_monkey.apps.ApplyMask", 'Apply mask to image'),
+        b0=(
+            "magic_monkey.apps.B0Utils",
+            'Basic processing on B0 slices of dwi volumes'
+        ),
+        concatenate=(
+            "magic_monkey.apps.Concatenate", 'Concatenates images together'
+        ),
+        csd=(
+            "magic_monkey.apps.CSD",
+            'Perform constrained spherical deconvolution'
+        ),
+        diamond=(
+            "magic_monkey.apps.Diamond", 'Perform diamond reconstruction'
+        ),
+        diamond_metrics=(
+            "magic_monkey.apps.DiamondMetrics", 'Compute DTI metrics'
+        ),
+        dti=("magic_monkey.apps.DTI", 'Perform dti reconstruction'),
+        dti_metrics=("magic_monkey.apps.TensorMetrics", 'Compute DTI metrics'),
+        eddy=("magic_monkey.apps.Eddy", 'Execute eddy correction'),
         response=(
-            FiberResponse,
+            "magic_monkey.apps.FiberResponse",
             'Compute single fiber response (and gm and csf if msmt)'
         ),
-        topup=(Topup, 'Execute topup correction')
+        topup=("magic_monkey.apps.Topup", 'Execute topup correction')
     )
 
 

@@ -1,7 +1,9 @@
-import os
 import sys
 from abc import abstractmethod
+from multiprocessing import cpu_count
+from os.path import splitext
 from typing import Generator
+from os import chdir, getcwd, linesep
 
 import nibabel as nib
 import numpy as np
@@ -9,11 +11,11 @@ from numpy import split, arange, ones, loadtxt, zeros, absolute, ubyte, \
     apply_along_axis, arccos, cross, cos, unique
 from scipy.spatial.transform import Rotation
 
-from traitlets import Integer
+from traitlets import Integer, Undefined, Unicode, Float
 from traitlets.config import Application, Unicode, logging, observe, List, \
     default, deepcopy, catch_config_error, indent, wrap_paragraphs, \
     ArgumentError, Instance, Enum, Configurable, Dict, TraitError, Bool, \
-    observe_compat
+    observe_compat, dedent
 
 from magic_monkey.base.ListValuedDict import ListValuedDict
 
@@ -61,14 +63,16 @@ class MagicMonkeyBaseApplication(Application):
         self._load_config(change.new, [self.configuration])
         super()._config_changed(change)
 
-
     @default('config_file_paths')
     def _config_file_paths_default(self):
-        return [os.getcwd()]
+        return [getcwd()]
 
     def update_config(self, config):
         super().update_config(config)
-        self.configuration.update_config(config)
+        try:
+            self.configuration.update_config(config)
+        except AttributeError:
+            pass
 
     base_config_file = Unicode(
         help="Base configuration file for the application",
@@ -86,6 +90,20 @@ class MagicMonkeyBaseApplication(Application):
         self.config_files.append(new)
 
     _delayed_help_traits = []
+
+    @default('classes')
+    def _classes_default(self):
+        return (self.__class__,) + self.__class__.__bases__
+
+    def __init__(self, **kwargs):
+        conf_klass = self.__class__.configuration.klass
+        if MagicMonkeyConfigurable in (conf_klass,) + conf_klass.__bases__:
+            try:
+                self.configuration = conf_klass(parent=self)
+                self.classes.extend((conf_klass,) + conf_klass.__bases__)
+            except AttributeError:
+                pass
+        super().__init__(**kwargs)
 
     def load_config_file(self):
         Application.load_config_file(
@@ -152,6 +170,19 @@ class MagicMonkeyBaseApplication(Application):
                 ):
                     for trait in traits:
                         trait.tag(required=False)
+
+    @catch_config_error
+    def _validate_configuration(self):
+        if self.configuration:
+            config = self.traits()["configuration"]
+            config.validate()
+
+    @catch_config_error
+    def _validate_extra(self):
+        for trait in self.traits().values():
+            if "extra_valid" in trait.metadata:
+                if not trait.metadata["extra_valid"](trait.get(self)):
+                    raise TraitError(trait)
 
     @catch_config_error
     def _validate_exclusive(self):
@@ -254,7 +285,7 @@ class MagicMonkeyBaseApplication(Application):
 
     @abstractmethod
     def _start(self):
-        super().start()
+        pass
 
     def _generate_config_file(self, filename):
         traits = self.class_traits(ignore_write=True)
@@ -306,7 +337,9 @@ class MagicMonkeyBaseApplication(Application):
                 sub_configurables.append(inst)
             else:
                 lines.append('c.%s.%s = %s' % (
-                    klass.__name__, name, inst
+                    klass.__name__,
+                    name,
+                    '"%s"' % inst if isinstance(inst, str) else inst
                 ))
             lines.append('')
 
@@ -321,6 +354,7 @@ class MagicMonkeyBaseApplication(Application):
         self._validate_exclusive()
         self._shut_completed_exclusive()
         self._validate_required()
+        self._validate_configuration()
 
     def print_options(self):
         if not self.flags and not self.aliases:
@@ -347,7 +381,7 @@ class MagicMonkeyBaseApplication(Application):
         )
         lines.append('')
 
-        print(os.linesep.join(lines))
+        print(linesep.join(lines))
         lines.clear()
 
         self.print_alias_help()
@@ -356,10 +390,10 @@ class MagicMonkeyBaseApplication(Application):
         lines.append('')
         lines.append(separator)
 
-        lines.append("Boolean flags | format : < --name > | :")
+        lines.append("Boolean flags | format : < --name > or <-c> | :")
         lines.append('')
 
-        print(os.linesep.join(lines))
+        print(linesep.join(lines))
         lines.clear()
 
         self.print_flag_help()
@@ -367,7 +401,25 @@ class MagicMonkeyBaseApplication(Application):
         lines.append('')
         lines.append(separator)
 
-        print(os.linesep.join(lines))
+        print(linesep.join(lines))
+
+    def print_flag_help(self):
+        """Print the flag part of the help."""
+        if not self.flags:
+            return
+
+        lines, base_helps = [], []
+        for m, (cfg, help) in self.flags.items():
+            prefix = '--' if len(m) > 1 else '-'
+            if m in base_flags.keys():
+                base_helps.extend([prefix+m, indent(dedent(help.strip()))])
+            else:
+                lines.append(prefix+m)
+                lines.append(indent(dedent(help.strip())))
+
+        lines.extend(base_helps)
+
+        print(linesep.join(lines))
 
     def print_alias_help(self):
         """Print the alias part of the help."""
@@ -382,21 +434,36 @@ class MagicMonkeyBaseApplication(Application):
         lines = []
         cd = self._get_class_dict()
 
+        base_helps = []
+
         for alias, longname in aliases.items():
             trait, cls = self._trait_from_longname(cd, longname)
-            help = cls.class_get_trait_help(trait)
-            if help is not None:
-                help = help.replace(longname, alias) + ' (%s)' % longname
-                # reformat first line
-                if len(alias) == 1:
-                    help = help.replace('--%s=' % alias, '-%s ' % alias)
-                lines.append(os.linesep.join([help, ' ']))
+            if trait.name in [
+                al.split(".")[-1] for al in base_aliases.values()
+            ]:
+                base_helps.append((alias, cls, trait, longname))
+            else:
+                lines = self._trait_help(alias, cls, trait, longname, lines)
 
-        print(os.linesep.join([
-            indent(ln, indentation) for ln in os.linesep.join(sorted(
+        for trait_args in base_helps:
+            lines = self._trait_help(*trait_args, lines)
+
+        print(linesep.join([
+            indent(ln, indentation) for ln in linesep.join(sorted(
                 lines, key=lambda k: "REQUIRED" in k, reverse=True
             )).splitlines()
         ]))
+
+    def _trait_help(self, alias, cls, trait, longname, lines):
+        help = cls.class_get_trait_help(trait)
+        if help is not None:
+            help = help.replace(longname, alias) + ' (%s)' % longname
+            # reformat first line
+            if len(alias) == 1:
+                help = help.replace('--%s=' % alias, '-%s ' % alias)
+            lines.append(linesep.join([help, ' ']))
+
+        return lines
 
     def _get_class_dict(self):
         classdict = {}
@@ -437,7 +504,7 @@ class MagicMonkeyBaseApplication(Application):
 
             lines.append("> Exclusive group {} : ".format(group))
             lines.append('')
-            print(os.linesep.join(lines))
+            print(linesep.join(lines))
             lines.clear()
 
             if len(list(aliases_by_index.values())) == 0:
@@ -446,7 +513,7 @@ class MagicMonkeyBaseApplication(Application):
                 for idx, opt_aliases in aliases_by_index.items():
                     lines.append(indent("> Option {} : ".format(idx), 2))
                     lines.append('')
-                    print(os.linesep.join(lines))
+                    print(linesep.join(lines))
                     lines.clear()
 
                     self._print_alias_category(dict(opt_aliases), 4)
@@ -473,9 +540,18 @@ class MagicMonkeyBaseApplication(Application):
 
         lines = []
 
-        header = "--{}.{}=<{}>".format(
-            cls.__name__, trait.name, trait.__class__.__name__
-        )
+        if isinstance(trait, MultipleArguments):
+            name = "{}<{}>".format(
+                trait.__class__.__name__, trait.item_trait.__name__
+            )
+        elif isinstance(trait, ChoiceList):
+            name = "{}<{}>".format(
+                "Choices", trait.item_trait.__name__
+            )
+        else:
+            name = trait.__class__.__name__
+
+        header = "--{}.{}=<{}>".format(cls.__name__, trait.name, name)
 
         if required:
             header += " [ REQUIRED ]"
@@ -526,18 +602,24 @@ class MagicMonkeyBaseApplication(Application):
     def _config_aliases(self):
         aliases = {}
         for name, trait in self.traits().items():
-            if isinstance(trait.get(self), MagicMonkeyConfigurable):
-                for alias, linked in trait.get(self).app_aliases.items():
-                    aliases[alias] = linked
+            try:
+                if isinstance(trait.get(self), MagicMonkeyConfigurable):
+                    for alias, linked in trait.get(self).app_aliases.items():
+                        aliases[alias] = linked
+            except TraitError:
+                pass
 
         return aliases
 
     def _config_flags(self):
         flags = {}
         for name, trait in self.traits().items():
-            if isinstance(trait.get(self), MagicMonkeyConfigurable):
-                for flag, linked in trait.get(self).app_flags.items():
-                    flags[flag] = linked
+            try:
+                if isinstance(trait.get(self), MagicMonkeyConfigurable):
+                    for flag, linked in trait.get(self).app_flags.items():
+                        flags[flag] = linked
+            except TraitError:
+                pass
 
         return flags
 
@@ -549,16 +631,21 @@ def convert_enum(enum, default_value):
 
 
 class BoundedInt(Integer):
+    info_text = ""
+
     def __init__(self, val, lb=None, hb=None, **kwargs):
-        super().__init__(val, **kwargs)
+        super().__init__(default_value=val, **kwargs)
         self.bounds = [lb, hb]
+        self.info_text = "between {} and {}".format(lb, hb)
 
     def validate(self, obj, value):
-        super().validate(obj, value)
+        value = super().validate(obj, value)
         between = self.bounds[0] and self.bounds[0] <= value
         between &= self.bounds[1] and self.bounds[1] >= value
         if not between:
             self.error(obj, value)
+
+        return value
 
 
 class MagicMonkeyConfigurable(Configurable):
@@ -640,7 +727,9 @@ class MagicMonkeyConfigurable(Configurable):
                 lines.append('%s' % inst)
             else:
                 lines.append('c.%s.%s = %s' % (
-                    klass.__name__, name, inst
+                    klass.__name__,
+                    name,
+                    '"%s"' % inst if isinstance(inst, str) else inst
                 ))
             lines.append('')
         return '\n'.join(lines)
@@ -676,8 +765,9 @@ class SelfInstantiatingInstance(DictInstantiatingInstance):
 
 
 class MultipleArguments(List):
-    def __class__(self):
-        return super().__class__
+    def __init__(self, trait, default_value=None, **kwargs):
+        self.item_trait = trait
+        super().__init__(trait=trait, default_value=default_value, **kwargs)
 
     def validate(self, obj, value):
         if isinstance(value, str):
@@ -711,6 +801,19 @@ class ChoiceList(List):
 
         if trait and trait is not type:
             trait = trait(extra_choices=self._base_choices)
+
+        if trait:
+            if isinstance(trait, Enum):
+                try:
+                    self.item_trait = type(trait.default_value)()
+                except TypeError:
+                    self.item_trait = Unicode
+            else:
+                self.item_trait = trait
+        else:
+            self.item_trait = Unicode
+
+
 
         super().__init__(
             trait=trait,
@@ -847,3 +950,122 @@ class BaseMetric:
     @abstractmethod
     def measure(self):
         pass
+
+
+_out_pre_help_line = "Output directory and prefix for files. Directory "\
+                     "required, will overwrite files (Anything that can " \
+                     "possibly go wrong, does - Murphy's Law)"
+
+
+_out_file_help_line = "Output filename (with extension, if absent, the file " \
+                      "will be declared invalid). Will follow underlying " \
+                      "application on overwriting default behavior, which " \
+                      "is obliteration of previous data in case of python " \
+                      "script from Magic Monkey codebase."
+
+
+_nthreads_help_line = "Number of threads used by the application. The " \
+                      "default value is set by python, so it may be far " \
+                      "from the actual available resources"
+
+
+_mask_help_line = "Computing mask for the algorithm"
+
+
+def output_prefix_argument(
+    default_value=Undefined, help=_out_pre_help_line,
+    config=True, required=True, ignore_write=True, **tags
+):
+    return required_file(
+        default_value, help, config, required, ignore_write, **tags
+    )
+
+
+def output_file_argument(
+    default_value=Undefined, help=_out_file_help_line,
+    config=True, required=True, ignore_write=True, **tags
+):
+    valid = lambda val: len(str(splitext(val)).split(".")) > 0
+    if "extra_valid" in tags:
+        and_valid = deepcopy(tags["extra_valid"])
+        valid = lambda val: valid(val) & and_valid(val)
+        tags["extra_valid"] = valid
+
+    return required_file(
+        default_value, help, config, required, ignore_write, **tags
+    )
+
+
+def required_arg(
+    trait, default_value=None, help=None,
+    config=True, required=True, ignore_write=True,
+    traits_args=(), traits_kwargs=None, **tags
+):
+    if traits_kwargs is None:
+        traits_kwargs = {}
+
+    tags.update(dict(
+        config=config, required=required, ignore_write=ignore_write
+    ))
+    return trait(
+        *traits_args, default_value=default_value, help=help, **traits_kwargs
+    ).tag(**tags)
+
+
+def nthreads_arg(help=_nthreads_help_line, config=True, **tags):
+    tags.update(dict(config=config))
+    return Integer(cpu_count(), help=help).tag(**tags)
+
+
+def mask_arg(
+    trait=Unicode, default_value=Undefined, help=_mask_help_line,
+    config=True, required=False, ignore_write=True,
+    traits_args=(), traits_kwargs=None, **tags
+):
+
+    return required_arg(
+        trait, default_value, help, config, required,
+        ignore_write, traits_args, traits_kwargs, **tags
+    )
+
+
+def affine_file(
+    default_value=Undefined, config=True,
+    required=True, ignore_write=True,
+    **tags
+):
+    return required_file(
+        default_value=default_value,
+        config=config,
+        required=required,
+        ignore_write=ignore_write,
+        help="4-D matrix file describing the affine of the "
+             "outputs, a txt as per numpy convention "
+             "(will be used to save the metrics files)",
+        **tags
+    )
+
+
+def required_file(
+    default_value=Undefined, help=None,
+    config=True, required=True, ignore_write=True,
+    **tags
+):
+    tags.update(dict(
+        config=config, required=required, ignore_write=ignore_write
+    ))
+
+    return required_arg(
+        Unicode, default_value=default_value, help=help
+    ).tag(**tags)
+
+
+def required_number(
+    trait=Float, default_value=Undefined, help=None,
+    config=True, required=True, ignore_write=True,
+    **tags
+):
+    return required_arg(
+        trait, default_value, help, config, required, ignore_write, **tags
+    )
+

@@ -1,15 +1,20 @@
+import time
+
 from copy import copy
+from os import mkdir
+from pathlib import Path
 
 import nibabel as nib
 
 from os.path import exists, join
 
 import numpy as np
-from traitlets import Unicode, Bool, Dict, Integer
+from traitlets import Bool, Dict, Integer
 from traitlets.config import ArgumentError
 
 from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    ChoiceList, ChoiceEnum
+    ChoiceList, ChoiceEnum, required_file, output_prefix_argument, \
+    affine_file, required_number
 
 # fmd = fascicle md --check
 # fad = fascicle ad --check
@@ -94,12 +99,12 @@ _flags = dict(
         {'DiamondMetrics': {'hindered': True}},
         "dataset has a hindered fraction computed"
     ),
-    reymbaut=(
-        {'DiamondMetrics': {'output_reymbaut_convention', True}},
-        "output the reymbaut convention over diffusion tensors"
+    haeberlen=(
+        {'DiamondMetrics': {'output_haeberlen': True}},
+        "output the haeberlen convention over output tensors"
     ),
     cache=(
-        {'DiamondMetrics': {'save_cache', True}},
+        {'DiamondMetrics': {'save_cache': True}},
         "save metrics computing execution cache"
     )
 )
@@ -107,29 +112,52 @@ _flags = dict(
 
 class DiamondMetrics(MagicMonkeyBaseApplication):
     metrics = ChoiceList(
-        copy(_DIAMOND_METRICS), DiamondMetricsEnum, copy(_DIAMOND_METRICS)
+        copy(_DIAMOND_METRICS), DiamondMetricsEnum, copy(_DIAMOND_METRICS),
+        help="Basic diamond metrics to run on the outputs"
     ).tag(config=True)
     mmetrics = ChoiceList(
-        copy(_MAGIC_DIAMOND_METRICS) + ["all"], MagicDiamondMetricsEnum, []
+        copy(_MAGIC_DIAMOND_METRICS) + ["all"], MagicDiamondMetricsEnum, [],
+        help="Magic diamond metrics to run on the outputs "
+             "(Requires tensor valued input, check your input "
+             "prefix to assure it respects convection)"
     ).tag(config=True)
     opt_metrics = ChoiceList(
-        copy(_OPTIONAL_METRICS) + ["all"], DiamondOptionalMetricsEnum, []
+        copy(_OPTIONAL_METRICS) + ["all"], DiamondOptionalMetricsEnum, [],
+        help="Optional diamond metrics to run on the outputs"
     ).tag(config=True)
 
-    input_prefix = Unicode().tag(config=True, required=True)
-    output_prefix = Unicode().tag(config=True, required=True)
-    n_fascicles = Integer().tag(config=True, required=True)
-    affine = Unicode().tag(config=True, required=True)
+    input_prefix = required_file(
+        help="Prefix of diamond outputs (including mask)"
+    )
+    output_prefix = output_prefix_argument()
+    n_fascicles = required_number(
+        Integer, ignore_write=False,
+        help="Maximum number of possible fascicles in a voxel"
+    )
+    affine = affine_file()
 
-    output_colors = Bool(False).tag(config=True)
+    output_colors = Bool(
+        False, help="Output color metrics if available"
+    ).tag(config=True)
 
-    free_water = Bool(False).tag(config=True)
-    restricted = Bool(False).tag(config=True)
-    hindered = Bool(False).tag(config=True)
+    free_water = Bool(
+        False, help="Acquisition has free water fraction computed"
+    ).tag(config=True)
+    restricted = Bool(
+        False, help="Acquisition has restricted fraction computed"
+    ).tag(config=True)
+    hindered = Bool(
+        False, help="Acquisition has hindered fraction computed"
+    ).tag(config=True)
 
-    output_reymbaut_convention = Bool(False).tag(config=True)
+    output_haeberlen = Bool(
+        False,
+        help="Output iso, delta and eta decomposition of the diffusion tensor"
+    ).tag(config=True)
 
-    save_cache = Bool(False).tag(config=True)
+    save_cache = Bool(
+        False, help="Save the final data cache of the metrics computing"
+    ).tag(config=True)
 
     cache = Dict({})
 
@@ -155,8 +183,8 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
                 raise ArgumentError(
                     "Magic diamond requires both linear and "
                     "spherical acquisitions to output metrics.\n"
-                    "Current path does not provides \"lin\" and \"sph\" "
-                    "directories : {}".format(self.input_prefix)
+                    "Current path does not provides both \"lin\" and "
+                    "\"sph\" directories : {}".format(self.input_prefix)
                 )
 
     def _start(self):
@@ -181,20 +209,40 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
                 with_res=self.restricted, with_hind=self.hindered
             ).measure()
 
-        if self.output_reymbaut_convention:
-            self._output_r_conv()
-
-        if self.output_colors:
-            self._output_colors()
+        if self.output_haeberlen:
+            self._output_haeberlen()
 
         if self.save_cache:
             self._save_cache()
 
-    def _output_colors(self):
-        pass
+    def _output_haeberlen(self):
+        from magic_monkey.config.metrics.diamond import HaeberlenConvention
 
-    def _output_r_conv(self):
-        pass
+        mask = None
+        if exists("{}_mask.nii.gz".format(self.input_prefix)):
+            mask = nib.load("{}_mask.nii.gz".format(self.input_prefix))
+
+        affine = np.loadtxt(self.affine)
+
+        HaeberlenConvention(
+            self.n_fascicles, self.input_prefix, self.output_prefix,
+            self.cache, affine, mask.get_fdata().astype(bool), mask.shape,
+            self.output_colors, self.free_water, self.restricted, self.hindered
+        ).measure()
 
     def _save_cache(self):
-        pass
+        fname = "diamond_cache_{}".format(time.strftime("%c"))
+
+        try:
+            Path(
+                "{}_{}.npy".format(self.output_prefix, fname)
+            ).touch(exist_ok=True)
+        except BaseException:
+            for char in [" ", ":", ",", ".", "-", "\\", "/", ";"]:
+                fname = fname.replace(char, "_")
+
+            Path(
+                "{}_{}.npy".format(self.output_prefix, fname)
+            ).touch(exist_ok=True)
+
+        np.save("{}_{}.npy".format(self.output_prefix, fname), self.cache)

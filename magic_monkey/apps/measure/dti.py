@@ -1,50 +1,58 @@
+from copy import copy
 from os.path import exists
 
 import nibabel as nib
-from numpy import ones, loadtxt
+from numpy import loadtxt
 
-from traitlets import Enum, List, Unicode, Bool, Dict
+from traitlets.config import Enum, Bool, Dict
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication
-from magic_monkey.config.metrics.dti import compute_eigenvalues
+from magic_monkey.base.application import MagicMonkeyBaseApplication, \
+    ChoiceList, required_file, output_prefix_argument, affine_file
 
-_DTI_METRICS = ["fa", "md", "ad", "rd", "peaks"]
+_TENSOR_METRICS = ["fa", "md", "ad", "rd", "peaks"]
 
 
-class DTIMetricsEnum(Enum):
+class TensorMetricsEnum(Enum):
     def __init__(self, **kwargs):
-        super().__init__(_DTI_METRICS, **kwargs)
+        super().__init__(_TENSOR_METRICS, **kwargs)
 
 
 _aliases = {
-    'metrics': 'DTIMetrics.metrics',
-    'in': 'DTIMetrics.input_prefix',
-    'out': 'DTIMetrics.output_prefix',
-    'affine': 'DTIMetrics.affine'
+    'metrics': 'TensorMetrics.metrics',
+    'in': 'TensorMetrics.input_prefix',
+    'out': 'TensorMetrics.output_prefix',
+    'affine': 'TensorMetrics.affine'
 }
 
 
 _flags = dict(
     colors=(
-        {'DTIMetrics': {'output_colors': True}},
+        {'TensorMetrics': {'output_colors': True}},
         "create color map for compatible metrics based on eigenvectors"
     ),
     eigs=(
-        {'DTIMetrics': {'save_eigs': True}},
+        {'TensorMetrics': {'save_eigs': True}},
         "save eigenvalues and eigenvectors to output"
     )
 )
 
 
-class DTIMetrics(MagicMonkeyBaseApplication):
-    metrics = List(DTIMetricsEnum, _DTI_METRICS).tag(config=True)
+class TensorMetrics(MagicMonkeyBaseApplication):
+    metrics = ChoiceList(
+        copy(_TENSOR_METRICS), TensorMetricsEnum, copy(_TENSOR_METRICS),
+        help="Tensor metrics to run on the outputs"
+    ).tag(config=True)
 
-    input_prefix = Unicode().tag(config=True, required=True)
-    output_prefix = Unicode().tag(config=True, required=True)
-    affine = Unicode().tag(config=True, required=True)
+    input_prefix = required_file(help="Prefix of dti outputs (including mask)")
+    output_prefix = output_prefix_argument()
+    affine = affine_file()
 
-    save_eigs = Bool(False).tag(config=True)
-    output_colors = Bool(False).tag(config=True)
+    save_eigs = Bool(
+        False, help="Save eigenvalues and eigenvectors"
+    ).tag(config=True)
+    output_colors = Bool(
+        False, help="Output color metrics if available"
+    ).tag(config=True)
 
     cache = Dict({})
 

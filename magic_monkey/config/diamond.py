@@ -1,53 +1,13 @@
 from os import cpu_count
 
-from traitlets import Integer, Float, TraitType
+from traitlets import Integer, Float
 from traitlets.config import Enum, Bool
 
 from magic_monkey.base.application import MagicMonkeyConfigurable
+from magic_monkey.traits.diamond import BoundingBox, Stick
 
 
-class BoundingBox(TraitType):
-    default_value = None
-
-    def get(self, obj, cls=None):
-        value = super().get(obj, cls)
-
-        if value is not None:
-            return ",".join(*value)
-
-        return value
-
-    def validate(self, obj, value):
-        if isinstance(value, tuple):
-            if len(value) == 6:
-                if all(isinstance(v, int) for v in value):
-                    return value
-
-        if value is not None:
-            self.error(obj, value)
-
-
-class Stick(TraitType):
-    default_value = None
-
-    def get(self, obj, cls=None):
-        value = super().get(obj, cls)
-
-        if value is not None:
-            return ",".join(*value)
-
-        return value
-
-    def validate(self, obj, value):
-        if isinstance(value, tuple):
-            if len(value) == 3:
-                if all(isinstance(v, float) for v in value):
-                    return value
-
-        if value is not None:
-            self.error(obj, value)
-
-
+# TODO : Check if interesting to add aliases and flags to cmdline
 class DiamondConfiguration(MagicMonkeyConfigurable):
     n_tensors = Integer(3).tag(config=True)
 
@@ -60,7 +20,7 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
     mose_min_fraction = Float(0).tag(config=True)
 
     noise_model = Enum(
-        ["gaussian", "gaussianML", "rician", "ricianBeta"], "rician"
+        ["gaussian", "gaussianML", "rician", "ricianBeta"], "gaussian"
     ).tag(config=True)
 
     fascicle = Enum(
@@ -89,6 +49,8 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
 
     sum_fractions_to_1 = Bool(True).tag(config=True)
 
+    # TODO : This number of processes should be a n_thread_arg and should be
+    #        linked to the base application via sub-flag
     processes = Integer(cpu_count()).tag(config=True)
     splits = Integer(cpu_count()).tag(config=True)
 

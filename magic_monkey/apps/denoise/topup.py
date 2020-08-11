@@ -2,12 +2,12 @@ from os import chmod
 
 import nibabel as nib
 
-from traitlets import Instance, List, default, Unicode, Float
+from traitlets import Instance, Unicode, Dict
 
 from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    MultipleArguments
+    MultipleArguments, required_arg, output_prefix_argument, required_number
 from magic_monkey.config.topup import TopupConfiguration
-from magic_monkey.config.algorithms.fsl import prepare_acqp_file
+from magic_monkey.base.fsl import prepare_acqp_file
 
 _aliases = dict(
     b0='Topup.b0',
@@ -21,24 +21,28 @@ _aliases = dict(
 class Topup(MagicMonkeyBaseApplication):
     configuration = Instance(TopupConfiguration).tag(config=True)
 
-    b0 = MultipleArguments(Unicode, []).tag(config=True, ignore_write=True, required=True)
-    rev = MultipleArguments(Unicode, []).tag(config=True, ignore_write=True)
-    dwell = Float().tag(config=True, required=True)
+    b0 = required_arg(
+        MultipleArguments, [],
+        "Principal B0 volumes used for Topup correction",
+        traits_args=(Unicode,)
+    )
+    rev = MultipleArguments(
+        Unicode, [],
+        help="Reverse acquisitions used for deformation correction"
+    ).tag(config=True, ignore_write=True)
+    dwell = required_number(
+        help="Dwell time of the acquisitions", ignore_write=False
+    )
 
-    output_prefix = Unicode(u'topup').tag(config=True, ignore_write=True)
+    output_prefix = output_prefix_argument()
 
-    extra_arguments = Unicode(u'').tag(config=True)
+    extra_arguments = Unicode(
+        u'',
+        help="Extra arguments to pass to topup, "
+             "as a string, will be passed directly"
+    ).tag(config=True)
 
-    aliases = _aliases
-    classes = List()
-
-    @default('classes')
-    def _classes_default(self):
-        return [Topup, self.__class__]
-
-    def __init__(self, **kwargs):
-        self.configuration = TopupConfiguration(parent=self)
-        super().__init__(**kwargs)
+    aliases = Dict(_aliases)
 
     def _start(self):
         ap_shapes = [nib.load(b0).shape for b0 in self.b0]

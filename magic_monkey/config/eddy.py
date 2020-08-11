@@ -4,70 +4,11 @@ from traitlets import Integer
 from traitlets.config import Bool, Instance, default
 from traitlets.config.loader import ConfigError
 
-from magic_monkey.base.ListValuedDict import ListValuedDict
 from magic_monkey.base.application import convert_enum, BoundedInt, \
     MagicMonkeyConfigurable
-from magic_monkey.config.utils import serialize_fsl
-
-
-class OutlierReplacement(ListValuedDict):
-    class Method(Enum):
-        slice = "sw"
-        multi_band = "mb"
-        both = "both"
-
-    def __init__(
-        self, n_std=4, n_vox=250, mb_factor=1, mb_offset=0,
-        method=Method.slice, pos_neg=False, sum_squared=False
-    ):
-        super().__init__(dict(
-            repol=True,
-            ol_nstd=n_std,
-            ol_nvox=n_vox,
-            ol_type=method.value,
-            ol_pos=pos_neg,
-            ol_sqr=sum_squared,
-            mb=mb_factor,
-            mb_offs=mb_offset
-        ))
-
-    def serialize(self):
-        return serialize_fsl(self, " ", True)
-
-
-class IntraVolMotionCorrection(ListValuedDict):
-    class Interpolation(Enum):
-        trilinear = "trilinear"
-        spline = "spline"
-
-    def __init__(
-        self, n_iter=5, w_reg=1,
-        interpolation=Interpolation.trilinear,
-        t_motion_order=0
-    ):
-        super().__init__(dict(
-            mporder=t_motion_order,
-            s2v_niter=n_iter,
-            s2v_lambda=w_reg,
-            s2v_interp=interpolation.value
-        ))
-
-    def serialize(self):
-        return serialize_fsl(self, " ", True)
-
-
-class SusceptibilityCorrection(ListValuedDict):
-    def __init__(self, n_iter=10, w_reg=10, knot_spacing=10):
-        super().__init__(dict(
-            estimate_move_by_susceptibility=True,
-            mbs_niter=n_iter,
-            mbs_lambda=w_reg,
-            mbs_ksp=knot_spacing
-        ))
-
-    def serialize(self):
-        return serialize_fsl(self, " ", True)
-
+from magic_monkey.base.fsl import serialize_fsl_args
+from magic_monkey.traits.eddy import OutlierReplacement, \
+    IntraVolMotionCorrection, SusceptibilityCorrection
 
 _flags = dict(
     cuda=(
@@ -169,7 +110,7 @@ class EddyConfiguration(MagicMonkeyConfigurable):
             )
 
     def serialize(self):
-        base_arguments = serialize_fsl(dict(
+        base_arguments = serialize_fsl_args(dict(
             flm=self.field_model,
             slm=self.current_model,
             fwhm=self.pre_filter_width,

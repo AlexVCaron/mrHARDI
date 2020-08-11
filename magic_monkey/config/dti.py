@@ -3,6 +3,7 @@ from traitlets import Bool, Integer
 from magic_monkey.base.application import MagicMonkeyConfigurable
 
 
+# TODO : Check if interesting to add aliases and flags to cmdline
 class DTIConfiguration(MagicMonkeyConfigurable):
     use_lsqr = Bool(False).tag(config=True)
     reweight_iter = Integer(2).tag(config=True)
