@@ -1,14 +1,19 @@
+from copy import deepcopy
+
 import nibabel as nib
 import numpy as np
+from traitlets import Dict, Enum, Instance, Integer, Unicode, re
+from traitlets.config import Config
 
-from traitlets import Instance, Unicode, Integer, Enum, Dict
-
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           MultipleArguments,
+                                           output_file_argument,
+                                           output_prefix_argument,
+                                           required_arg,
+                                           required_file)
 from magic_monkey.compute.b0 import extract_b0, squash_b0
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    required_file, output_prefix_argument, output_file_argument, required_arg, \
-    MultipleArguments
-from magic_monkey.config.utils import B0UtilsConfiguration
 from magic_monkey.compute.utils import apply_mask_on_data, concatenate_dwi
+from magic_monkey.config.utils import B0UtilsConfiguration
 
 _b0_aliases = {
     'in': 'B0Utils.image',
@@ -21,13 +26,36 @@ _b0_aliases = {
 class B0Utils(MagicMonkeyBaseApplication):
     configuration = Instance(B0UtilsConfiguration).tag(config=True)
 
-    image = required_file(help="Input dwi image")
-    bvals = required_file(help="Input b-values")
-    bvecs = required_file(help="Input b-vectors")
+    image = required_file(description="Input dwi image")
+    bvals = required_file(description="Input b-values")
+    bvecs = required_file(description="Input b-vectors")
 
     prefix = output_prefix_argument()
 
     aliases = Dict(_b0_aliases)
+
+    def initialize(self, argv=None):
+        assert argv and len(argv) > 0
+        if not (
+            any("help" in a for a in argv) or
+            any("out-config" in a for a in argv)
+        ):
+            command, argv = argv[0], argv[1:]
+            assert re.match(r'^\w(-?\w)*$', command), \
+                "First argument must be the sub-utility to use {}".format(
+                    B0UtilsConfiguration.current_util.values
+                )
+            super().initialize(argv)
+            config = deepcopy(self.config)
+            config['B0UtilsConfiguration'] = Config(current_util=command)
+            self.update_config(config)
+        else:
+            super().initialize(argv)
+
+    def _example_command(self, sub_command):
+        return "magic_monkey {} [extract|squash] <args> <flags>".format(
+            sub_command
+        )
 
     def _start(self):
         if self.configuration.current_util == "extract":
@@ -82,8 +110,8 @@ _apply_mask_aliases = {
 
 
 class ApplyMask(MagicMonkeyBaseApplication):
-    image = required_file(help="Input image to mask")
-    mask = required_file(help="Mask to apply on image ")
+    image = required_file(description="Input image to mask")
+    mask = required_file(description="Mask to apply on image ")
 
     fill_value = Integer(
         0, help="Value used to fill the image outside the mask"
@@ -116,7 +144,7 @@ _cat_aliases = {
 class Concatenate(MagicMonkeyBaseApplication):
     images = required_arg(
         MultipleArguments, traits_args=(Unicode,),
-        help="Input images to concatenate"
+        description="Input images to concatenate"
     )
 
     bvals = MultipleArguments(

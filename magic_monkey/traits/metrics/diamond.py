@@ -2,22 +2,32 @@ from abc import ABCMeta
 from shutil import copyfile
 
 import nibabel as nib
-
-from numpy import moveaxis, isclose, sqrt, sum, prod, roll, \
-                  cbrt, einsum, array, absolute, count_nonzero, \
-                  float32, zeros, repeat, ubyte
-
+from numpy import (absolute,
+                   array,
+                   cbrt,
+                   count_nonzero,
+                   einsum,
+                   float32,
+                   isclose,
+                   moveaxis,
+                   prod,
+                   repeat,
+                   roll,
+                   sqrt,
+                   sum,
+                   ubyte,
+                   zeros)
 from numpy.ma import array as masked
 
-from magic_monkey.base.application import load_from_cache, \
-                                          get_from_metric_cache, \
-                                          BaseMetric
-
-from magic_monkey.compute.math.linalg import compute_fa, compute_md, \
-                                             compute_ad, compute_rd
-
-from magic_monkey.compute.math.tensor import compute_eigenvalues, \
-                                             compute_haeberlen
+from magic_monkey.traits.metrics.base import (BaseMetric,
+                                              get_from_metric_cache,
+                                              load_from_cache)
+from magic_monkey.compute.math.linalg import (compute_ad,
+                                              compute_fa,
+                                              compute_md,
+                                              compute_rd)
+from magic_monkey.compute.math.tensor import (compute_eigenvalues,
+                                              compute_haeberlen)
 
 
 class DiamondMetric(BaseMetric, metaclass=ABCMeta):

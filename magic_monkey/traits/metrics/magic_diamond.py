@@ -2,13 +2,13 @@ from abc import ABCMeta
 from os.path import join
 
 import nibabel as nib
-from numpy import isclose, mean, zeros, sqrt, array, ones
+from numpy import array, isclose, mean, ones, sqrt, zeros
 
-from magic_monkey.base.application import get_from_metric_cache
-from magic_monkey.config.metrics.diamond import DiamondMetric, \
-                                                haeberlen_loader, \
-                                                MdisoMetric, \
-                                                VisoMetric
+from magic_monkey.traits.metrics.base import get_from_metric_cache
+from magic_monkey.traits.metrics.diamond import (DiamondMetric,
+                                                 MdisoMetric,
+                                                 VisoMetric,
+                                                 haeberlen_loader)
 
 
 class MagicDiamondMetric(DiamondMetric, metaclass=ABCMeta):
@@ -40,7 +40,7 @@ class MagicDiamondMetric(DiamondMetric, metaclass=ABCMeta):
             self.prefix = join(path, prefix)
             try:
                 mask &= self.get_mask((enc,))
-            except BaseException:
+            except Exception:
                 pass
 
         self.prefix = prefix

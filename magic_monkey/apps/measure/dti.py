@@ -3,18 +3,20 @@ from os.path import exists
 
 import nibabel as nib
 from numpy import loadtxt
+from traitlets.config import Bool, Dict, Enum
 
-from traitlets.config import Enum, Bool, Dict
-
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    ChoiceList, required_file, output_prefix_argument, affine_file
+from magic_monkey.base.application import (ChoiceEnum, ChoiceList,
+                                           MagicMonkeyBaseApplication,
+                                           affine_file,
+                                           output_prefix_argument,
+                                           required_file)
 
 _TENSOR_METRICS = ["fa", "md", "ad", "rd", "peaks"]
 
 
-class TensorMetricsEnum(Enum):
+class TensorMetricsEnum(ChoiceEnum):
     def __init__(self, **kwargs):
-        super().__init__(_TENSOR_METRICS, **kwargs)
+        super().__init__(copy(_TENSOR_METRICS), **kwargs)
 
 
 _aliases = {
@@ -40,10 +42,11 @@ _flags = dict(
 class TensorMetrics(MagicMonkeyBaseApplication):
     metrics = ChoiceList(
         copy(_TENSOR_METRICS), TensorMetricsEnum, copy(_TENSOR_METRICS),
-        help="Tensor metrics to run on the outputs"
+        True, help="Tensor metrics to run on the outputs"
     ).tag(config=True)
 
-    input_prefix = required_file(help="Prefix of dti outputs (including mask)")
+    input_prefix = required_file(
+        description="Prefix of dti outputs (including mask)")
     output_prefix = output_prefix_argument()
     affine = affine_file()
 
@@ -60,7 +63,7 @@ class TensorMetrics(MagicMonkeyBaseApplication):
     flags = Dict(_flags)
 
     def _start(self):
-        import magic_monkey.config.metrics.dti as metrics_module
+        import magic_monkey.traits.metrics.dti as metrics_module
 
         mask = None
         if exists("{}_mask.nii.gz".format(self.input_prefix)):

@@ -1,12 +1,13 @@
 from os import getcwd
 
-from traitlets import Instance, Bool, Dict
+from traitlets import Bool, Dict, Instance
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    required_file, output_prefix_argument, mask_arg
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           mask_arg,
+                                           output_prefix_argument,
+                                           required_file)
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.dti import DTIConfiguration
-
 
 _aliases = {
     'in': 'DTI.image',
@@ -32,9 +33,9 @@ _flags = dict(
 class DTI(MagicMonkeyBaseApplication):
     configuration = Instance(DTIConfiguration).tag(config=True)
 
-    image = required_file(help="Input dwi image")
-    bvals = required_file(help="Input b-values")
-    bvecs = required_file(help="Input b-vectors")
+    image = required_file(description="Input dwi image")
+    bvals = required_file(description="Input b-values")
+    bvecs = required_file(description="Input b-vectors")
 
     output_prefix = output_prefix_argument()
 

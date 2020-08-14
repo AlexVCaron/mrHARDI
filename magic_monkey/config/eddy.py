@@ -4,11 +4,14 @@ from traitlets import Integer
 from traitlets.config import Bool, Instance, default
 from traitlets.config.loader import ConfigError
 
-from magic_monkey.base.application import convert_enum, BoundedInt, \
-    MagicMonkeyConfigurable
+from magic_monkey.base.application import (BoundedInt,
+                                           DictInstantiatingInstance,
+                                           MagicMonkeyConfigurable,
+                                           convert_enum)
 from magic_monkey.base.fsl import serialize_fsl_args
-from magic_monkey.traits.eddy import OutlierReplacement, \
-    IntraVolMotionCorrection, SusceptibilityCorrection
+from magic_monkey.traits.eddy import (IntraVolMotionCorrection,
+                                      OutlierReplacement,
+                                      SusceptibilityCorrection)
 
 _flags = dict(
     cuda=(
@@ -74,13 +77,13 @@ class EddyConfiguration(MagicMonkeyConfigurable):
     check_if_shelled = Bool(True).tag(config=True)
 
     enable_cuda = Bool(False).tag(config=True)
-    outlier_model = Instance(
+    outlier_model = DictInstantiatingInstance(
         OutlierReplacement, allow_none=True
     ).tag(config=True, none_to_default=True, cuda_required=True)
-    slice_to_vol = Instance(
+    slice_to_vol = DictInstantiatingInstance(
         IntraVolMotionCorrection, allow_none=True
     ).tag(config=True, none_to_default=True, cuda_required=True)
-    susceptibility = Instance(
+    susceptibility = DictInstantiatingInstance(
         SusceptibilityCorrection, allow_none=True
     ).tag(config=True, none_to_default=True, cuda_required=True)
 
@@ -90,11 +93,11 @@ class EddyConfiguration(MagicMonkeyConfigurable):
                 none_to_default=True, cuda_required=True
             ).values():
                 if isinstance(trait, Instance):
-                    trait.set(self, trait.klass())
+                    trait.set(self, trait.klass(parent=self))
 
         return super()._config_section()
 
-    def validate(self):
+    def _validate(self):
         if not self.enable_cuda and (self.outlier_model or self.slice_to_vol):
             raise ConfigError(
                 "{} needs Cuda to be enabled to use :\n{}".format(

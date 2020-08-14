@@ -1,12 +1,13 @@
 from os import getcwd
 
-from traitlets import Instance, Unicode, Dict
+from traitlets import Dict, Instance, Unicode
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    required_file, output_prefix_argument, mask_arg
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           mask_arg,
+                                           output_prefix_argument,
+                                           required_file)
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.diamond import DiamondConfiguration
-
 
 _aliases = {
     'in': 'Diamond.image',
@@ -21,9 +22,10 @@ class Diamond(MagicMonkeyBaseApplication):
     configuration = Instance(DiamondConfiguration).tag(config=True)
 
     image = required_file(
-        help="Input dwi volume. B-values, b-vectors "
-             "(and encoding file if using Magic Diamond) must "
-             "use the same base filename for them to be detected by diamond"
+        description="Input dwi volume. B-values, b-vectors "
+                    "(and encoding file if using Magic Diamond) must "
+                    "use the same base filename for them to be detected "
+                    "by diamond"
     )
     output = output_prefix_argument()
 
@@ -40,11 +42,13 @@ class Diamond(MagicMonkeyBaseApplication):
     aliases = Dict(_aliases)
 
     def _validate_required(self):
-        if not self.model_selection:
-            self.configuration.mose_model.tag(required=True)
+        if self.model_selection:
+            self.configuration.estimate_mose = False
+        else:
+            self.configuration.traits()["mose_model"].tag(required=True)
 
         if self.initial_dti:
-            self.configuration.initial_stick.tag(required=True)
+            self.configuration.traits()["initial_stick"].tag(required=True)
 
         super()._validate_required()
 

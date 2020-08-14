@@ -1,11 +1,10 @@
 from enum import Enum as BaseEnum
 
-from magic_monkey.base.ListValuedDict import Mergeable, key_trans
+from magic_monkey.base.ListValuedDict import Mergeable
 from magic_monkey.base.fsl import serialize_fsl_args
 
-
 _topup_pass_key_trans = {
-    "warpres=": "warp_resolution",
+    "warpres": "warp_resolution",
     "subsamp": "subsampling",
     "fwhm": "blur_fwhm",
     "miter": "n_iter",
@@ -42,12 +41,9 @@ class TopupPass(Mergeable):
             miter=n_iter,
             estmov=estimate_motion,
             minmet=minimizer
-        ))
+        ), _topup_pass_key_trans)
 
         self["lambda"] = w_reg
 
     def serialize(self):
         return serialize_fsl_args(self)
-
-    def __repr__(self):
-        return str(key_trans(self._dict, _topup_pass_key_trans))

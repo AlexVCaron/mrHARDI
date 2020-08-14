@@ -1,20 +1,31 @@
-from traitlets import List, Integer, Instance, Float
+from traitlets import Float, Integer, List, default
 
-from magic_monkey.base.application import MagicMonkeyConfigurable
-from magic_monkey.config.algorithms.csd import SphericalDeconvAlgorithm, \
-    ResponseAlgorithm
+from magic_monkey.base.application import (DictInstantiatingInstance,
+                                           MagicMonkeyConfigurable)
+from magic_monkey.traits.csd import (ResponseAlgorithm,
+                                     SphericalDeconvAlgorithm)
+
+_deconv_aliases = dict(
+    shells="SphericalDeconvConfiguration.shells",
+    lmax="SphericalDeconvConfiguration.lmax",
+    strides="SphericalDeconvConfiguration.strides"
+)
 
 
-# TODO : Check if interesting to add aliases and flags to cmdline
 class SphericalDeconvConfiguration(MagicMonkeyConfigurable):
-    # TODO : Check the behaviour of those instances
-    algorithm = Instance(SphericalDeconvAlgorithm).tag(config=True)
+    algorithm = DictInstantiatingInstance(
+        klass=SphericalDeconvAlgorithm
+    ).tag(config=True)
 
     shells = List(Float).tag(config=True)
     lmax = Integer().tag(config=True)
     strides = List(Integer).tag(config=True)
 
-    def validate(self):
+    @default("app_aliases")
+    def _app_aliases_default(self):
+        return _deconv_aliases
+
+    def _validate(self):
         pass
 
     def serialize(self):
@@ -38,15 +49,25 @@ class SphericalDeconvConfiguration(MagicMonkeyConfigurable):
         return " ".join([self.algorithm.serialize()] + optionals)
 
 
-# TODO : Check if interesting to add aliases and flags to cmdline
+_response_aliases = dict(
+    shells="SphericalDeconvConfiguration.shells",
+    lmax="SphericalDeconvConfiguration.lmax"
+)
+
+
 class FiberResponseConfiguration(MagicMonkeyConfigurable):
-    # TODO : Check the behaviour of those instances
-    algorithm = Instance(ResponseAlgorithm).tag(config=True)
+    algorithm = DictInstantiatingInstance(
+        klass=ResponseAlgorithm
+    ).tag(config=True)
 
     shells = List(Float).tag(config=True)
     lmax = Integer().tag(config=True)
 
-    def validate(self):
+    @default("app_aliases")
+    def _app_aliases_default(self):
+        return _response_aliases
+
+    def _validate(self):
         pass
 
     def serialize(self):

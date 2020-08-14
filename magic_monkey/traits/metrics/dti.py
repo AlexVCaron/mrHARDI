@@ -1,12 +1,14 @@
 from abc import ABCMeta
 
 import nibabel as nib
-
 from numpy import float32
 
-from magic_monkey.base.application import BaseMetric
-from magic_monkey.compute.math.linalg import compute_fa, compute_md, \
-    compute_ad, compute_rd, compute_peaks
+from magic_monkey.traits.metrics.base import BaseMetric
+from magic_monkey.compute.math.linalg import (compute_ad,
+                                              compute_fa,
+                                              compute_md,
+                                              compute_peaks,
+                                              compute_rd)
 from magic_monkey.compute.math.tensor import compute_eigenvalues
 
 

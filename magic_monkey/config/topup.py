@@ -1,12 +1,12 @@
 from enum import Enum as BaseEnum
 
-from traitlets.config import List, Bool, Unicode
+from traitlets.config import Bool, List, Unicode
 
-from magic_monkey.base.application import convert_enum, \
-    MagicMonkeyConfigurable, DictInstantiatingInstance
+from magic_monkey.base.application import (DictInstantiatingInstance,
+                                           MagicMonkeyConfigurable,
+                                           convert_enum)
 from magic_monkey.base.fsl import serialize_fsl_args
 from magic_monkey.traits.topup import TopupPass
-
 
 _default_passes = [
     TopupPass(20, 2, 8, 5, 5E-3),
@@ -32,7 +32,7 @@ _default_passes = [
 
 
 class TopupConfiguration(MagicMonkeyConfigurable):
-    def validate(self):
+    def _validate(self):
         pass
 
     class RegulModel(BaseEnum):

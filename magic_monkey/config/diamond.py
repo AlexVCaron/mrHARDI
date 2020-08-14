@@ -1,14 +1,63 @@
 from os import cpu_count
 
-from traitlets import Integer, Float
-from traitlets.config import Enum, Bool
+from traitlets import Float, Integer
+from traitlets.config import Bool, Enum, default
 
-from magic_monkey.base.application import MagicMonkeyConfigurable
+from magic_monkey.base.application import MagicMonkeyConfigurable, nthreads_arg
 from magic_monkey.traits.diamond import BoundingBox, Stick
 
+_flags = {
+    "mose-tensor": (
+        {'DiamondConfiguration': {'mose_tensor': True}},
+        "Use tensor distribution to compute model selection"
+    ),
+    "iso-null": (
+        {'DiamondConfiguration': {'iso_if_no_fascicle': True}},
+        "Compute an isotropic compartment in voxels without a fascicle"
+    ),
+    "iso-tensor": (
+        {'DiamondConfiguration': {'water_tensor': True}},
+        "Use tensor distribution to estimate isotropic compartment"
+    ),
+    "restricted": (
+        {'DiamondConfiguration': {'estimate_restriction': True}},
+        "Estimate isotropic restricted compartment"
+    ),
+    "res-tensor": (
+        {'DiamondConfiguration': {'restriction_tensor': True}},
+        "Use tensor distribution to estimate restricted compartment"
+    ),
+    "b0": (
+        {'DiamondConfiguration': {'estimate_b0': True}},
+        "Estimate b0 volume from diffusion data"
+    ),
+    "nosum-fractions": (
+        {'DiamondConfiguration': {'sum_fractions_to_1': False}},
+        "Disable check on unitary compartment "
+        "fractions vector inside each voxels"
+    )
+}
 
-# TODO : Check if interesting to add aliases and flags to cmdline
+_aliases = dict(
+    n="DiamondConfiguration.n_tensors",
+    mose="DiamondConfiguration.mose_model",
+    noise="DiamondConfiguration.noise_model",
+    f="DiamondConfiguration.fascicle",
+    box="DiamondConfiguration.bounding_box",
+    p="DiamondConfiguration.processes",
+    opt="DiamondConfiguration.optimizer"
+)
+
+
 class DiamondConfiguration(MagicMonkeyConfigurable):
+    @default('app_flags')
+    def _app_flags_default(self):
+        return _flags
+
+    @default('app_aliases')
+    def _app_aliases_default(self):
+        return _aliases
+
     n_tensors = Integer(3).tag(config=True)
 
     estimate_mose = Bool(True)
@@ -49,18 +98,16 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
 
     sum_fractions_to_1 = Bool(True).tag(config=True)
 
-    # TODO : This number of processes should be a n_thread_arg and should be
-    #        linked to the base application via sub-flag
-    processes = Integer(cpu_count()).tag(config=True)
+    processes = nthreads_arg()
     splits = Integer(cpu_count()).tag(config=True)
 
     optimizer = Enum(
         ["powell", "newuoa", "bobyqa", "cobyla", "directl"], "bobyqa"
-    )
+    ).tag(config=True)
 
     little_angles = Bool(False).tag(config=True)
 
-    def validate(self):
+    def _validate(self):
         pass
 
     def serialize(self):

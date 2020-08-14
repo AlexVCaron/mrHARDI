@@ -1,14 +1,17 @@
 from os import getcwd
 
-from traitlets import Instance, Unicode, Dict
+from traitlets import Dict, Instance, Unicode
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    MultipleArguments, required_arg, output_prefix_argument, \
-    output_file_argument, required_file
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           MultipleArguments,
+                                           output_file_argument,
+                                           output_prefix_argument,
+                                           required_arg,
+                                           required_file)
 from magic_monkey.base.shell import launch_shell_process
-from magic_monkey.config.ants import AntsConfiguration, \
-                                     AntsTransformConfiguration
-
+from magic_monkey.config.ants import (AntsConfiguration,
+                                      AntsTransformConfiguration)
+from magic_monkey.traits.ants import AntsAffine, AntsRigid, AntsSyN
 
 _reg_aliases = {
     'target': 'AntsRegistration.target_images',
@@ -22,22 +25,28 @@ class AntsRegistration(MagicMonkeyBaseApplication):
 
     target_images = required_arg(
         MultipleArguments, traits_args=(Unicode,),
-        help="List of target images used in the passes of registration. "
-             "Those must equal the number of metric evaluations of the "
-             "resulting output command, including the initial transform "
-             "(if selected) as well as repetitions"
+        description="List of target images used in the passes of "
+                    "registration. Those must equal the number of metric "
+                    "evaluations of the resulting output command, including "
+                    "the initial transform (if selected)"
     )
     moving_images = required_arg(
         MultipleArguments, traits_args=(Unicode,),
-        help="List of moving images used in the passes of registration. "
-             "Those must equal the number of metric evaluations of the "
-             "resulting output command, including the initial transform "
-             "(if selected) as well as repetitions"
+        description="List of moving images used in the passes of "
+                    "registration. Those must equal the number of metric "
+                    "evaluations of the resulting output command, including "
+                    "the initial transform (if selected)"
     )
 
     output_prefix = output_prefix_argument()
 
     aliases = Dict(_reg_aliases)
+
+    def _generate_config_file(self, filename):
+        self.configuration.passes = [
+            AntsRigid(), AntsAffine(), AntsSyN()
+        ]
+        super()._generate_config_file(filename)
 
     def _start(self):
         current_path = getcwd()
@@ -73,13 +82,13 @@ _tr_aliases = {
 class AntsTransform(MagicMonkeyBaseApplication):
     configuration = Instance(AntsTransformConfiguration).tag(config=True)
 
-    image = required_file(help="Input image to transform")
+    image = required_file(description="Input image to transform")
     transformation_matrix = required_file(
-        help="Input transformation matrix computed by ants to apply"
+        description="Input transformation matrix computed by ants to apply"
     )
     transformation_ref = required_file(
-        help="Input transformation field computed by ants to apply "
-             "or reference image for affine/rigid transformation"
+        description="Input transformation field computed by ants to apply "
+                    "or reference image for affine/rigid transformation"
     )
 
     output = output_file_argument()

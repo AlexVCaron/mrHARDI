@@ -1,4 +1,4 @@
-from numpy import apply_along_axis, flip, trace, diag, isclose, eye, zeros
+from numpy import apply_along_axis, diag, eye, flip, isclose, trace, zeros
 from numpy.linalg import eigh
 
 

@@ -1,10 +1,10 @@
 from traitlets import Float, Integer, default
-from traitlets.config import List, Enum, Bool
+from traitlets.config import Bool, Enum, List
 from traitlets.config.loader import ConfigError
 
-from magic_monkey.base.application import MagicMonkeyConfigurable
-from magic_monkey.traits.ants import InitialTransform, AntsPass
-
+from magic_monkey.base.application import (DictInstantiatingInstance,
+                                           MagicMonkeyConfigurable)
+from magic_monkey.traits.ants import AntsPass, InitialTransform
 
 _flags = {
     "no-HM": (
@@ -26,8 +26,10 @@ _flags = {
 
 
 class AntsConfiguration(MagicMonkeyConfigurable):
-    # TODO : Untested, need to check how config behaves
-    passes = List(AntsPass, [], minlen=1, allow_none=True).tag(config=True)
+    passes = List(
+        DictInstantiatingInstance(klass=AntsPass), [],
+        minlen=1, allow_none=True
+    ).tag(config=True)
     interpolation = Enum(
         ["Linear", "NearestNeighbor", "Gaussian",  "BSpline"], "Linear"
     ).tag(config=True)
@@ -36,21 +38,29 @@ class AntsConfiguration(MagicMonkeyConfigurable):
     use_float = Bool(False).tag(config=True)
     match_histogram = Bool(True).tag(config=True)
     accross_modalities = Bool(True).tag(config=True)
-    # TODO : How does this behaves when we want to config ?
     init_transform = InitialTransform(None, allow_none=True).tag(config=True)
+
+    def _config_section(self):
+
+        if self.init_transform is None:
+            trait = self.traits()["init_transform"]
+            trait.set(self, [0, 0, 1])
+            trait.tag(bypass=True)
+
+        return super()._config_section()
 
     @default('app_flags')
     def _app_flags_default(self):
         return _flags
 
-    def validate(self):
+    def _validate(self):
         if not 2 <= self.dimension <= 4:
             raise ConfigError(
                 "Dimension of input images must be between 2 and 4"
             )
 
     def serialize(self):
-        optionals, init_i = [], 0
+        optionals, init_i = [''], 0
 
         if self.match_histogram:
             optionals.append("--use-histogram-matching {}".format(
@@ -81,7 +91,6 @@ _aliases = {
 }
 
 
-# TODO : Check if interesting to add aliases and flags to cmdline
 class AntsTransformConfiguration(MagicMonkeyConfigurable):
     input_type = Integer(0).tag(config=True)
     dimension = Integer(3).tag(config=True)
@@ -94,7 +103,7 @@ class AntsTransformConfiguration(MagicMonkeyConfigurable):
     def _app_aliases_default(self):
         return _aliases
 
-    def validate(self):
+    def _validate(self):
         pass
 
     def serialize(self):

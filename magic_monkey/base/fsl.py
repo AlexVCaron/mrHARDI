@@ -1,7 +1,7 @@
 from numpy import isclose
-from numpy.ma import masked_array, clump_masked, clump_unmasked
+from numpy.ma import clump_masked, clump_unmasked, masked_array
 
-from magic_monkey.compute.utils import value_first, value_closest
+from magic_monkey.compute.utils import value_closest, value_first
 
 
 def serialize_fsl_args(args_dict, separator="\n", bool_as_flags=False):

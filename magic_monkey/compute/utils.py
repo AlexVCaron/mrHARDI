@@ -1,5 +1,4 @@
-from numpy import ones_like, concatenate
-from numpy.core._multiarray_umath import floor, ceil
+from numpy import concatenate, ones_like, ceil, floor
 
 
 def apply_mask_on_data(in_data, in_mask, fill_value=0., dtype=float):

@@ -1,20 +1,20 @@
 import time
-
 from copy import copy
-from os import mkdir
+from os.path import exists, join
 from pathlib import Path
 
 import nibabel as nib
-
-from os.path import exists, join
-
 import numpy as np
 from traitlets import Bool, Dict, Integer
 from traitlets.config import ArgumentError
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    ChoiceList, ChoiceEnum, required_file, output_prefix_argument, \
-    affine_file, required_number
+from magic_monkey.base.application import (ChoiceEnum,
+                                           ChoiceList,
+                                           MagicMonkeyBaseApplication,
+                                           affine_file,
+                                           output_prefix_argument,
+                                           required_file,
+                                           required_number)
 
 # fmd = fascicle md --check
 # fad = fascicle ad --check
@@ -113,26 +113,26 @@ _flags = dict(
 class DiamondMetrics(MagicMonkeyBaseApplication):
     metrics = ChoiceList(
         copy(_DIAMOND_METRICS), DiamondMetricsEnum, copy(_DIAMOND_METRICS),
-        help="Basic diamond metrics to run on the outputs"
+        True, help="Basic diamond metrics to run on the outputs"
     ).tag(config=True)
     mmetrics = ChoiceList(
-        copy(_MAGIC_DIAMOND_METRICS) + ["all"], MagicDiamondMetricsEnum, [],
+        copy(_MAGIC_DIAMOND_METRICS), MagicDiamondMetricsEnum, [], True,
         help="Magic diamond metrics to run on the outputs "
              "(Requires tensor valued input, check your input "
              "prefix to assure it respects convection)"
     ).tag(config=True)
     opt_metrics = ChoiceList(
-        copy(_OPTIONAL_METRICS) + ["all"], DiamondOptionalMetricsEnum, [],
+        copy(_OPTIONAL_METRICS), DiamondOptionalMetricsEnum, [], True,
         help="Optional diamond metrics to run on the outputs"
     ).tag(config=True)
 
     input_prefix = required_file(
-        help="Prefix of diamond outputs (including mask)"
+        description="Prefix of diamond outputs (including mask)"
     )
     output_prefix = output_prefix_argument()
     n_fascicles = required_number(
         Integer, ignore_write=False,
-        help="Maximum number of possible fascicles in a voxel"
+        description="Maximum number of possible fascicles in a voxel"
     )
     affine = affine_file()
 
@@ -164,14 +164,6 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
     aliases = Dict(_aliases)
     flags = Dict(_flags)
 
-    def _validate(self):
-        if "all" in self.mmetrics:
-            self.traits()["mmetrics"].set(self, _MAGIC_DIAMOND_METRICS)
-        if "all" in self.opt_metrics:
-            self.traits()["opt_metrics"].set(self, _OPTIONAL_METRICS)
-
-        super()._validate()
-
     def _validate_required(self):
         super()._validate_required()
 
@@ -188,7 +180,7 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
                 )
 
     def _start(self):
-        import magic_monkey.config.metrics.diamond as metrics_module
+        import magic_monkey.traits.metrics.diamond as metrics_module
 
         mask = None
         if exists("{}_mask.nii.gz".format(self.input_prefix)):
@@ -216,7 +208,7 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
             self._save_cache()
 
     def _output_haeberlen(self):
-        from magic_monkey.config.metrics.diamond import HaeberlenConvention
+        from magic_monkey.traits.metrics.diamond import HaeberlenConvention
 
         mask = None
         if exists("{}_mask.nii.gz".format(self.input_prefix)):
@@ -237,7 +229,7 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
             Path(
                 "{}_{}.npy".format(self.output_prefix, fname)
             ).touch(exist_ok=True)
-        except BaseException:
+        except OSError:
             for char in [" ", ":", ",", ".", "-", "\\", "/", ";"]:
                 fname = fname.replace(char, "_")
 

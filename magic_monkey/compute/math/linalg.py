@@ -1,5 +1,11 @@
-from numpy import apply_along_axis, allclose, std, mean, \
-                  isclose, moveaxis, zeros, sqrt
+from numpy import (allclose,
+                   apply_along_axis,
+                   isclose,
+                   mean,
+                   moveaxis,
+                   sqrt,
+                   std,
+                   zeros)
 
 
 def _fa(evals, axis=0):

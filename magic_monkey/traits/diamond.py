@@ -8,7 +8,7 @@ class BoundingBox(TraitType):
         value = super().get(obj, cls)
 
         if value is not None:
-            return ",".join(*value)
+            return ",".join(str(v) for v in value)
 
         return value
 
@@ -17,6 +17,10 @@ class BoundingBox(TraitType):
             if len(value) == 6:
                 if all(isinstance(v, int) for v in value):
                     return value
+
+        if isinstance(value, str):
+            if len(value.split(",")) == 6:
+                return value.split(",")
 
         if value is not None:
             self.error(obj, value)
@@ -29,7 +33,7 @@ class Stick(TraitType):
         value = super().get(obj, cls)
 
         if value is not None:
-            return ",".join(*value)
+            return ",".join(str(v) for v in value)
 
         return value
 
@@ -38,6 +42,10 @@ class Stick(TraitType):
             if len(value) == 3:
                 if all(isinstance(v, float) for v in value):
                     return value
+
+        if isinstance(value, str):
+            if len(value.split(",")) == 3:
+                return value.split(",")
 
         if value is not None:
             self.error(obj, value)

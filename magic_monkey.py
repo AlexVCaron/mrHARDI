@@ -10,6 +10,9 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         else:
             super().start()
 
+    def _example_command(self, *args):
+        return "magic_monkey command <args> <flags>"
+
     subcommands = dict(
         ants_registration=(
             "magic_monkey.apps.AntsRegistration", 'Register images via ants'

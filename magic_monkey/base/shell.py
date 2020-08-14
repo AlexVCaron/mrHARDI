@@ -1,18 +1,24 @@
 import time
 import traceback
-
+from io import UnsupportedOperation
 from multiprocessing import Queue
-from subprocess import CalledProcessError, Popen, PIPE, SubprocessError
+from queue import Empty, Full
+from subprocess import CalledProcessError, PIPE, Popen, SubprocessError
 from threading import Thread
 
 
 def _threaded_enqueue_pipe(process, pipe, queue):
-    while process.poll() is None:
-        ln = pipe.readline()
-        queue.put(ln)
+    try:
+        while process.poll() is None:
+            ln = pipe.readline()
+            queue.put(ln)
+    except Full:
+        time.sleep(1)
+        _threaded_enqueue_pipe(process, pipe, queue)
 
 
 def _dequeue_pipe(log_file, queue, tag):
+    ln = None
     try:
         while not queue.empty():
             ln = queue.get_nowait()
@@ -21,8 +27,14 @@ def _dequeue_pipe(log_file, queue, tag):
                 for log in ln.decode("ascii").strip().split("\n")
             ]) + "\n")
             log_file.flush()
-    except:
-        pass
+    except Empty:
+        time.sleep(1)
+        _dequeue_pipe(log_file, queue, tag)
+    except BlockingIOError:
+        print("Cannot output log to file :\n{}".format(ln))
+    except UnsupportedOperation:
+        print("Unsupported operation on {}".format(log_file))
+        print("Cannot output log to file :\n{}".format(ln))
 
 
 def process_pipes_to_log_file(
@@ -62,7 +74,7 @@ def basic_error_manager(process):
 
 def launch_shell_process(
     command, log_file_path, overwrite=False, sleep=4, logging_callback=None,
-    init_logger=None, error_manager=basic_error_manager, **kwargs
+    init_logger=None, error_manager=basic_error_manager, **_
 ):
     with open(log_file_path, "w+" if overwrite else "a+") as log_file:
         log_file.write("Running command {}\n".format(command))

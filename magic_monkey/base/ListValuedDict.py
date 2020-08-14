@@ -1,10 +1,25 @@
+import json
 from collections import MutableMapping
 from typing import Generator
 
+from magic_monkey.base.encoding import MagicConfigEncoder
+
 
 class MagicDict(MutableMapping):
-    def __init__(self, init_attributes=dict()):
+    def __init__(self, init_attributes=None, dict2arg_trans=None):
+        init_attributes = self._check_initialization(init_attributes)
+
         self._dict = init_attributes
+        self._trans = dict2arg_trans
+
+    def _check_initialization(self, init_attributes):
+        if init_attributes is None:
+            init_attributes = dict()
+        else:
+            assert isinstance(init_attributes, dict), \
+                "Base attributes of a Magic Dict " \
+                "must be supplied in a dictionary"
+        return init_attributes
 
     def __setitem__(self, k, v):
         self._dict[k] = v
@@ -22,25 +37,32 @@ class MagicDict(MutableMapping):
         return iter(self._dict)
 
     def __str__(self):
-        return str(self._dict)
+        return str(self._attrs())
+
+    def _attrs(self):
+        if self._trans is None:
+            return self._dict
+        return key_trans(self._dict, self._trans)
+
+    def __repr__(self):
+        return json.dumps(self._attrs(), indent=4, cls=MagicConfigEncoder)
+
+
+def _as_list(item):
+    return item if isinstance(item, list) else list(item) \
+                if isinstance(item, Generator) else [item]
 
 
 class ListValuedDict(MagicDict):
-    def __init__(self, init_attributes=dict()):
+    def __init__(self, init_attributes=None, dict2arg_trans=None):
+        init_attributes = self._check_initialization(init_attributes)
         super().__init__(
-            {k: self._as_list(v) for k, v in init_attributes.items()}
+            {k: _as_list(v) for k, v in init_attributes.items()},
+            dict2arg_trans
         )
 
-    def _as_list(self, item):
-        if isinstance(item, list):
-            return item
-        if isinstance(item, Generator):
-            return list(item)
-
-        return [item]
-
     def __setitem__(self, k, v):
-        super().__setitem__(k, self._as_list(v))
+        super().__setitem__(k, _as_list(v))
 
     def __getitem__(self, k):
         return super().__getitem__(k) if k in self._dict else self._init_key(k)
@@ -51,7 +73,15 @@ class ListValuedDict(MagicDict):
 
     def update(self, mapping, **kwargs):
         for k, v in mapping.items():
-            self[k].extend(self._as_list(v))
+            self[k].extend(_as_list(v))
+
+    def _attrs(self):
+        d = {
+            k: (v[0] if len(v) == 1 else v) for k, v in self._dict.items()
+        }
+        if self._trans is None:
+            return d
+        return key_trans(d, self._trans)
 
 
 class Mergeable(ListValuedDict):
@@ -66,4 +96,4 @@ class Mergeable(ListValuedDict):
 
 
 def key_trans(dictionary, trans):
-    return dict(map(lambda k, v: (trans[k], v), *dictionary.items()))
+    return dict(map(lambda k, v: (trans[k], v), *zip(*dictionary.items())))

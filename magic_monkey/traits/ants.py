@@ -1,14 +1,27 @@
-from traitlets import TraitType, Float, List, Integer, default, Unicode
+from copy import deepcopy
 
-from magic_monkey.base.application import SelfInstantiatingInstance
+from traitlets import Float, Integer, List, TraitType, Unicode, default
+from traitlets.config.loader import ConfigError
+
+from magic_monkey.base.ListValuedDict import MagicDict
+from magic_monkey.base.application import (DictInstantiatingInstance,
+                                           MagicMonkeyConfigurable)
 
 
 class InitialTransform(TraitType):
+    default_value = None
+
     def get(self, obj, cls=None):
         value = super().get(obj, cls)
 
+        if self.get_metadata("bypass", False):
+            return value
+
         if value is None:
-            return ""
+            return None
+
+        if isinstance(value, str):
+            return value
 
         target_index, moving_index, strat = value
         return "--initial-moving-transform [$t{}%,$m{}%,{}]".format(
@@ -16,7 +29,9 @@ class InitialTransform(TraitType):
         ).replace("$", "{").replace("%", "}")
 
     def validate(self, obj, value):
-        if isinstance(value, tuple):
+        if isinstance(value, str):
+            return value
+        if isinstance(value, (tuple, list)):
             if len(value) == 3:
                 t, m, strat = value
                 if isinstance(t, int) and isinstance(m, int):
@@ -27,53 +42,84 @@ class InitialTransform(TraitType):
             self.error(obj, value)
 
 
-class AntsMetric(TraitType):
-    name = ""
+class AntsMetric(MagicDict):
+    def __init__(self, target_index, moving_index, args=(), **_):
+        super().__init__(dict(
+            target_index=target_index,
+            moving_index=moving_index,
+            args=args, klass=".".join(
+                [self.__module__, self.__class__.__name__]
+            )
+        ))
 
-    def get(self, obj, cls=None):
-        value = super().get(obj, cls)
-        target_index, moving_index = value[:2]
-        return self.name + "[$t{}%,$m{}%".format(
-            target_index, moving_index
+        self._name = ""
+
+    def serialize(self):
+        values = deepcopy(self._dict)
+        args = values.pop("args")
+        return self._name + "[$t{target_index}%,$m{moving_index}%,".format(
+            **values
         ).replace("$", "{").replace("%", "}") + ",".join(
-            str(v) for v in value[2:]
+            str(v) for v in args
         ) + "]"
+
+    def __repr__(self):
+        return self.serialize()
+
+    def __str__(self):
+        return repr(self)
 
 
 class MetricMI(AntsMetric):
-    name = "MI"
-    default_value = (0, 0, 1, 32, "Regular", 0.25)
+    def __init__(
+        self, target_index, moving_index, weight=1.,
+        bins=32, sampling="Regular", sampling_p=0.25,
+        args=None, **_
+    ):
+        if args and len(args) == 4:
+            weight, bins, sampling, sampling_p = args
 
-    def validate(self, obj, value):
-        if isinstance(value, tuple):
-            if len(value) == 6:
-                t, m, weight, bins, sampling, sampling_percentage = value
-                if isinstance(t, int) and isinstance(m, int):
-                    if isinstance(weight, int) and isinstance(bins, int):
-                        if isinstance(sampling, str):
-                            if isinstance(sampling_percentage, float):
-                                return value
+        super().__init__(
+            target_index, moving_index, (weight, bins, sampling, sampling_p)
+        )
 
-        self.error(obj, value)
+        self._name = "MI"
 
 
 class MetricCC(AntsMetric):
-    name = "CC"
-    default_value = (0, 0, 1, 4)
+    def __init__(
+        self, target_index, moving_index, weight=1., radius=4, args=None, **_
+    ):
+        if args and len(args) == 2:
+            weight, radius = args
 
-    def validate(self, obj, value):
-        if isinstance(value, tuple):
-            if len(value) == 4:
-                t, m, weight, radius = value
-                if isinstance(weight, int) and isinstance(radius, int):
-                    return value
+        super().__init__(
+            target_index, moving_index, (weight, radius)
+        )
 
-        self.error(obj, value)
+        self._name = "CC"
 
 
-class AntsPass(SelfInstantiatingInstance):
+class AntsPass(MagicMonkeyConfigurable):
+    def _validate(self):
+        if not (
+            len(self.shrinks) == len(self.smoothing) == len(self.conv_max_iter)
+        ):
+            raise ConfigError(
+                "For an ants pass to be valid, shrink factors, smoothing "
+                "factors and maximum of iterations must all be lists of same "
+                "length. Received :\n"
+                "   {} shrinks  {} smoothings  {} max iter".format(
+                    len(self.shrinks),
+                    len(self.smoothing),
+                    len(self.conv_max_iter)
+                )
+            )
+
     grad_step = Float(0.1).tag(config=True)
-    metrics = List(AntsMetric).tag(config=True)
+    metrics = List(
+        DictInstantiatingInstance(klass=AntsMetric)
+    ).tag(config=True)
     conv_eps = Float(1E-6).tag(config=True)
     conv_win = Integer(10).tag(config=True)
     conv_max_iter = List(Integer).tag(config=True)
@@ -103,7 +149,7 @@ class AntsPass(SelfInstantiatingInstance):
 class AntsRigid(AntsPass):
     @default("metrics")
     def _metrics_default(self):
-        return [MetricMI()]
+        return [MetricMI(0, 0)]
 
     def serialize(self):
         return " ".join([
@@ -115,7 +161,7 @@ class AntsRigid(AntsPass):
 class AntsAffine(AntsPass):
     @default("metrics")
     def _metrics_default(self):
-        return [MetricMI()]
+        return [MetricMI(0, 0)]
 
     def serialize(self):
         return " ".join([
@@ -131,7 +177,7 @@ class AntsSyN(AntsPass):
 
     @default("metrics")
     def _metrics_default(self):
-        return [MetricCC()]
+        return [MetricCC(0, 0)]
 
     def serialize(self):
         return " ".join([

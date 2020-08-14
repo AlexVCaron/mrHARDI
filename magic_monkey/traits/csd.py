@@ -1,7 +1,7 @@
 from abc import abstractmethod
 
 from traitlets import Float, Integer
-from traitlets.config import Unicode, List, default, Enum, Bool
+from traitlets.config import Bool, Enum, List, Unicode, default
 
 from magic_monkey.base.application import MagicMonkeyConfigurable
 
@@ -11,7 +11,7 @@ def _format_response_names(responses):
 
 
 class SphericalDeconvAlgorithm(MagicMonkeyConfigurable):
-    def validate(self):
+    def _validate(self):
         pass
 
     name = Unicode()
@@ -70,7 +70,7 @@ class ResponseAlgorithm(MagicMonkeyConfigurable):
     name = Unicode()
     responses = List(Unicode)
 
-    def validate(self):
+    def _validate(self):
         pass
 
     @abstractmethod

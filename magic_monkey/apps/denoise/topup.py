@@ -1,13 +1,15 @@
 from os import chmod
 
 import nibabel as nib
+from traitlets import Dict, Instance, Unicode
 
-from traitlets import Instance, Unicode, Dict
-
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    MultipleArguments, required_arg, output_prefix_argument, required_number
-from magic_monkey.config.topup import TopupConfiguration
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           MultipleArguments,
+                                           output_prefix_argument,
+                                           required_arg,
+                                           required_number)
 from magic_monkey.base.fsl import prepare_acqp_file
+from magic_monkey.config.topup import TopupConfiguration
 
 _aliases = dict(
     b0='Topup.b0',
@@ -31,7 +33,7 @@ class Topup(MagicMonkeyBaseApplication):
         help="Reverse acquisitions used for deformation correction"
     ).tag(config=True, ignore_write=True)
     dwell = required_number(
-        help="Dwell time of the acquisitions", ignore_write=False
+        description="Dwell time of the acquisitions", ignore_write=False
     )
 
     output_prefix = output_prefix_argument()

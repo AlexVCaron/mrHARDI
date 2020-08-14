@@ -2,14 +2,15 @@ from os import chmod
 
 import nibabel as nib
 import numpy as np
+from traitlets import Dict, Float, Instance
 
-from traitlets import Instance, Float, Dict
-
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    output_prefix_argument, required_file, required_number
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           output_prefix_argument,
+                                           required_file,
+                                           required_number)
+from magic_monkey.base.fsl import prepare_acqp_file, prepare_eddy_index
 from magic_monkey.base.scripting import build_script
 from magic_monkey.config.eddy import EddyConfiguration
-from magic_monkey.base.fsl import prepare_eddy_index, prepare_acqp_file
 
 _aliases = dict(
     bvals='Eddy.bvals',
@@ -44,27 +45,27 @@ _eddy_script = """
 class Eddy(MagicMonkeyBaseApplication):
     configuration = Instance(EddyConfiguration).tag(config=True)
 
-    bvals = required_file(help="B-value file following fsl format")
+    bvals = required_file(description="B-value file following fsl format")
     output_prefix = output_prefix_argument()
 
     acquisition_file = required_file(
-        help="Acquisition file describing the "
-             "orientation and dwell of the volumes",
+        description="Acquisition file describing the "
+                    "orientation and dwell of the volumes",
         exclusive_group="acqp", group_index=0
     )
 
     dwi = required_file(
-        help="Principal dwi volume used to configure "
-             "the acquisition parameters file",
+        description="Principal dwi volume used to configure "
+                    "the acquisition parameters file",
         exclusive_group="acqp", group_index=1
     )
     rev = required_file(
-        help="Reverse dwi volume used to configure "
-             "the acquisition parameters file",
+        description="Reverse dwi volume used to configure "
+                    "the acquisition parameters file",
         exclusive_group="acqp", group_index=1
     )
     dwell = required_number(
-        Float, help="Dwell time of the acquisitions",
+        Float, description="Dwell time of the acquisitions",
         exclusive_group="acqp", group_index=1
     )
 

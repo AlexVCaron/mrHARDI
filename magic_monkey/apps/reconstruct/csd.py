@@ -3,13 +3,18 @@ from os import getcwd
 from traitlets import Instance, Unicode
 from traitlets.config import ArgumentError, Dict
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    MultipleArguments, required_file, required_arg, output_prefix_argument, \
-    nthreads_arg, mask_arg
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           MultipleArguments,
+                                           mask_arg,
+                                           nthreads_arg,
+                                           output_prefix_argument,
+                                           required_arg,
+                                           required_file)
 from magic_monkey.base.shell import launch_shell_process
-from magic_monkey.config.csd import SphericalDeconvConfiguration, \
-    FiberResponseConfiguration
-
+from magic_monkey.traits.csd import (CSDAlgorithm,
+                                     TournierResponseAlgorithm)
+from magic_monkey.config.csd import (FiberResponseConfiguration,
+                                     SphericalDeconvConfiguration)
 
 _csd_aliases = {
     'in': 'CSD.image',
@@ -27,14 +32,14 @@ _csd_aliases = {
 class CSD(MagicMonkeyBaseApplication):
     configuration = Instance(SphericalDeconvConfiguration).tag(config=True)
 
-    image = required_file(help="Input dwi image")
-    bvals = required_file(help="Input b-values")
-    bvecs = required_file(help="Input b-vectors")
+    image = required_file(description="Input dwi image")
+    bvals = required_file(description="Input b-values")
+    bvecs = required_file(description="Input b-vectors")
 
     responses = required_arg(
         MultipleArguments,
-        help="Response names for the different tissues "
-             "(depending on the algorithm of choice)",
+        description="Response names for the different tissues "
+                    "(depending on the algorithm of choice)",
         traits_args=(Unicode,), traits_kwargs=dict(minlen=1, maxlen=3)
     )
 
@@ -69,10 +74,10 @@ class CSD(MagicMonkeyBaseApplication):
 
             with open(self.deconv_frequencies) as f:
                 freqs = f.readline().split(" ")
-                if len(freqs) != self.config.lmax:
+                if len(freqs) != self.configuration.lmax:
                     raise ArgumentError(
                         "{} frequencies found. Need {}".format(
-                            len(freqs), self.config.lmax
+                            len(freqs), self.configuration.lmax
                         ) + " for the wanted order"
                     )
 
@@ -85,11 +90,15 @@ class CSD(MagicMonkeyBaseApplication):
         if len(self.responses) != len(self.configuration.algorithm.responses):
             raise ArgumentError(
                 "{} responses provided, ".format(len(self.responses)) +
-                "{} algorithm requires {} responses".format(
+                "{} algorithm requires {}".format(
                     self.configuration.algorithm.name,
                     len(self.configuration.algorithm.responses)
                 )
             )
+
+    def _generate_config_file(self, filename):
+        self.configuration.algorithm = CSDAlgorithm()
+        super()._generate_config_file(filename)
 
     def _start(self):
         current_path = getcwd()
@@ -139,9 +148,9 @@ _fr_aliases = {
 class FiberResponse(MagicMonkeyBaseApplication):
     configuration = Instance(FiberResponseConfiguration).tag(config=True)
 
-    image = required_file(help="Input dwi image")
-    bvals = required_file(help="Input b-values")
-    bvecs = required_file(help="Input b-vectors")
+    image = required_file(description="Input dwi image")
+    bvals = required_file(description="Input b-values")
+    bvecs = required_file(description="Input b-vectors")
 
     output_prefix = output_prefix_argument()
 
@@ -149,6 +158,10 @@ class FiberResponse(MagicMonkeyBaseApplication):
     n_threads = nthreads_arg()
 
     aliases = Dict(_fr_aliases)
+
+    def _generate_config_file(self, filename):
+        self.configuration.algorithm = TournierResponseAlgorithm()
+        super()._generate_config_file(filename)
 
     def _start(self):
         current_path = getcwd()
