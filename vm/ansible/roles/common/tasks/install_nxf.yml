@@ -1,0 +1,27 @@
+---
+
+- name: Create Nextflow install dir if inexistant
+  file:
+    path: "{{ nxf_dir }}"
+    state: directory
+    mode: '0755'
+  become: yes
+
+- name: Install nextflow
+  command: curl -s https://get.nextflow.io | bash
+  args:
+    chdir: "{{ nxf_dir }}"
+  become: yes
+
+- name: Add Nextflow to path
+  copy:
+    dest: /etc/profile.d/nextflow-path.sh
+    content: 'PATH=$PATH:{{ nxf_dir }}'
+
+- name: Give ownership to Nextflow executable to vagrant
+  file:
+    path: "{{ nxf_dir }}"
+    state: directory
+    recurse: yes
+    owner: vagrant
+  become: yes

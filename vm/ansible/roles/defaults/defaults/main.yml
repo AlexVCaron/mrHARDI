@@ -17,5 +17,6 @@ pydest_dir: "/usr/local"
 
 mmy_dir: "/vagrant"
 mmy_setup_install: "install"
+nxf_dir: "/nextflow"
 
 pysrc_cleanup: yes
