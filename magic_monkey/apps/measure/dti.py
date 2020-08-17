@@ -38,8 +38,13 @@ _flags = dict(
     )
 )
 
+_description = """
+Compute metrics over the diffusion tensor reconstruction. 
+"""
+
 
 class TensorMetrics(MagicMonkeyBaseApplication):
+    description = _description
     metrics = ChoiceList(
         copy(_TENSOR_METRICS), TensorMetricsEnum, copy(_TENSOR_METRICS),
         True, help="Tensor metrics to run on the outputs"

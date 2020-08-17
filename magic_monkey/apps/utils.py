@@ -22,8 +22,14 @@ _b0_aliases = {
     'out': 'B0Utils.prefix'
 }
 
+_b0_description = """
+Utility program used to either extract B0 from a diffusion-weighted image or 
+squash those B0 and output the resulting image.
+"""
+
 
 class B0Utils(MagicMonkeyBaseApplication):
+    description = _b0_description
     configuration = Instance(B0UtilsConfiguration).tag(config=True)
 
     image = required_file(description="Input dwi image")
@@ -110,6 +116,7 @@ _apply_mask_aliases = {
 
 
 class ApplyMask(MagicMonkeyBaseApplication):
+    description = "Applies a mask to an image an fill the outside."
     image = required_file(description="Input image to mask")
     mask = required_file(description="Mask to apply on image ")
 
@@ -142,6 +149,7 @@ _cat_aliases = {
 
 
 class Concatenate(MagicMonkeyBaseApplication):
+    description = "Concatenates multiple images together"
     images = required_arg(
         MultipleArguments, traits_args=(Unicode,),
         description="Input images to concatenate"
