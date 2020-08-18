@@ -2,16 +2,27 @@
 
 nextflow.enable.dsl=2
 
-params.config.measure.fa_from_dti = "../.config/fa_from_dti.py"
+params.config.measure.diamond = "../.config/diamond_mtr.py"
+params.config.measure.dti = "../.config/dti_mtr.py"
 
-process fa_from_dti {
+process dti_metrics {
     input:
-        tuple val(sid), path(dti), path(mask)
+        tuple val(sid), val(input_prefix), file(affine)
     output:
-        tuple val(sid), path("${sid}__fa.nii.gz")
+        tuple val(sid), val("${sid}__dti_metrics")
     script:
-    if
         """
-        magic_monkey fa_from_dti $dti $mask ${sid}__fa.nii.gz --config $params.config.measure.fa_from_dti
+        magic_monkey dti_metrics --in $input_prefix --affine $affine --out ${sid}__dti_metrics --config $params.config.measure.dti
+        """
+}
+
+process diamond_metrics {
+    input:
+        tuple val(sid), val(input_prefix), file(affine)
+    output:
+        tuple val(sid), val("${sid}__diamond_metrics")
+    script:
+        """
+        magic_monkey diamond_metrics --in $input_prefix --affine $affine --out ${sid}__diamond_metrics --config $params.config.measure.diamond
         """
 }
