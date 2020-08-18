@@ -109,8 +109,22 @@ _flags = dict(
     )
 )
 
+_description = """
+Compute metrics over the extracted fascicles from diamond, as well as on the
+tensor distribution computed over diamond parameters. The program takes a data 
+prefix corresponding to an output from the execution of diamond and produces 
+the various metrics found in [1]. A subsample of those metrics can be selected 
+via the metrics, magic-metrics and opt-metrics command-line arguments.
+
+References :
+------------
+[1] Alexis Reymbaut and Maxime Descoteaux. Advanced encoding methods in 
+    diffusion MRI. Arxiv, 1908.04177, 2019, https://arxiv.org/abs/1908.04177v3.
+"""
+
 
 class DiamondMetrics(MagicMonkeyBaseApplication):
+    description = _description
     metrics = ChoiceList(
         copy(_DIAMOND_METRICS), DiamondMetricsEnum, copy(_DIAMOND_METRICS),
         True, help="Basic diamond metrics to run on the outputs"
