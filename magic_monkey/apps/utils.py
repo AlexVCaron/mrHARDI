@@ -1,4 +1,6 @@
 from copy import deepcopy
+from os import getcwd
+from os.path import join
 
 import nibabel as nib
 import numpy as np
@@ -11,6 +13,7 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            output_prefix_argument,
                                            required_arg,
                                            required_file)
+from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.compute.b0 import extract_b0, squash_b0
 from magic_monkey.compute.utils import apply_mask_on_data, concatenate_dwi
 from magic_monkey.config.utils import B0UtilsConfiguration
@@ -193,3 +196,79 @@ class Concatenate(MagicMonkeyBaseApplication):
 
         if out_bvecs is not None:
             np.savetxt("{}.bvecs".format(self.prefix), out_bvecs.T, fmt="%.6f")
+
+
+class ApplyTopup(MagicMonkeyBaseApplication):
+    description = "Apply a Topup transformation to an image"
+
+    topup_prefix = required_file(
+        description="Path and file prefix of the files corresponding "
+                    "to the transformation calculated by Topup"
+    )
+
+    images = required_arg(
+        MultipleArguments, traits_args=(Unicode,),
+        description="Input forward acquired images"
+    )
+
+    rev_images = MultipleArguments(
+        Unicode, help="Input reverse acquired images"
+    ).tag(config=True, ignore_write=True)
+
+    output_prefix = output_prefix_argument()
+
+    mode = Enum(
+        ["interlaced", "sequential"], "interlaced",
+        help="Mode in which Topup was applied to the dataset. Either the "
+             "forward and reversed acquisition B0 volumes were interlaced, "
+             "one pair after another, or the forward block is all put in "
+             "first, the revered in last."
+    ).tag(config=True)
+
+    resampling = Enum(
+        ["jac", "slr"], "slr", help="Resampling method"
+    ).tag(config=True)
+
+    interpolation = Enum(
+        ["trilinear", "spline"], "spline",
+        help="Interpolation method, only used with jacobian resampling (jac)"
+    ).tag(Config=True)
+
+    dtype = Enum(
+        ["char", "short", "int", "float", "double"], None, allow_none=True,
+        help="Force output type. If none supplied, "
+             "will be the same as the input type."
+    ).tag(config=True)
+
+    def _start(self):
+        working_dir = getcwd()
+
+        args = "--topup={} --out={} --method={} --interp={}".format(
+            self.topup_prefix, self.output_prefix,
+            self.resampling, self.interpolation
+        )
+
+        if self.mode == "interlaced" and len(self.rev_images) > 0:
+            args = "--imain={} {}".format(
+                ",".join([
+                    img for p in zip(self.images, self.rev_images) for img in p
+                ]),
+                args
+            )
+        else:
+            args = "--imain={} {}".format(
+                ",".join(self.images + self.rev_images), args
+            )
+
+        args += " --inindex={}".format(
+            ",".join(str(i) for i in range(
+                1, len(self.images) + len(self.rev_images) + 1
+            ))
+        )
+
+        if self.dtype:
+            args += " --datatype={}".format(self.dtype)
+
+        launch_shell_process(
+            'applytopup {}'.format(args), join(working_dir, "apply_topup.log")
+        )
