@@ -7,17 +7,23 @@ params.measure_dti = true
 
 include { dti_metrics; diamond_metrics } from '../modules/measure.nf'
 
-process measure_wkf {
-    take: dwi_channel, affine_channel
+workflow measure_wkf {
+    take:
+        dwi_channel
+        affine_channel
     main:
-        out_channel = Channel.empty()
+        dti_channel = Channel.empty()
+        diamond_channel = Channel.empty()
+
         in_channel = dwi_channel.map { new Tuple2(it[0], it[1].split('.')[0]) }
         in_channel.join(affine_channel)
 
         if ( params.measure_dti )
-            out_channel.join(dti_metrics(in_channel))
+            dti_channel = dti_metrics(in_channel).out
         if ( params.measure_diamond )
-            out_channel.join(diamond_metrics(in_channel))
+            diamond_channel = diamond_metrics(in_channel).out
     emit:
-        out_channel
+        metrics = dti_channel.join(diamond_channel)
+        dti = dti_channel
+        diamond = diamond_channel
 }

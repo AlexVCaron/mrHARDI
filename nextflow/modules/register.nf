@@ -23,6 +23,6 @@ process ants_transform {
         tuple val(sid), path("${sid}__transformed.nii.gz")
     script:
         """
-        magic_monkey ants_transform $img $ref $affine ${sid}__transformed.nii.gz --config $params.config.register.ants_transform
+        magic_monkey ants_transform --in $img --ref $ref --mat $affine --out ${sid}__transformed.nii.gz --config $params.config.register.ants_transform
         """
 }

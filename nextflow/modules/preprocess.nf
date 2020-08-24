@@ -12,7 +12,7 @@ process extract_b0 {
         tuple val(sid), path("${sid}__b0.nii.gz")
     script:
         """
-        magic_monkey extract_b0 $dwi $bvals ${sid}__b0.nii.gz --config $params.config.preprocess.extract_b0
+        magic-monkey b0 extract --in $dwi --bvals $bvals --out ${sid}__b0 --config $params.config.preprocess.extract_b0
         """
 }
 
@@ -23,6 +23,6 @@ process squash_b0 {
         tuple val(sid), path("${sid}__b0_squashed.nii.gz"), path("${sid}__b0_squashed.bvals"), path("${sid}__b0_squashed.bvecs")
     script:
         """
-        magic_monkey squash_b0 $dwi $bvals $bvecs ${sid}__b0_squashed --config $params.config.preprocess.squash_b0
+        magic-monkey b0 squash --in $dwi --bvals $bvals --bvecs $bvecs --out ${sid}__b0_squashed --config $params.config.preprocess.squash_b0
         """
 }

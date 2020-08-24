@@ -38,7 +38,7 @@ class B0Utils(MagicMonkeyBaseApplication):
 
     image = required_file(description="Input dwi image")
     bvals = required_file(description="Input b-values")
-    bvecs = required_file(description="Input b-vectors")
+    bvecs = Unicode(help="Input b-vectors").tag(config=True, ignore_write=True)
 
     prefix = output_prefix_argument()
 
@@ -57,6 +57,7 @@ class B0Utils(MagicMonkeyBaseApplication):
                     B0UtilsConfiguration.current_util.values
                 )
             super().initialize(argv)
+
             config = deepcopy(self.config)
             config['B0UtilsConfiguration'] = Config(current_util=command)
             self.update_config(config)
@@ -94,7 +95,11 @@ class B0Utils(MagicMonkeyBaseApplication):
     def _squash_b0(self):
         in_dwi = nib.load(self.image)
         bvals = np.loadtxt(self.bvals)
-        bvecs = np.loadtxt(self.bvecs)
+
+        if self.bvecs:
+            bvecs = np.loadtxt(self.bvecs)
+        else:
+            bvecs = np.repeat([[1, 0, 0]], len(bvals), 0)
 
         data, bvals, bvecs = squash_b0(
             in_dwi.get_fdata(), bvals, bvecs, self.configuration.mean_strategy
@@ -108,7 +113,9 @@ class B0Utils(MagicMonkeyBaseApplication):
         )
 
         np.savetxt("{}.bvals".format(self.prefix), bvals, fmt="%d")
-        np.savetxt("{}.bvecs".format(self.prefix), bvecs, fmt="%.6f")
+
+        if self.bvecs:
+            np.savetxt("{}.bvecs".format(self.prefix), bvecs, fmt="%.6f")
 
 
 _apply_mask_aliases = {

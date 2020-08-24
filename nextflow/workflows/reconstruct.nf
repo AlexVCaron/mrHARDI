@@ -9,7 +9,9 @@ params.recons_csd = true
 include { diamond; dti; csd } from '../modules/reconstruct.nf'
 
 workflow reconstruct_wkf {
-    take: dwi_channel, mask_channel
+    take:
+        dwi_channel
+        mask_channel
     main:
         out_channel = Channel.empty()
         if ( params.recons_dti )
@@ -23,7 +25,9 @@ workflow reconstruct_wkf {
 }
 
 workflow csd_wkf {
-    take: dwi_channel, mask_channel
+    take:
+        dwi_channel
+        mask_channel
     main:
         csd(dwi_channel.join(mask_channel))
     emit:
@@ -31,7 +35,9 @@ workflow csd_wkf {
 }
 
 workflow dti_wkf {
-    take: dwi_channel, mask_channel
+    take:
+        dwi_channel
+        mask_channel
     main:
         dti(dwi_channel.join(mask_channel))
     emit:
@@ -39,7 +45,9 @@ workflow dti_wkf {
 }
 
 workflow diamond_wkf {
-    take: dwi_channel, mask_channel
+    take:
+        dwi_channel
+        mask_channel
     main:
         diamond(dwi_channel.collect{ it.subTuple(0, 2) }.join(mask_channel))
     emit:

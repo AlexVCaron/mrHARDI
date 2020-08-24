@@ -16,6 +16,25 @@ base_config = {
 }
 base_config.merge(configuration)
 
+# OS detection module
+module OS
+    def OS.windows?
+        (/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM) != nil
+    end
+
+    def OS.mac?
+        (/darwin/ =~ RUBY_PLATFORM) != nil
+    end
+
+    def OS.unix?
+        !OS.windows?
+    end
+
+    def OS.linux?
+        OS.unix? and not OS.mac?
+    end
+end
+
 network = base_config[:network]
 vm = base_config[:vm]
 build = base_config[:build]
@@ -42,9 +61,13 @@ Vagrant.configure("2") do |config|
   config.vm.network network[:private][:name], ip: network[:private][:ip] if network.key?(:private)
 
   # Shared folders to manage shared python installation across the host and the remote
-  config.vm.synced_folder "vm/python", "/shared_python", create: true, mount_options: ["dmode=775,fmode=777"]
-  config.vm.synced_folder ".", "/home/vagrant/magic_monkey"
-  config.vm.synced_folder ".", "/vagrant"
+
+  share_type = ''
+  (OS.windows? or OS.mac?) ? (share_type = 'smb') : (share_type = 'nfs')
+
+  config.vm.synced_folder "vm/python", "/shared_python", type: share_type
+  config.vm.synced_folder ".", "/home/vagrant/magic_monkey", type: share_type
+  config.vm.synced_folder ".", "/vagrant", type: share_type
 
   # VM provisioning via ansible playbook
   config.vm.provision "ansible_local" do |ansible|

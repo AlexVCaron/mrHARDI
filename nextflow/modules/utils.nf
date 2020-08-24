@@ -3,7 +3,7 @@
 nextflow.enable.dsl=2
 
 params.config.utils.apply_mask = "../.config/apply_mask.py"
-params.config.utils.concatenate = "../.config/concatenate.py"
+params.config.utils.concatenate = "../.config/cat.py"
 
 process apply_mask {
     input:
@@ -12,10 +12,11 @@ process apply_mask {
         tuple val(sid), path("${sid}__masked.nii.gz")
     script:
         """
-        magic_monkey apply_mask $img $mask ${sid}__masked.nii.gz --config $params.config.utils.apply_mask
+        magic-monkey apply_mask $img $mask ${sid}__masked.nii.gz --config $params.config.utils.apply_mask
         """
 }
 
+// TODO : Implement bet mask, if needed
 process bet_mask {
     input:
         tuple val(sid), path(img)
@@ -23,17 +24,25 @@ process bet_mask {
         tuple val(sid), path("${sid}__bet_mask.nii.gz")
     script:
         """
-        magic_monkey bet $img ${sid}__bet_mask.nii.gz
+        magic-monkey bet $img ${sid}__bet_mask.nii.gz
         """
 }
 
 process cat_datasets {
     input:
-        tuple val(sid), file(imgs)
+        tuple val(sid), file(imgs), file(bvals), file(bvecs)
     output:
-        tuple val(sid), val("${sid}__concatenated")
+        tuple val(sid), file("${sid}__concatenated.*")
     script:
+        args = "--in $imgs"
+
+        if ( bvals.size() > 0 )
+            args += "--bvals $bvals"
+        if ( bvecs.size() > 0 )
+            args += "--bvecs $bvecs"
+
+        println "$args"
         """
-        magic_monkey concatenate $config --in imgs* --out ${sid}__concatenated --config $params.config.utils.concatenate
+        magic-monkey concatenate $args --out ${sid}__concatenated --config $params.config.utils.concatenate
         """
 }
