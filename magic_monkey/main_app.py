@@ -1,5 +1,3 @@
-# from magic_monkey.apps. import *
-
 from magic_monkey.base.application import MagicMonkeyBaseApplication
 
 
@@ -8,7 +6,7 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         if self.subapp:
             self.subapp.start()
         else:
-            super().start()
+            return
 
     def _example_command(self, *args):
         return "magic_monkey command <args> <flags>"
@@ -41,6 +39,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         dti=("magic_monkey.apps.DTI", 'Perform dti reconstruction'),
         dti_metrics=("magic_monkey.apps.TensorMetrics", 'Compute DTI metrics'),
         eddy=("magic_monkey.apps.Eddy", 'Execute eddy correction'),
+        pft=(
+            "magic_monkey.apps.PftTracking",
+            'Execute particle filtering tracking'
+        ),
         response=(
             "magic_monkey.apps.FiberResponse",
             'Compute single fiber response (and gm and csf if msmt)'
@@ -53,4 +55,8 @@ launch_new_instance = MagicMonkeyApplication.launch_instance
 
 
 if __name__ == '__main__':
+    launch_new_instance()
+
+
+def console_entry_point():
     launch_new_instance()
