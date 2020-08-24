@@ -19,6 +19,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.AntsTransform", 'Apply a registration transform'
         ),
         apply_mask=("magic_monkey.apps.ApplyMask", 'Apply mask to image'),
+        apply_topup=(
+            "magic_monkey.apps.ApplyTopup",
+            'Apply Topup correction to a set of images'
+        ),
         b0=(
             "magic_monkey.apps.B0Utils",
             'Basic processing on B0 slices of dwi volumes'
