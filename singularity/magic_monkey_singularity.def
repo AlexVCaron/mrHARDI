@@ -23,6 +23,8 @@ From: ubuntu:xenial
         tar -zxf $DIAMOND_PKG -C $DIAMOND_sources
 
         cd ..
+        rm -rf dist/* || (echo "Could not empty dist directory, please remove before trying again" & exit 1)
+        rm -rf build/* || (echo "Could not empty build directory, please remove before trying again" & exit 1)
         python3 -m pip install --user --upgrade setuptools wheel
         python3 setup.py sdist bdist_wheel
 
@@ -243,7 +245,7 @@ From: ubuntu:xenial
                 ERR_VAR=$(scilpy_installer) && touch $INSTALL/scilpy_complete.flag || error_exit
             fi
 
-            if [ ! $mmy_installed ] & [ ! last_mmy_ver_installed ]
+            if [ ! $mmy_installed ] || [ ! last_mmy_ver_installed ]
             then
                 mmy_installer () {
                     cd $MMY_sources

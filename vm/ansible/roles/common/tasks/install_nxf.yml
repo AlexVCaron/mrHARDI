@@ -4,19 +4,19 @@
   file:
     path: "{{ nxf_dir }}"
     state: directory
-    mode: '0755'
+    mode: a+rwx,g-w,o-w,ug-s,-t
   become: yes
 
-- name: Install nextflow
-  command: curl -s https://get.nextflow.io | bash
-  args:
-    chdir: "{{ nxf_dir }}"
+- name: Get nextflow installer
+  get_url:
+    url: https://get.nextflow.io
+    dest: "{{ tmp_dir }}/nextflow.sh"
+    mode: a+x
   become: yes
 
-- name: Add Nextflow to path
-  copy:
-    dest: /etc/profile.d/nextflow-path.sh
-    content: 'PATH=$PATH:{{ nxf_dir }}'
+- name: Move nextflow executable to directory
+  command: mv {{ tmp_dir }}/nextflow.sh {{ nxf_dir }}/nextflow
+  become: yes
 
 - name: Give ownership to Nextflow executable to vagrant
   file:
@@ -25,3 +25,35 @@
     recurse: yes
     owner: vagrant
   become: yes
+
+- name: Install nextflow
+  script:
+  args:
+    cmd: "{{ nxf_dir }}/nextflow"
+    chdir: "{{ nxf_dir }}"
+  become: yes
+  become_user: vagrant
+
+- name: Check if nextflow profile.d file has been created already
+  shell: test -f /etc/profile.d/nextflow_path.sh && echo 1 || echo 0
+  register: nextflow_lenv
+
+- name: Add nextflow script to path for login shells
+  copy:
+    dest: /etc/profile.d/nextflow_path.sh
+    content: "export PATH=$PATH:{{ nxf_dir }}"
+    mode: a+r
+  become: yes
+  when: nextflow_lenv.stdout == "0"
+
+- name: Check if nextflow in non-login and non-interactive environments
+  shell: grep -c "nextflow" /etc/environment || true
+  register: nextflow_nlenv
+
+- name: Add nextflow to path for all other shells
+  replace:
+    path: /etc/environment
+    regexp: '^PATH="(.*)"$'
+    replace: 'PATH="\1:{{ nxf_dir }}"'
+  become: yes
+  when: nextflow_nlenv.stdout == "0"

@@ -9,6 +9,10 @@ ready and available, since no setup is needed for the user.
 
 - [Singularity 3](https://sylabs.io/guides/3.0/user-guide/installation.html)
 - Python 3 for initial preparation of the project's wheel
+- Diamond repository copied to an archive named **diamond_package.tar.gz** 
+  (either contact *Benoît Scherrer* to request access to the official 
+  repository or contact the administrator of this code base for a copy of the 
+  singularity)
 
 ## Content of the image
 
@@ -49,3 +53,26 @@ To make your data available to the singularity, add the option *-B* before
 **exec**, with a comma separated list of the paths to bind.
 
 > singularity -B \<path 1>,\<path 2> exec ...
+
+## Developers
+
+Building and rebuilding a Singularity can be time consuming. For this purpose, 
+the definition file has been crafted to allow for installation checkpoints.
+
+This means that updating a *sandbox* image is possible. After creating a first 
+version of the image using
+
+> sudo singularity build --sandbox \<image> magic_monkey_singularity.def
+
+subsequent versions of it can be updated with
+
+> sudo singularity build --update \<image> magic_monkey_singularity.def
+
+As of now, building the singularity will never lead to error, meaning you'll 
+always end up with an image at the end, just maybe not filled with all the 
+content that should be on it. This means that you should always check the 
+build outputs and the executables on the final image.
+
+A good indicator is the standard output of the build process. If anything 
+happened, it will have at the end of it an error message that is quite hard 
+to miss .

@@ -13,7 +13,8 @@
       'llvm',
       'curl',
       'wget',
-      'xz-utils'
+      'xz-utils',
+      'default-jdk'
     ]
     state: latest
   become: yes
