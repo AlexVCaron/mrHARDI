@@ -5,14 +5,14 @@ from copy import copy
 from importlib import import_module
 from multiprocessing import cpu_count
 from os import getcwd, linesep
-from os.path import splitext
+from os.path import join, splitext
 
 import numpy as np
 from numpy import arange, split
 from traitlets import Float, Integer, TraitType, Undefined
 from traitlets.config import (Application,
                               ArgumentError,
-                              Configurable,
+                              Bool, Configurable,
                               Dict,
                               Enum,
                               HasTraits, Instance,
@@ -297,12 +297,20 @@ class MagicMonkeyBaseApplication(Application):
             self._start()
             return True
 
+    def document_config_options(self):
+        """Generate rST format documentation for the config options this application
+
+        Returns a multiline string.
+        """
+        return '\n'.join(c.class_config_rst_doc()
+                         for c in self._classes_inc_parents())
+
     @abstractmethod
     def _start(self):
         pass
 
     def _generate_config_file(self, filename):
-        traits = self.class_traits(ignore_write=True)
+        traits = self.class_traits(ignore_write=True, hidden=lambda a: a)
         for k in traits.keys():
             for klass in (self.__class__,) + self.__class__.__bases__:
                 try:
@@ -405,7 +413,7 @@ class MagicMonkeyBaseApplication(Application):
         self._validate_required()
         self._validate_configuration()
 
-    def _example_command(self, sub_command):
+    def _example_command(self, sub_command=""):
         return "magic_monkey {} <args> <flags>".format(sub_command)
 
     def print_options(self):
@@ -423,10 +431,12 @@ class MagicMonkeyBaseApplication(Application):
         lines.insert(0, separator)
         lines.append('')
 
-        if not self.subapp:
+        if self.subapp:
             lines.append("command format : {}".format(
                 self._example_command(self.parent.argv[0])
             ))
+        else:
+            lines.append("command format : {}".format(self._example_command()))
 
         lines.append('')
 
