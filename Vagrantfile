@@ -11,8 +11,8 @@ configuration = {}
 base_config = {
   base_box: {name: "avcaron/mmy-base-box", ver: "0.3.0"},
   network: {private: {name: "private_network", ip: "192.168.77.101"}},
-  vm: {name: "MAGIC-MONKEY_vbox", cpu: "3", ram: "10240", disk: "60GB"},
-  build: {type: :develop, cpu: 4, verbose: "vvvv", hostname: "MMY-host"}
+  vm: {name: "MAGIC-MONKEY_vbox", cpu: "3", ram: "10240", disk: "300GB"},
+  build: {type: :develop, cpu: 3, verbose: "vvvv", hostname: "MMY-host"}
 }
 base_config.merge(configuration)
 

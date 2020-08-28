@@ -23,12 +23,11 @@ From: ubuntu:xenial
         tar -zxf $DIAMOND_PKG -C $DIAMOND_sources
 
         cd ..
-        rm -rf dist/* || (echo "Could not empty dist directory, please remove before trying again" & exit 1)
-        rm -rf build/* || (echo "Could not empty build directory, please remove before trying again" & exit 1)
-        python3 -m pip install --user --upgrade setuptools wheel
-        python3 setup.py sdist bdist_wheel
 
-        cp dist/magic_monkey-*-py3-none-any.whl $MMY_sources/.
+        pip3 install --upgrade setuptools wheel
+        pip3 wheel --no-deps --wheel-dir=$MMY_sources .
+
+        # cp dist/magic_monkey-*-py3-none-any.whl $MMY_sources/.
         cp requirements.txt $MMY_sources/.
 %post
         remove_if_exists () {
@@ -51,6 +50,9 @@ From: ubuntu:xenial
             echo -e "\e[30;41m!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
             exit 0 # This hack allow us to build the singularity whether there is an error or not. Please check your output or log to see if everything has built
         }
+
+        cmake_version=3.10
+        cmake_build=2
 
         # PATHS VARIABLES FOR SOURCES
         SOURCES=/mms/sources
@@ -167,13 +169,11 @@ From: ubuntu:xenial
             then
                 cmake_installer () {
                     mkdir -p $CMAKE_sources
-                    version=3.10
-                    build=2
 
                     cd $CMAKE_sources
-                    wget https://cmake.org/files/v$version/cmake-$version.$build.tar.gz
-                    tar -xzvf cmake-$version.$build.tar.gz
-                    cd cmake-$version.$build/
+                    wget https://cmake.org/files/v${cmake_version}/cmake-${cmake_version}.${cmake_build}.tar.gz
+                    tar -xzvf cmake-${cmake_version}.${cmake_build}.tar.gz
+                    cd cmake-${cmake_version}.${cmake_build}/
 
                     ./bootstrap
                     make -j $(nproc --all)
@@ -344,6 +344,19 @@ From: ubuntu:xenial
                 ERR_VAR=$(ants_installer) && touch $INSTALL/ants_complete.flag || error_exit
             fi
 
+            cd $CMAKE_sources/cmake-${cmake_version}.${cmake_build}
+            make uninstall
+
+            apt-get -y remove acpid
+            apt-get -y remove apt-transport-https
+            apt-get -y remove binutils
+            apt-get -y remove build-essential
+            apt-get -y remove checkinstall
+            apt-get -y remove curl
+            apt-get -y remove cpio
+            apt-get -y remove dkms
+            apt-get -y remove git
+            apt-get -y remove wget
             apt-get clean
             apt autoremove -y
 
