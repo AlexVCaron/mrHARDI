@@ -1,0 +1,9 @@
+name: magic_monkey_docs
+dependencies:
+- python=3.7
+- setuptools>=49.6
+- sphinx>=1.8
+- sphinx_rtd_theme
+- numpy
+- pip:
+    - docrepr

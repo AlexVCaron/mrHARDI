@@ -57,6 +57,7 @@ References :
 
 
 class Eddy(MagicMonkeyBaseApplication):
+    name = u"Eddy"
     description = _description
     configuration = Instance(EddyConfiguration).tag(config=True)
 

@@ -57,6 +57,7 @@ References :
 
 
 class CSD(MagicMonkeyBaseApplication):
+    name = u"Spherical Deconvolution"
     description = _csd_description
     configuration = Instance(SphericalDeconvConfiguration).tag(config=True)
 
@@ -210,6 +211,7 @@ References :
 
 
 class FiberResponse(MagicMonkeyBaseApplication):
+    name = u"Fiber Response"
     description = _fr_description
     configuration = Instance(FiberResponseConfiguration).tag(config=True)
 

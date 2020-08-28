@@ -35,6 +35,7 @@ References :
 
 
 class Topup(MagicMonkeyBaseApplication):
+    name = u"Topup"
     description = _description
     configuration = Instance(TopupConfiguration).tag(config=True)
 

@@ -277,7 +277,8 @@ class MagicMonkeyBaseApplication(Application):
         flags.update(self._config_flags())
         self.flags = flags
 
-        super().initialize(argv)
+        if argv is None or (argv and "--safe" not in argv):
+            super().initialize(argv)
 
         if self.subapp is not None:
             # stop here if sub-app is taking over

@@ -21,6 +21,7 @@ from magic_monkey.config.pft_tracking import ParticleFilteringConfiguration
 
 
 class PftTracking(MagicMonkeyBaseApplication):
+    name = u"PFT Local Tracking"
     configuration = Instance(ParticleFilteringConfiguration).tag(config=True)
 
     sh_coefficients = required_file(

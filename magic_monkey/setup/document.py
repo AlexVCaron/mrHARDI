@@ -12,12 +12,23 @@ class Document(Command):
     ]
 
     def run(self):
-        command = ['magic-monkey', '--document']
-        self.announce(
-            'Generating documentation : {}'.format(command), level=INFO
-        )
+        cwd = getcwd()
+        self.announce('Generating documentation', level=INFO)
+        self.spawn([
+            'pip3', 'install', '-U', '-r',
+            'documentation/_cache/requirements.txt'
+        ])
+
+        chdir('documentation/_cache')
+
+        self.spawn(['make', 'clean'])
+
+        command = ['make', 'html']
+        if self.chdir:
+            command.append('BUILDDIR="{}"'.format(self.chdir))
+
         self.spawn(command)
-        chdir(self.chdir)
+        chdir(cwd)
 
     def initialize_options(self):
         self.chdir = None
@@ -36,7 +47,3 @@ class Document(Command):
                         self.chdir
                     )
                 )
-
-            cwd = getcwd()
-            chdir(self.chdir)
-            self.chdir = cwd

@@ -114,3 +114,11 @@ project's directory
   - In *VirtualBox Manager*, delete the mentioned interface from the list
   - On Widows, in **Device Manager > Network adapters**, restart the interface 
     named *VirtualBox Host-Only Ethernet Adapter*
+
+### FAQ
+
+- On windows 10, if the network interface fails to reconnect and prevents 
+  Vagrant to boot the vm, then :
+  - In *VirtualBox Manager*, delete the mentioned interface from the list
+  - On Widows, in **Device Manager > Network adapters**, restart the interface 
+    named *VirtualBox Host-Only Ethernet Adapter*

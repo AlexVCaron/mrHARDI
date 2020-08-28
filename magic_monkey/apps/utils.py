@@ -32,6 +32,7 @@ squash those B0 and output the resulting image.
 
 
 class B0Utils(MagicMonkeyBaseApplication):
+    name = u"B0 Utilities"
     description = _b0_description
     configuration = Instance(B0UtilsConfiguration).tag(config=True)
 
@@ -47,7 +48,8 @@ class B0Utils(MagicMonkeyBaseApplication):
         assert argv and len(argv) > 0
         if not (
             any("help" in a for a in argv) or
-            any("out-config" in a for a in argv)
+            any("out-config" in a for a in argv) or
+            any("safe" in a for a in argv)
         ):
             command, argv = argv[0], argv[1:]
             assert re.match(r'^\w(-?\w)*$', command), \
@@ -119,6 +121,7 @@ _apply_mask_aliases = {
 
 
 class ApplyMask(MagicMonkeyBaseApplication):
+    name = u"Apply Mask"
     description = "Applies a mask to an image an fill the outside."
     image = required_file(description="Input image to mask")
     mask = required_file(description="Mask to apply on image ")
@@ -152,6 +155,7 @@ _cat_aliases = {
 
 
 class Concatenate(MagicMonkeyBaseApplication):
+    name = u"Concatenate"
     description = "Concatenates multiple images together"
     images = required_arg(
         MultipleArguments, traits_args=(Unicode,),
@@ -199,6 +203,7 @@ class Concatenate(MagicMonkeyBaseApplication):
 
 
 class ApplyTopup(MagicMonkeyBaseApplication):
+    name = u"Apply Topup"
     description = "Apply a Topup transformation to an image"
 
     topup_prefix = required_file(

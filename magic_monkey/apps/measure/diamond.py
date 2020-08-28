@@ -124,6 +124,7 @@ References :
 
 
 class DiamondMetrics(MagicMonkeyBaseApplication):
+    name = u"Diamond Metrics"
     description = _description
     metrics = ChoiceList(
         copy(_DIAMOND_METRICS), DiamondMetricsEnum, copy(_DIAMOND_METRICS),

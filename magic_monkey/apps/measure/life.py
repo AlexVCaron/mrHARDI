@@ -10,7 +10,7 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
 
 
 class Life(MagicMonkeyBaseApplication):
-
+    name = u"Life Filtering"
     tracks = required_file(
         description="Input tractogram (readable by StatefulTractogram"
     )

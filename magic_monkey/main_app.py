@@ -1,12 +1,47 @@
+from importlib import import_module
+from os import getcwd
+from os.path import join
+
+from traitlets import Bool
+
 from magic_monkey.base.application import MagicMonkeyBaseApplication
 
 
+_flags = dict(
+    document=(
+        {'MagicMonkeyBaseApplication': {'document': True}},
+        "Generate documentation for the project in the current directory"
+    )
+)
+
+
 class MagicMonkeyApplication(MagicMonkeyBaseApplication):
+    flags = _flags
+
+    document = Bool(False, help='Generate projects documentation').tag(
+        config=True, ignore_write=True, hidden=True
+    )
+
+    def start(self):
+        if self.document:
+            self.document_config_options()
+        else:
+            super().start()
+
+    def document_config_options(self):
+        cwd = getcwd()
+        with open(join(cwd, "{}.rst".format(self.name)), "w+") as f:
+            f.write(super().document_config_options())
+
+        for name, command in self.subcommands.items():
+            self.initialize_subcommand(name, ["--safe"])
+            with open(join(cwd, "{}.rst".format(self.subapp.name)), "w+") as f:
+                f.write(self.subapp.document_config_options())
+            self.subapp.__class__.clear_instance()
+
     def _start(self):
         if self.subapp:
             self.subapp.start()
-        else:
-            return
 
     def _example_command(self, *args):
         return "magic_monkey command <args> <flags>"
@@ -58,9 +93,12 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
 launch_new_instance = MagicMonkeyApplication.launch_instance
 
 
-if __name__ == '__main__':
-    launch_new_instance()
-
-
 def console_entry_point():
     launch_new_instance()
+
+
+if __name__ == '__main__':
+    console_entry_point()
+
+
+
