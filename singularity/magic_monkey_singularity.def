@@ -23,6 +23,10 @@ From: ubuntu:xenial
         tar -zxf $DIAMOND_PKG -C $DIAMOND_sources
 
         cd ..
+        rm -rf dist/* || (echo "Could not empty dist directory, please remove before trying again" & exit 1)
+        rm -rf build/* || (echo "Could not empty build directory, please remove before trying again" & exit 1)
+        python3 -m pip install --user --upgrade setuptools wheel
+        python3 setup.py sdist bdist_wheel
 
         pip3 install --upgrade setuptools wheel
         pip3 wheel --no-deps --wheel-dir=$MMY_sources .
