@@ -6,13 +6,13 @@ from magic_monkey.traits.csd import (ResponseAlgorithm,
                                      SphericalDeconvAlgorithm)
 
 _deconv_aliases = dict(
-    shells="SphericalDeconvConfiguration.shells",
-    lmax="SphericalDeconvConfiguration.lmax",
-    strides="SphericalDeconvConfiguration.strides"
+    shells="CSDConfiguration.shells",
+    lmax="CSDConfiguration.lmax",
+    strides="CSDConfiguration.strides"
 )
 
 
-class SphericalDeconvConfiguration(MagicMonkeyConfigurable):
+class CSDConfiguration(MagicMonkeyConfigurable):
     algorithm = DictInstantiatingInstance(
         klass=SphericalDeconvAlgorithm
     ).tag(config=True)
@@ -50,8 +50,8 @@ class SphericalDeconvConfiguration(MagicMonkeyConfigurable):
 
 
 _response_aliases = dict(
-    shells="SphericalDeconvConfiguration.shells",
-    lmax="SphericalDeconvConfiguration.lmax"
+    shells="CSDConfiguration.shells",
+    lmax="CSDConfiguration.lmax"
 )
 
 

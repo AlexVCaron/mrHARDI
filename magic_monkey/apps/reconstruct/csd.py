@@ -14,7 +14,7 @@ from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.traits.csd import (CSDAlgorithm,
                                      TournierResponseAlgorithm)
 from magic_monkey.config.csd import (FiberResponseConfiguration,
-                                     SphericalDeconvConfiguration)
+                                     CSDConfiguration)
 
 _csd_aliases = {
     'in': 'CSD.image',
@@ -57,8 +57,9 @@ References :
 
 
 class CSD(MagicMonkeyBaseApplication):
+    name = u"Spherical Deconvolution"
     description = _csd_description
-    configuration = Instance(SphericalDeconvConfiguration).tag(config=True)
+    configuration = Instance(CSDConfiguration).tag(config=True)
 
     image = required_file(description="Input dwi image")
     bvals = required_file(description="Input b-values")
@@ -210,6 +211,7 @@ References :
 
 
 class FiberResponse(MagicMonkeyBaseApplication):
+    name = u"Fiber Response"
     description = _fr_description
     configuration = Instance(FiberResponseConfiguration).tag(config=True)
 

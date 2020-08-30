@@ -50,6 +50,7 @@ References :
 
 
 class DTI(MagicMonkeyBaseApplication):
+    name = u"DTI"
     description = _description
     configuration = Instance(DTIConfiguration).tag(config=True)
 

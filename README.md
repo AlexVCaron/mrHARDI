@@ -40,6 +40,29 @@ Singularity however isn't available on Windows. We refer those users to the
 reasons, if there is any problems installing the library and running the tests 
 on a Mac OSX operating system, the user should try using Vagrant.
 
+## Usage
+
+The code base is accessible via numerous points. The whole python library can 
+be imported using the package **magic_monkey**. Most of the logic of the code 
+base can be found under **magic_monkey.compute** and **magic_monkey.traits**.
+
+Also, the various applications and configuration options are accessible by 
+command-line. Once the project is setup, built and installed, they can be 
+called using the alias **magic-monkey**, followed by the name of the 
+application to open. For more information, call *magic-monkey --help*.
+
+Finally, a collection of *Nextflow* modules and workflows can be found under 
+the nextflow directory. In addition of the fully implemented pipelines and 
+workflows of *Magic Monkey*, can be found modules and workflows that 
+inferfaces fluently with Mri processing libraries as well as with this code 
+base.
+
+This duality of entry points allows for a better and faster prototyping from 
+the developer, since all configuration of the applications is done via python 
+and can be completed by only calling the command-line apps. This makes it 
+easier to debug and optimize each sub-assembly, with no overhead from Nextflow 
+when it isn't required to test the actual pipeline structure.
+
 ## Vagrant Installation
 
 #### Requirements
@@ -83,3 +106,19 @@ A direct ssh connection can be made running the following command inside the
 project's directory
 
 > vagrant ssh
+
+### FAQ
+
+- On windows 10, if the network interface fails to reconnect and prevents 
+  Vagrant to boot the vm, then :
+  - In *VirtualBox Manager*, delete the mentioned interface from the list
+  - On Widows, in **Device Manager > Network adapters**, restart the interface 
+    named *VirtualBox Host-Only Ethernet Adapter*
+
+### FAQ
+
+- On windows 10, if the network interface fails to reconnect and prevents 
+  Vagrant to boot the vm, then :
+  - In *VirtualBox Manager*, delete the mentioned interface from the list
+  - On Widows, in **Device Manager > Network adapters**, restart the interface 
+    named *VirtualBox Host-Only Ethernet Adapter*

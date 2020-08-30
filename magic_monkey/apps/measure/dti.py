@@ -44,6 +44,7 @@ Compute metrics over the diffusion tensor reconstruction.
 
 
 class TensorMetrics(MagicMonkeyBaseApplication):
+    name = u"DTI Metrics"
     description = _description
     metrics = ChoiceList(
         copy(_TENSOR_METRICS), TensorMetricsEnum, copy(_TENSOR_METRICS),

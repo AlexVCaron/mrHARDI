@@ -137,3 +137,7 @@ venv*/
 *.simg
 *.img
 *.iso
+
+/documentation/_cache/**/generated/
+/documentation/_cache/source/config/options/
+!/documentation/_cache/source/config/options/index.rst

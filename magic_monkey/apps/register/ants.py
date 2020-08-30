@@ -31,6 +31,7 @@ References :
 
 
 class AntsRegistration(MagicMonkeyBaseApplication):
+    name = u"ANTs Registration"
     description = _reg_description
     configuration = Instance(AntsConfiguration).tag(config=True)
 
@@ -96,6 +97,7 @@ image.
 
 
 class AntsTransform(MagicMonkeyBaseApplication):
+    name = u"ANTs Transform"
     description = _tr_description
     configuration = Instance(AntsTransformConfiguration).tag(config=True)
 

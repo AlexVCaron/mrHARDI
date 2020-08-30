@@ -5,8 +5,6 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
     def _start(self):
         if self.subapp:
             self.subapp.start()
-        else:
-            return
 
     def _example_command(self, *args):
         return "magic_monkey command <args> <flags>"
@@ -58,9 +56,12 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
 launch_new_instance = MagicMonkeyApplication.launch_instance
 
 
-if __name__ == '__main__':
-    launch_new_instance()
-
-
 def console_entry_point():
     launch_new_instance()
+
+
+if __name__ == '__main__':
+    console_entry_point()
+
+
+

@@ -41,6 +41,7 @@ References :
 
 
 class Diamond(MagicMonkeyBaseApplication):
+    name = u"Diamond"
     description = _description
     configuration = Instance(DiamondConfiguration).tag(config=True)
 
