@@ -17,8 +17,32 @@ _aliases = {
     'dti': 'Diamond.initial_dti'
 }
 
+_description = """
+Computes diffusion tensor distributions of fiber populations over diffusion 
+weighted images. The program uses the diamond reconstruction algorithm [1] to 
+perform the optimization of the distributions over the voxels of the input 
+image. If an image resulting from a concatenation of multiple tensor-valued 
+acquisitions is supplied instead, the magic diamond version [2] of the 
+algorithm is used.
+
+References : 
+------------
+[1] Scherrer, B., Schwartzman, A., Taquet, M., Sahin, M., Prabhu, S.P. and 
+    Warfield, S.K. (2016), Characterizing brain tissue by assessment of the 
+    distribution of anisotropic microstructural environments in 
+    diffusion‐compartment imaging (DIAMOND). Magn. Reson. Med., 76: 963-977. 
+    doi:10.1002/mrm.25912.
+[2] A. Reymbaut and A. Valcourt Caron and G. Gilbert and F. Szczepankiewicz 
+    and M. Nilsson and S. K. Warfield and M. Descoteaux and B. Scherrer. Magic 
+    DIAMOND: Multi-Fascicle Diffusion Compartment Imaging with Tensor 
+    Distribution Modeling and Tensor-Valued Diffusion Encoding. Arxiv, 
+    2004.07340, 2020.
+"""
+
 
 class Diamond(MagicMonkeyBaseApplication):
+    name = u"Diamond"
+    description = _description
     configuration = Instance(DiamondConfiguration).tag(config=True)
 
     image = required_file(

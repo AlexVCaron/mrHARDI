@@ -13,7 +13,9 @@ process diamond {
         tuple val(sid), val("${sid}__diamond")
     script:
         """
-        magic_monkey diamond $input_prefix $mask ${sid}__diamond --config $params.config.reconstruct.diamond
+        # Truncates the extension from the filename
+        in=$(echo ${input_prefix} | | sed 's/\..*//g')
+        magic_monkey diamond $in $mask ${sid}__diamond --config $params.config.reconstruct.diamond
         """
 }
 

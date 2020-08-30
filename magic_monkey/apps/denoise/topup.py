@@ -19,8 +19,24 @@ _aliases = dict(
     out='Topup.output_prefix'
 )
 
+_description = """
+Command-line utility used to parametrize and create scripts performing topup 
+correction on b0 volumes. For more information on the parameters available for 
+the topup executable, please refer to the website [1].
+
+References :
+------------
+[1] https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/topup
+[Andersson 2003] J.L.R. Andersson, S. Skare, J. Ashburner. How to correct 
+                 susceptibility distortions in spin-echo echo-planar images: 
+                 application to diffusion tensor imaging. NeuroImage, 
+                 20(2):870-888, 2003.
+"""
+
 
 class Topup(MagicMonkeyBaseApplication):
+    name = u"Topup"
+    description = _description
     configuration = Instance(TopupConfiguration).tag(config=True)
 
     b0 = required_arg(

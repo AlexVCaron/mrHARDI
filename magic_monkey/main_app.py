@@ -1,5 +1,3 @@
-# from magic_monkey.apps. import *
-
 from magic_monkey.base.application import MagicMonkeyBaseApplication
 
 
@@ -7,8 +5,6 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
     def _start(self):
         if self.subapp:
             self.subapp.start()
-        else:
-            super().start()
 
     def _example_command(self, *args):
         return "magic_monkey command <args> <flags>"
@@ -21,6 +17,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.AntsTransform", 'Apply a registration transform'
         ),
         apply_mask=("magic_monkey.apps.ApplyMask", 'Apply mask to image'),
+        apply_topup=(
+            "magic_monkey.apps.ApplyTopup",
+            'Apply Topup correction to a set of images'
+        ),
         b0=(
             "magic_monkey.apps.B0Utils",
             'Basic processing on B0 slices of dwi volumes'
@@ -41,6 +41,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         dti=("magic_monkey.apps.DTI", 'Perform dti reconstruction'),
         dti_metrics=("magic_monkey.apps.TensorMetrics", 'Compute DTI metrics'),
         eddy=("magic_monkey.apps.Eddy", 'Execute eddy correction'),
+        pft=(
+            "magic_monkey.apps.PftTracking",
+            'Execute particle filtering tracking'
+        ),
         response=(
             "magic_monkey.apps.FiberResponse",
             'Compute single fiber response (and gm and csf if msmt)'
@@ -52,5 +56,12 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
 launch_new_instance = MagicMonkeyApplication.launch_instance
 
 
-if __name__ == '__main__':
+def console_entry_point():
     launch_new_instance()
+
+
+if __name__ == '__main__':
+    console_entry_point()
+
+
+

@@ -29,8 +29,29 @@ _flags = dict(
     )
 )
 
+_description = """
+Computes a tensor reconstruction over a diffusion-weighted image using 
+*Mrtrix* [1].
+
+References :
+------------
+[1] https://mrtrix.readthedocs.io/en/latest/reference/commands/dwi2tensor.html
+[2] Tournier, J.-D.; Smith, R. E.; Raffelt, D.; Tabbara, R.; Dhollander, T.; 
+    Pietsch, M.; Christiaens, D.; Jeurissen, B.; Yeh, C.-H. & Connelly, A. 
+    MRtrix3: A fast, flexible and open software framework for medical image 
+    processing and visualisation. NeuroImage, 2019, 202, 116137.
+[3] Basser, P.J.; Mattiello, J.; LeBihan, D. Estimation of the effective 
+    self-diffusion tensor from the NMR spin echo. J Magn Reson B., 1994, 103, 
+    247–254.
+[4] Veraart, J.; Sijbers, J.; Sunaert, S.; Leemans, A. & Jeurissen, B. 
+    Weighted linear least squares estimation of diffusion MRI parameters: 
+    strengths, limitations, and pitfalls. NeuroImage, 2013, 81, 335-346.
+"""
+
 
 class DTI(MagicMonkeyBaseApplication):
+    name = u"DTI"
+    description = _description
     configuration = Instance(DTIConfiguration).tag(config=True)
 
     image = required_file(description="Input dwi image")

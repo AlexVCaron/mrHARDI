@@ -19,8 +19,20 @@ _reg_aliases = {
     'out': 'AntsRegistration.output_prefix'
 }
 
+_reg_description = """
+Perform registration of a dataset over another one using Ants [1]. More 
+information on the construction of an Ants command can be found here [2].
+
+References :
+------------
+[1] http://stnava.github.io/ANTs/
+[2] https://github.com/ANTsX/ANTs/wiki/Anatomy-of-an-antsRegistration-call
+"""
+
 
 class AntsRegistration(MagicMonkeyBaseApplication):
+    name = u"ANTs Registration"
+    description = _reg_description
     configuration = Instance(AntsConfiguration).tag(config=True)
 
     target_images = required_arg(
@@ -78,8 +90,15 @@ _tr_aliases = {
     'ref': 'AntsTransform.transformation_ref'
 }
 
+_tr_description = """
+Apply a transformation (rigid, affine, non-linear) precomputed via Ants to an 
+image.
+"""
+
 
 class AntsTransform(MagicMonkeyBaseApplication):
+    name = u"ANTs Transform"
+    description = _tr_description
     configuration = Instance(AntsTransformConfiguration).tag(config=True)
 
     image = required_file(description="Input image to transform")

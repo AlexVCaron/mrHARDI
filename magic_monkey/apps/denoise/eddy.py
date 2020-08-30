@@ -41,8 +41,24 @@ _eddy_script = """
     {} --out {} $base_args $args {}
 """
 
+_description = """
+Command-line utility used to parametrize and create scripts performing eddy 
+correction on diffusion weighted images. For more information on the 
+parameters available for the eddy executable, please refer to the website [1].
+
+References :
+------------
+[1] https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/eddy
+[Andersson 2016a] Jesper L. R. Andersson and Stamatios N. Sotiropoulos. 
+                  An integrated approach to correction for off-resonance 
+                  effects and subject movement in diffusion MR imaging. 
+                  NeuroImage, 125:1063-1078, 2016.
+"""
+
 
 class Eddy(MagicMonkeyBaseApplication):
+    name = u"Eddy"
+    description = _description
     configuration = Instance(EddyConfiguration).tag(config=True)
 
     bvals = required_file(description="B-value file following fsl format")

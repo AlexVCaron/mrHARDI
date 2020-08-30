@@ -1,0 +1,5 @@
+-e .
+setuptools>=49.6
+sphinx
+sphinx-rtd-theme
+docrepr

@@ -1,4 +1,6 @@
 from copy import deepcopy
+from os import getcwd
+from os.path import join
 
 import nibabel as nib
 import numpy as np
@@ -11,6 +13,7 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            output_prefix_argument,
                                            required_arg,
                                            required_file)
+from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.compute.b0 import extract_b0, squash_b0
 from magic_monkey.compute.utils import apply_mask_on_data, concatenate_dwi
 from magic_monkey.config.utils import B0UtilsConfiguration
@@ -22,8 +25,15 @@ _b0_aliases = {
     'out': 'B0Utils.prefix'
 }
 
+_b0_description = """
+Utility program used to either extract B0 from a diffusion-weighted image or 
+squash those B0 and output the resulting image.
+"""
+
 
 class B0Utils(MagicMonkeyBaseApplication):
+    name = u"B0 Utilities"
+    description = _b0_description
     configuration = Instance(B0UtilsConfiguration).tag(config=True)
 
     image = required_file(description="Input dwi image")
@@ -38,7 +48,8 @@ class B0Utils(MagicMonkeyBaseApplication):
         assert argv and len(argv) > 0
         if not (
             any("help" in a for a in argv) or
-            any("out-config" in a for a in argv)
+            any("out-config" in a for a in argv) or
+            any("safe" in a for a in argv)
         ):
             command, argv = argv[0], argv[1:]
             assert re.match(r'^\w(-?\w)*$', command), \
@@ -110,6 +121,8 @@ _apply_mask_aliases = {
 
 
 class ApplyMask(MagicMonkeyBaseApplication):
+    name = u"Apply Mask"
+    description = "Applies a mask to an image an fill the outside."
     image = required_file(description="Input image to mask")
     mask = required_file(description="Mask to apply on image ")
 
@@ -142,6 +155,8 @@ _cat_aliases = {
 
 
 class Concatenate(MagicMonkeyBaseApplication):
+    name = u"Concatenate"
+    description = "Concatenates multiple images together"
     images = required_arg(
         MultipleArguments, traits_args=(Unicode,),
         description="Input images to concatenate"
@@ -185,3 +200,80 @@ class Concatenate(MagicMonkeyBaseApplication):
 
         if out_bvecs is not None:
             np.savetxt("{}.bvecs".format(self.prefix), out_bvecs.T, fmt="%.6f")
+
+
+class ApplyTopup(MagicMonkeyBaseApplication):
+    name = u"Apply Topup"
+    description = "Apply a Topup transformation to an image"
+
+    topup_prefix = required_file(
+        description="Path and file prefix of the files corresponding "
+                    "to the transformation calculated by Topup"
+    )
+
+    images = required_arg(
+        MultipleArguments, traits_args=(Unicode,),
+        description="Input forward acquired images"
+    )
+
+    rev_images = MultipleArguments(
+        Unicode, help="Input reverse acquired images"
+    ).tag(config=True, ignore_write=True)
+
+    output_prefix = output_prefix_argument()
+
+    mode = Enum(
+        ["interlaced", "sequential"], "interlaced",
+        help="Mode in which Topup was applied to the dataset. Either the "
+             "forward and reversed acquisition B0 volumes were interlaced, "
+             "one pair after another, or the forward block is all put in "
+             "first, the revered in last."
+    ).tag(config=True)
+
+    resampling = Enum(
+        ["jac", "slr"], "slr", help="Resampling method"
+    ).tag(config=True)
+
+    interpolation = Enum(
+        ["trilinear", "spline"], "spline",
+        help="Interpolation method, only used with jacobian resampling (jac)"
+    ).tag(Config=True)
+
+    dtype = Enum(
+        ["char", "short", "int", "float", "double"], None, allow_none=True,
+        help="Force output type. If none supplied, "
+             "will be the same as the input type."
+    ).tag(config=True)
+
+    def _start(self):
+        working_dir = getcwd()
+
+        args = "--topup={} --out={} --method={} --interp={}".format(
+            self.topup_prefix, self.output_prefix,
+            self.resampling, self.interpolation
+        )
+
+        if self.mode == "interlaced" and len(self.rev_images) > 0:
+            args = "--imain={} {}".format(
+                ",".join([
+                    img for p in zip(self.images, self.rev_images) for img in p
+                ]),
+                args
+            )
+        else:
+            args = "--imain={} {}".format(
+                ",".join(self.images + self.rev_images), args
+            )
+
+        args += " --inindex={}".format(
+            ",".join(str(i) for i in range(
+                1, len(self.images) + len(self.rev_images) + 1
+            ))
+        )
+
+        if self.dtype:
+            args += " --datatype={}".format(self.dtype)
+
+        launch_shell_process(
+            'applytopup {}'.format(args), join(working_dir, "apply_topup.log")
+        )

@@ -14,7 +14,7 @@ from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.traits.csd import (CSDAlgorithm,
                                      TournierResponseAlgorithm)
 from magic_monkey.config.csd import (FiberResponseConfiguration,
-                                     SphericalDeconvConfiguration)
+                                     CSDConfiguration)
 
 _csd_aliases = {
     'in': 'CSD.image',
@@ -29,8 +29,37 @@ _csd_aliases = {
 }
 
 
+_csd_description = """
+Performs constrained spherical deconvolution on diffusion weighted images. The 
+image acquisition sequence must provide enough gradient directions to perform 
+the deconvolution up the the desired order. The program uses *MRtrix* [1] to 
+do the actual computation.
+
+References :
+------------
+[1] https://mrtrix.readthedocs.io/en/latest/reference/commands/dwi2fod.html
+[2] Tournier, J.-D.; Calamante, F., Gadian, D.G. & Connelly, A. Direct 
+    estimation of the fiber orientation density function from 
+    diffusion-weighted MRI data using spherical deconvolution. NeuroImage, 
+    2004, 23, 1176-1185.
+[3] Tournier, J.-D.; Smith, R. E.; Raffelt, D.; Tabbara, R.; Dhollander, T.; 
+    Pietsch, M.; Christiaens, D.; Jeurissen, B.; Yeh, C.-H. & Connelly, A. 
+    MRtrix3: A fast, flexible and open software framework for medical image 
+    processing and visualisation. NeuroImage, 2019, 202, 116137.
+[4] Tournier, J.-D.; Calamante, F. & Connelly, A. Robust determination of the 
+    fibre orientation distribution in diffusion MRI: Non-negativity 
+    constrained super-resolved spherical deconvolution. NeuroImage, 2007, 35, 
+    1459-1472.
+[5] Jeurissen, B; Tournier, J-D; Dhollander, T; Connelly, A & Sijbers, J. 
+    Multi-tissue constrained spherical deconvolution for improved analysis of 
+    multi-shell diffusion MRI data. NeuroImage, 2014, 103, 411-426.
+"""
+
+
 class CSD(MagicMonkeyBaseApplication):
-    configuration = Instance(SphericalDeconvConfiguration).tag(config=True)
+    name = u"Spherical Deconvolution"
+    description = _csd_description
+    configuration = Instance(CSDConfiguration).tag(config=True)
 
     image = required_file(description="Input dwi image")
     bvals = required_file(description="Input b-values")
@@ -144,8 +173,46 @@ _fr_aliases = {
     'p': 'FiberResponse.n_threads'
 }
 
+_fr_description = """
+Compute the single-fiber response needed for the constrained spherical 
+deconvolution. Algorithms for multi-tissue responses are also available, 
+giving out also the gray matter and the cerebro-spinal fluid responses as
+well. The program uses *MRtrix* [1] to do the actual computation.
+
+References :
+------------
+[1] https://mrtrix.readthedocs.io/en/latest/reference/commands/dwi2fod.html
+[2] Tournier, J.-D.; Smith, R. E.; Raffelt, D.; Tabbara, R.; Dhollander, T.; 
+    Pietsch, M.; Christiaens, D.; Jeurissen, B.; Yeh, C.-H. & Connelly, A. 
+    MRtrix3: A fast, flexible and open software framework for medical image 
+    processing and visualisation. NeuroImage, 2019, 202, 116137.
+[3] Dhollander, T.; Raffelt, D. & Connelly, A. Unsupervised 3-tissue response 
+    function estimation from single-shell or multi-shell diffusion MR data 
+    without a co-registered T1 image. ISMRM Workshop on Breaking the Barriers 
+    of Diffusion MRI, 2016, 5.
+[4] Dhollander, T.; Mito, R.; Raffelt, D. & Connelly, A. Improved white matter 
+    response function estimation for 3-tissue constrained spherical 
+    deconvolution. Proc Intl Soc Mag Reson Med, 2019, 555.
+[5] Tournier, J.-D.; Calamante, F.; Gadian, D. G. & Connelly, A. Direct 
+    estimation of the fiber orientation density function from 
+    diffusion-weighted MRI data using spherical deconvolution. NeuroImage, 
+    2004, 23, 1176-1185.
+[6] Jeurissen, B.; Tournier, J.-D.; Dhollander, T.; Connelly, A. & Sijbers, J. 
+    Multi-tissue constrained spherical deconvolution for improved analysis of 
+    multi-shell diffusion MRI data. NeuroImage, 2014, 103, 411-426.
+[7] Tax, C. M.; Jeurissen, B.; Vos, S. B.; Viergever, M. A. & Leemans, A. 
+    Recursive calibration of the fiber response function for spherical 
+    deconvolution of diffusion MRI data. NeuroImage, 2014, 86, 67-80.
+[8] Tournier, J.-D.; Calamante, F. & Connelly, A. Determination of the 
+    appropriate b-value and number of gradient directions for 
+    high-angular-resolution diffusion-weighted imaging. NMR Biomedicine, 2013, 
+    26, 1775-1786.
+"""
+
 
 class FiberResponse(MagicMonkeyBaseApplication):
+    name = u"Fiber Response"
+    description = _fr_description
     configuration = Instance(FiberResponseConfiguration).tag(config=True)
 
     image = required_file(description="Input dwi image")

@@ -18,7 +18,7 @@ _flags = {
     "init-t": (
         {"AntsConfiguration": {"init_transform": InitialTransform(0, 0, 1)}},
         "Add basic initial transform aligning centers of "
-        "mass os two images. The images for this transformation "
+        "mass of two images. The images for this transformation "
         "must be the first ones in the list of images supplied "
         "(for both fixed and moving)"
     )
@@ -28,17 +28,36 @@ _flags = {
 class AntsConfiguration(MagicMonkeyConfigurable):
     passes = List(
         DictInstantiatingInstance(klass=AntsPass), [],
-        minlen=1, allow_none=True
+        minlen=1, allow_none=True,
+        help="List of registration passes (Rigid, Affine or SyN)"
     ).tag(config=True)
     interpolation = Enum(
-        ["Linear", "NearestNeighbor", "Gaussian",  "BSpline"], "Linear"
+        ["Linear", "NearestNeighbor", "Gaussian",  "BSpline"], "Linear",
+        help="Interpolation strategy. Choices : {}".format(
+            ["Linear", "NearestNeighbor", "Gaussian",  "BSpline"]
+        )
     ).tag(config=True)
-    dimension = Integer(3).tag(config=True)
-    inlier_range = List(Float, [5E-3, 0.995], 2, 2).tag(config=True)
-    use_float = Bool(False).tag(config=True)
-    match_histogram = Bool(True).tag(config=True)
-    accross_modalities = Bool(True).tag(config=True)
-    init_transform = InitialTransform(None, allow_none=True).tag(config=True)
+    dimension = Integer(
+        3, help="Number of dimensions of the input images"
+    ).tag(config=True)
+    inlier_range = List(
+        Float, [5E-3, 0.995], 2, 2,
+        help="Interval of values considered as part of the dataset"
+    ).tag(config=True)
+    use_float = Bool(
+        False, help="Use single instead of double precision"
+    ).tag(config=True)
+    match_histogram = Bool(
+        True, help="Match histogram between fixed and moving"
+    ).tag(config=True)
+    accross_modalities = Bool(
+        True, help="Perform registration on different modalities "
+                   "of imaging for fixed and moving images"
+    ).tag(config=True)
+    init_transform = InitialTransform(
+        None, allow_none=True, help="Perform an initial fast registration "
+                                    "between two images to align the dataset"
+    ).tag(config=True)
 
     def _config_section(self):
 
