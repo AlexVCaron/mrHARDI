@@ -58,7 +58,10 @@ class MagicMonkeyBaseApplication(Application):
     config_files = List(Unicode, [])
     configuration = Instance(Configurable, allow_none=True)
 
-    output_config = Unicode().tag(config=True, ignore_write=True)
+    output_config = Unicode(
+        help="File path. If set, the application will output the current "
+             "state of the application to the specified file"
+    ).tag(config=True, ignore_write=True)
 
     current_config = Unicode()
 

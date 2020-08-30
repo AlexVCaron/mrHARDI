@@ -6,13 +6,13 @@ SPHINXOPTS    =
 SPHINXBUILD   = sphinx-build
 PAPER         =
 SRCDIR        = source
-BUILDDIR      = build
+BUILDDIR      = ..
 PYTHON        = python3
 
 # Internal variables.
 PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
-ALLSPHINXOPTS   = -d build/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SRCDIR)
+ALLSPHINXOPTS   = -d $(BUILDDIR)/build/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) $(SRCDIR)
 
 .PHONY: help clean html web pickle htmlhelp latex changes linkcheck api
 
@@ -39,11 +39,11 @@ clean_api:
 	-rm -rf $(SRCDIR)/api/generated
 
 clean: clean_api
-	-rm -rf ../build/* ../dist/*
+	-rm -rf $(BUILDDIR)/build/* $(BUILDDIR)/dist/*
 	-rm -f $(SRCDIR)/config/options/config-generated.txt
 
 pdf: latex
-	cd ../build/latex && make all-pdf
+	cd $(BUILDDIR)/build/latex && make all-pdf
 
 all: html pdf
 
@@ -53,16 +53,16 @@ all: html pdf
 # original build/html dir is left in-place (useful to reload builds while
 # testing).
 dist: html
-	rm -rf ../html
-	cp -al ../build/html .
+	rm -rf $(BUILDDIR)/html
+	cp -al $(BUILDDIR)/build/html .
 	@echo "Build finished.  Final docs are in html/"
 
 html: api autoconfig
 html_noapi: clean_api autoconfig
 
 html html_noapi:
-	mkdir -p ../build/html ../build/doctrees
-	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) ../build/html
+	mkdir -p $(BUILDDIR)/build/html $(BUILDDIR)/build/doctrees
+	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/build/html
 	@echo
 	@echo "Build finished. The HTML pages are in build/html."
 
@@ -79,8 +79,8 @@ source/api/generated/gen.txt:
 	@echo "Build API docs finished."
 
 pickle:
-	mkdir -p ../build/pickle ../build/doctrees
-	$(SPHINXBUILD) -b pickle $(ALLSPHINXOPTS) ../build/pickle
+	mkdir -p $(BUILDDIR)/build/pickle $(BUILDDIR)/build/doctrees
+	$(SPHINXBUILD) -b pickle $(ALLSPHINXOPTS) $(BUILDDIR)/build/pickle
 	@echo
 	@echo "Build finished; now you can process the pickle files or run"
 	@echo "  sphinx-web build/pickle"
@@ -89,29 +89,29 @@ pickle:
 web: pickle
 
 htmlhelp:
-	mkdir -p ../build/htmlhelp ../build/doctrees
-	$(SPHINXBUILD) -b htmlhelp $(ALLSPHINXOPTS) ../build/htmlhelp
+	mkdir -p $(BUILDDIR)/build/htmlhelp $(BUILDDIR)/build/doctrees
+	$(SPHINXBUILD) -b htmlhelp $(ALLSPHINXOPTS) $(BUILDDIR)/build/htmlhelp
 	@echo
 	@echo "Build finished; now you can run HTML Help Workshop with the" \
 	      ".hhp project file in build/htmlhelp."
 
 latex: api autoconfig
-	mkdir -p ../build/latex ../build/doctrees
-	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) ../build/latex
+	mkdir -p $(BUILDDIR)/build/latex $(BUILDDIR)/build/doctrees
+	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) $(BUILDDIR)/build/latex
 	@echo
 	@echo "Build finished; the LaTeX files are in build/latex."
 	@echo "Run \`make all-pdf' or \`make all-ps' in that directory to" \
 	      "run these through (pdf)latex."
 
 changes:
-	mkdir -p ../build/changes ../build/doctrees
-	$(SPHINXBUILD) -b changes $(ALLSPHINXOPTS) ../build/changes
+	mkdir -p $(BUILDDIR)/build/changes $(BUILDDIR)/build/doctrees
+	$(SPHINXBUILD) -b changes $(ALLSPHINXOPTS) $(BUILDDIR)/build/changes
 	@echo
 	@echo "The overview file is in build/changes."
 
 linkcheck:
-	mkdir -p ../build/linkcheck ../build/doctrees
-	$(SPHINXBUILD) -b linkcheck $(ALLSPHINXOPTS) ../build/linkcheck
+	mkdir -p $(BUILDDIR)/build/linkcheck $(BUILDDIR)/build/doctrees
+	$(SPHINXBUILD) -b linkcheck $(ALLSPHINXOPTS) $(BUILDDIR)/build/linkcheck
 	@echo
 	@echo "Link check complete; look for any errors in the above output " \
 	      "or in build/linkcheck/output.rst."

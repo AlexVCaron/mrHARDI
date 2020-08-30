@@ -10,7 +10,7 @@ SET SRCDIR=source
 SET PYTHON=python
 
 IF "%PAPER%" == "" SET PAPER=a4
-SET ALLSPHINXOPTS=-d build\doctrees -D latex_paper_size=%PAPER% %SPHINXOPTS% %SRCDIR%
+SET ALLSPHINXOPTS=-d ..\build\doctrees -D latex_paper_size=%PAPER% %SPHINXOPTS% %SRCDIR%
 
 FOR %%X IN (%SPHINXBUILD%.exe) DO SET P=%%~$PATH:X
 
@@ -21,29 +21,29 @@ FOR %%L IN (html html_noapi pickle htmlhelp latex changes linkcheck) DO (
             ECHO Error: Sphinx is not available. Please make sure it is correctly installed.
             GOTO END
         )
-        MD build\doctrees 2>NUL
-        MD build\%1 || GOTO DIR_EXIST
+        MD ..\build\doctrees 2>NUL
+        MD ..\build\%1 || GOTO DIR_EXIST
         %PYTHON% autogen_config.py && ECHO Created docs for config options
         IF NOT "%1" == "html_noapi" (
             %PYTHON% autogen_api.py && ECHO Build API docs finished
-            %SPHINXBUILD% -b %1 %ALLSPHINXOPTS% build\%1
+            %SPHINXBUILD% -b %1 %ALLSPHINXOPTS% ..\build\%1
         ) ELSE (
-            %SPHINXBUILD% -b html %ALLSPHINXOPTS% build\%1
+            %SPHINXBUILD% -b html %ALLSPHINXOPTS% ..\build\%1
         )
         IF NOT ERRORLEVEL 0 GOTO ERROR
         ECHO.
-        ECHO Build finished. Results are in build\%1.
+        ECHO Build finished. Results are in ..\build\%1.
         IF "%1" == "pickle" (
             ECHO Now you can process the pickle files or run
-            ECHO    sphinx-web build\pickle to start the sphinx-web server.
+            ECHO    sphinx-web ..\build\pickle to start the sphinx-web server.
         )
         IF "%1" == "htmlhelp" (
             ECHO Now you can run HTML Help Workshop with the
-            ECHO    .hhp project file in build/htmlhelp.
+            ECHO    .hhp project file in ..\build/htmlhelp.
         )
         IF "%1" == "linkcheck" (
             ECHO Look for any errors in the above output
-            ECHO    or in build\linkcheck\output.rst.
+            ECHO    or in ..\build\linkcheck\output.rst.
         )
         GOTO END
     )
@@ -51,7 +51,7 @@ FOR %%L IN (html html_noapi pickle htmlhelp latex changes linkcheck) DO (
 
 
 IF "%1" == "clean" (
-    RD /s /q build dist %SRCDIR%\api\generated 2>NUL
+    RD /s /q ..\build ..\dist %SRCDIR%\api\generated 2>NUL
     IF ERRORLEVEL 0 ECHO Build environment cleaned!
     GOTO END
 )

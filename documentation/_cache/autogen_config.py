@@ -3,8 +3,9 @@
 from os.path import join, dirname, abspath
 import inspect
 
+from magic_monkey.base.application import MagicMonkeyConfigurable
 from magic_monkey.main_app import MagicMonkeyApplication
-from traitlets import Undefined
+from traitlets import Instance, Undefined, import_item
 from collections import defaultdict
 
 here = abspath(dirname(__file__))
@@ -39,9 +40,10 @@ def class_config_rst_doc(
     Excludes traits defined on parent classes.
     """
     lines = []
+    remaining_configurables = []
     classname = cls.__name__
 
-    metadata = dict(config=True) if whole_traits else dict()
+    metadata = dict() if whole_traits else dict(config=True)
 
     if include_parents:
         traits = cls.class_traits(**metadata)
@@ -56,40 +58,52 @@ def class_config_rst_doc(
                   ''
                  ]
 
-        help = trait.help.rstrip() or 'No description'
-        lines.append(indent(inspect.cleandoc(help), 4) + '\n')
-
-        # Choices or type
-        if 'Enum' in ttype:
-            # include Enum choices
-            lines.append(indent(
-                ':options: ' + ', '.join('``%r``' % x for x in trait.values), 4))
+        if isinstance(trait, Instance) and \
+                isinstance(trait.klass(), MagicMonkeyConfigurable):
+            help = (
+                "Trait holding further configuration for the application. "
+                "See :doc:`/config/options/{}{}` for further details".format(
+                    cls.__name__.lower(), trait.name
+                )
+            )
+            lines.append(indent(inspect.cleandoc(help), 4) + '\n')
+            remaining_configurables.append(trait)
         else:
-            lines.append(indent(':trait type: ' + ttype, 4))
+            help = trait.help.rstrip() or 'No description'
+            lines.append(indent(inspect.cleandoc(help), 4) + '\n')
 
-        # Default value
-        # Ignore boring default values like None, [] or ''
-        if interesting_default_value(trait.default_value):
-            try:
-                dvr = trait.default_value_repr()
-            except Exception:
-                dvr = None  # ignore defaults we can't construct
-            if dvr is not None:
-                if len(dvr) > 64:
-                    dvr = dvr[:61] + '...'
-                # Double up backslashes, so they get to the rendered docs
-                dvr = dvr.replace('\\n', '\\\\n')
-                lines.append(indent(':default: ``%s``' % dvr, 4))
+            # Choices or type
+            if 'Enum' in ttype:
+                # include Enum choices
+                lines.append(indent(
+                    ':options: ' + ', '.join('``%r``' % x for x in trait.values), 4))
+            else:
+                lines.append(indent(':trait type: ' + ttype, 4))
 
-        # Command line aliases
-        if trait_aliases[fullname]:
-            fmt_aliases = format_aliases(trait_aliases[fullname])
-            lines.append(indent(':CLI option: ' + fmt_aliases, 4))
+            # Default value
+            # Ignore boring default values like None, [] or ''
+            if interesting_default_value(trait.default_value):
+                try:
+                    dvr = trait.default_value_repr()
+                except Exception:
+                    dvr = None  # ignore defaults we can't construct
+                if dvr is not None:
+                    if len(dvr) > 64:
+                        dvr = dvr[:61] + '...'
+                    # Double up backslashes, so they get to the rendered docs
+                    dvr = dvr.replace('\\n', '\\\\n')
+                    lines.append(indent(':default: ``%s``' % dvr, 4))
 
-        # Blank line
-        lines.append('')
+            # Command line aliases
+            if trait_aliases[fullname]:
+                fmt_aliases = format_aliases(trait_aliases[fullname])
+                lines.append(indent(':CLI option: ' + fmt_aliases, 4))
 
-    return '\n'.join(lines)
+            # Blank line
+            lines.append('')
+
+    return '\n'.join(lines), remaining_configurables
+
 
 def reverse_aliases(app):
     """Produce a mapping of trait names to lists of command line aliases.
@@ -111,9 +125,10 @@ def reverse_aliases(app):
 
     return res
 
-def write_doc(name, title, app, preamble=None):
-    trait_aliases = reverse_aliases(app)
-    filename = join(options, name+'.rst')
+
+def write_doc(name, title, item, aliases, preamble=None, parents=True):
+    filename = join(options, name + '.rst')
+    rm = []
     with open(filename, 'w') as f:
         f.write(title + '\n')
         f.write(('=' * len(title)) + '\n')
@@ -122,9 +137,60 @@ def write_doc(name, title, app, preamble=None):
             f.write(preamble + '\n\n')
         #f.write(app.document_config_options())
 
-        for c in app._classes_inc_parents():
-            f.write(class_config_rst_doc(c, trait_aliases))
+        if parents:
+            for c in item._classes_inc_parents():
+                s, rme = class_config_rst_doc(c, aliases, parents)
+                f.write(s)
+                f.write('\n')
+                rm.extend(rme)
+        else:
+            s, rm = class_config_rst_doc(item.__class__, aliases, parents)
+            f.write(s)
             f.write('\n')
+
+    conf_opts = ["{}{}".format(name, r.name) for r in rm]
+
+    for r in rm:
+        conf_opts.extend(write_doc(
+            "{}{}".format(name, r.name),
+            "{} holder for {}".format(r.name.capitalize(), name.capitalize()),
+            r.klass(), aliases, parents=parents
+        ))
+
+    return conf_opts
+
+
+_index_header = """
+====================
+Magic Monkey options
+====================
+
+Any of the options listed here can be set in config files, at the
+command line, or from inside Magic Monkey. See :ref:`setting_config` for
+details.
+"""
+
+_spec_descr = """
+The following configuration options are specific to each sub-application
+"""
+
+_glob_descr = """
+The configuration options below apply to all applications
+"""
+
+_conf_descr = """
+Some application have additional configuration options. Those are listed here
+"""
+
+def write_options_index(specific_opts=(), global_opts=(), conf_opts=()):
+    lines = [_index_header, '', _spec_descr, '', ".. toctree::"]
+    lines.extend("   {}\n".format(opt) for opt in specific_opts)
+    lines.extend(['', _glob_descr, '', ".. toctree::"])
+    lines.extend("   {}\n".format(opt) for opt in global_opts)
+    lines.extend(['', _conf_descr, '', ".. toctree::"])
+    lines.extend("   {}\n".format(opt) for opt in conf_opts)
+    with open(join(options, "index.rst"), "w+") as f:
+        f.write("\n".join(lines))
 
 
 if __name__ == '__main__':
@@ -132,4 +198,27 @@ if __name__ == '__main__':
     with open(generated, 'w'):
         pass
 
-    write_doc('main_app', 'Magic Monkey main options', MagicMonkeyApplication())
+    write_doc(
+        'main_app', 'Magic Monkey base options',
+        MagicMonkeyApplication.instance(),
+        reverse_aliases(MagicMonkeyApplication.instance()),
+        parents=False
+    )
+
+    MagicMonkeyApplication.clear_instance()
+
+    spec_opts, conf_opts = [], []
+    for name, command in MagicMonkeyApplication.subcommands.items():
+        klass = import_item(command[0])
+
+        conf_opts.extend(write_doc(
+            klass.__name__.lower(),
+            '{} sub-command options'.format(klass.__name__),
+            klass.instance(), reverse_aliases(klass.instance()),
+            preamble=command[1], parents=False
+        ))
+
+        klass.clear_instance()
+        spec_opts.append(klass.__name__.lower())
+
+    write_options_index(spec_opts, ['main_app'], conf_opts)

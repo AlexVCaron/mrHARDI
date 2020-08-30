@@ -353,7 +353,7 @@ class ApiDocWriter(object):
                 ad += "\n" + "\n".join(
                     '  {}'.format(s) for s in class_config_rst_doc(
                         app.__class__, trait_aliases, False, True
-                    ).split("\n")
+                    )[0].split("\n")
                 ) + "\n"
                 app.__class__.clear_instance()
         

@@ -1,44 +1,7 @@
-from importlib import import_module
-from os import getcwd
-from os.path import join
-
-from traitlets import Bool
-
 from magic_monkey.base.application import MagicMonkeyBaseApplication
 
 
-_flags = dict(
-    document=(
-        {'MagicMonkeyBaseApplication': {'document': True}},
-        "Generate documentation for the project in the current directory"
-    )
-)
-
-
 class MagicMonkeyApplication(MagicMonkeyBaseApplication):
-    flags = _flags
-
-    document = Bool(False, help='Generate projects documentation').tag(
-        config=True, ignore_write=True, hidden=True
-    )
-
-    def start(self):
-        if self.document:
-            self.document_config_options()
-        else:
-            super().start()
-
-    def document_config_options(self):
-        cwd = getcwd()
-        with open(join(cwd, "{}.rst".format(self.name)), "w+") as f:
-            f.write(super().document_config_options())
-
-        for name, command in self.subcommands.items():
-            self.initialize_subcommand(name, ["--safe"])
-            with open(join(cwd, "{}.rst".format(self.subapp.name)), "w+") as f:
-                f.write(self.subapp.document_config_options())
-            self.subapp.__class__.clear_instance()
-
     def _start(self):
         if self.subapp:
             self.subapp.start()
