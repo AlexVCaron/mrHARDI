@@ -1,0 +1,88 @@
+BootStrap: localimage
+From: magic_monkey_heavy.sif
+
+%setup
+        SOURCES=$SINGULARITY_ROOTFS/mms/sources
+        MMY_sources=$SOURCES/magic_monkey
+
+        mkdir -p $MMY_sources
+
+        pip3 install --upgrade setuptools wheel
+        pip3 wheel --no-deps --wheel-dir=$MMY_sources .
+        cp requirements.txt $MMY_sources/.
+
+        cp utils.sh $SOURCE/mmy_utils.sh
+%post
+        . ./mms/sources/mmy_utils.sh
+
+        # PATHS VARIABLES FOR SOURCES
+        SOURCES=/mms/sources
+        MMY_sources=$SOURCES/magic_monkey
+
+        remove_if_exists $SCILPY_sources
+
+        # PATHS VARIABLES FOR INSTALLATION
+        INSTALL=/mms/dev
+        PYTHON_27=$INSTALL/python2.7
+        PYTHON_37=$INSTALL/python3.7
+        SCILPY=$INSTALL/scilpy
+
+        mkdir -p $INSTALL
+
+        # SET ENVIRONMENT VARIABLES FOR LATER
+        export PATH=$PYTHON_27/bin:$PYTHON_37/bin:$PATH
+
+        last_mmy_ver_installed () {
+            cwd=$PWD
+            mmy_pip_descr="$(echo "$(pip3.7 list | grep magic-monkey)" || echo "NONE")"
+            curr_ver="NONE"
+
+            if [ "$mmy_pip_descr" != "NONE" ]
+            then
+                curr_ver="$(echo "$mmy_pip_descr" | cut -d' ' -f8)"
+            fi
+
+            cd $MMY_sources
+            mmy_wheel="$(basename "$(ls | grep *.whl)")"
+            cd $cwd
+
+            [ "$curr_ver" == "$(get_version $mmy_wheel)" ]
+        }
+
+        # CHECK CURRENT COMPLETED INSTALLATION STATE
+        scilpy_installed=$(assert_installation_complete $INSTALL scilpy)
+        mmy_installed=$(assert_installation_complete $INSTALL magic_monkey)
+
+        if [ ! $scilpy_installed ] || [ ! $mmy_installed ]
+        then
+            if [ ! $scilpy_installed ]
+            then
+                scilpy_installer () {
+                    mkdir -p $SCILPY
+                    git clone https://github.com/scilus/scilpy.git $SCILPY
+
+                    cd $SCILPY
+                    pip3.7 install -e .
+                }
+
+                ERR_VAR=$(scilpy_installer) && touch $INSTALL/scilpy_complete.flag || error_exit
+            fi
+
+            if [ ! $mmy_installed ] || [ ! last_mmy_ver_installed ]
+            then
+                mmy_installer () {
+                    cd $MMY_sources
+                    ls $MMY_sources
+                    pip3.7 install -r requirements.txt
+                    pip3.7 install magic_monkey-*-py3-none-any.whl
+                }
+
+                ERR_VAR=$(mmy_installer) && touch $INSTALL/magic_monkey_complete.flag || error_exit
+            fi
+
+            apt-get clean
+            apt autoremove -y
+
+            remove_if_exists $SOURCES
+            exit 0
+        fi
