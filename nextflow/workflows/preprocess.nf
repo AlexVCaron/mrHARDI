@@ -10,7 +10,7 @@ params.gaussian_noise_correction = true
 params.rev_is_b0 = true
 params.multiple_reps = false
 
-include { group_subject_reps; join_optional; map_optional; OPT_CHANNEL; replace_dwi_file } from '../modules/functions.nf'
+include { group_subject_reps; join_optional; map_optional; opt_channel; replace_dwi_file } from '../modules/functions.nf'
 include { extract_b0 as b0; extract_b0 as b0_rev; squash_b0 } from '../modules/preprocess.nf'
 include { dwi_denoise; prepare_topup; topup; prepare_eddy; eddy; apply_topup } from '../modules/denoise.nf'
 include { ants_register; ants_transform } from '../modules/register.nf'
@@ -24,7 +24,7 @@ workflow preprocess_wkf {
     main:
         mask_channel = map_optional(dwi_channel, 4)
         dwi_channel = dwi_channel.map{ it.subList(0, 4) }
-        topup2eddy_channel = OPT_CHANNEL
+        topup2eddy_channel = opt_channel()
 
         if ( params.t1mask2dwi_registration || params.topup_correction ) {
             b0_channel = b0(dwi_channel.map{ it.subList(0, 3) })
@@ -40,7 +40,7 @@ workflow preprocess_wkf {
             if ( params.topup_correction ) {
                 topup_wkf(b0_channel, rev_b0_channel, mask_channel)
 // TODO : Implement topup mask computation
-                topup2eddy_channel = topup_wkf.out.eddy
+                topup2eddy_channel = topup_wkf.out.param
             }
         }
 
@@ -78,7 +78,7 @@ workflow topup_wkf {
     main:
         data_channel = b0_channel.groupTuple().join(rev_b0_channel.groupTuple())
         prep_channel = prepare_topup(data_channel)
-        cat_channel = cat_topup(data_channel.map { [it[0], it[1] + it[2]] })
+        cat_channel = cat_topup(data_channel.map { [it[0], it[1] + it[2], "", ""] })
 
         data_channel = prep_channel.map{ it.subList(0, 3) }.join(cat_channel)
         data_channel = join_optional(data_channel, mask_channel)

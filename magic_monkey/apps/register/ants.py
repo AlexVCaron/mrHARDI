@@ -1,4 +1,5 @@
 from os import getcwd
+from os.path import basename, join
 
 from traitlets import Dict, Instance, Unicode
 
@@ -79,7 +80,10 @@ class AntsRegistration(MagicMonkeyBaseApplication):
         )
 
         launch_shell_process(
-            "antsRegistration {}".format(ants_config_fmt), current_path
+            "antsRegistration {}".format(ants_config_fmt),
+            join(current_path, "{}_ants.log".format(
+                basename(self.output_prefix)
+            ))
         )
 
 

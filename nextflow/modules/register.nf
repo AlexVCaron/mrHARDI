@@ -7,12 +7,12 @@ params.config.register.ants_transform = "../.config/ants_transform.py"
 
 process ants_register {
     input:
-        tuple val(sid), file(moving), file(fixed)
+        tuple val(sid), file(moving), file(target)
     output:
         tuple val(sid), path("${sid}__registration_ref.nii.gz"), path("${sid}__registration_affine.mat")
     script:
         """
-        magic_monkey ants_register --moving moving* --fixed fixed* --out ${sid}__registration --config $params.config.register.ants_registration
+        magic-monkey ants_registration --moving moving* --target target* --out ${sid}__registration --config $params.config.register.ants_registration
         """
 }
 
@@ -23,6 +23,6 @@ process ants_transform {
         tuple val(sid), path("${sid}__transformed.nii.gz")
     script:
         """
-        magic_monkey ants_transform --in $img --ref $ref --mat $affine --out ${sid}__transformed.nii.gz --config $params.config.register.ants_transform
+        magic-monkey ants_transform --in $img --ref $ref --mat $affine --out ${sid}__transformed.nii.gz --config $params.config.register.ants_transform
         """
 }

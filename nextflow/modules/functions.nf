@@ -15,11 +15,15 @@ def group_subject_reps ( dwi_channel ) {
 }
 
 def replace_dwi_file ( base_channel, dwi_channel ) {
-    return dwi_channel.join(base_channel.map{ [it[0]] + it.subList(2, it.size()) }
+    return dwi_channel.join(base_channel.map{ [it[0]] + it.subList(2, it.size()) })
 }
 
-def OPT_FILE_VALUE = ""
-def OPT_CHANNEL = null
+OPT_FILE_VALUE = ""
+OPT_CHANNEL = null
+
+def opt_channel () {
+    return OPT_CHANNEL
+}
 
 def join_optional ( base_channel, opt_channel ) {
     if ( opt_channel )

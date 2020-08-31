@@ -27,8 +27,7 @@ _flags = {
 
 class AntsConfiguration(MagicMonkeyConfigurable):
     passes = List(
-        DictInstantiatingInstance(klass=AntsPass), [],
-        minlen=1, allow_none=True,
+        DictInstantiatingInstance(klass=AntsPass), [], allow_none=True,
         help="List of registration passes (Rigid, Affine or SyN)"
     ).tag(config=True)
     interpolation = Enum(
