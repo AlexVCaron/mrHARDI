@@ -15,46 +15,16 @@ From: ubuntu:xenial
 
         SOURCES=$SINGULARITY_ROOTFS/mms/sources
         DIAMOND_sources=$SOURCES/diamond
-        MMY_sources=$SOURCES/magic_monkey
 
+        mkdir -p $SOURCES
         mkdir -p $DIAMOND_sources
-        mkdir -p $MMY_sources
 
         tar -zxf $DIAMOND_PKG -C $DIAMOND_sources
 
-        cd ..
-        rm -rf dist/* || (echo "Could not empty dist directory, please remove before trying again" & exit 1)
-        rm -rf build/* || (echo "Could not empty build directory, please remove before trying again" & exit 1)
-        python3 -m pip install --user --upgrade setuptools wheel
-        python3 setup.py sdist bdist_wheel
-
-        pip3 install --upgrade setuptools wheel
-        pip3 wheel --no-deps --wheel-dir=$MMY_sources .
-
-        # cp dist/magic_monkey-*-py3-none-any.whl $MMY_sources/.
-        cp requirements.txt $MMY_sources/.
+        cp utils.sh $SINGULARITY_ROOTFS/mms/sources/mmy_utils.sh
 %post
-        remove_if_exists () {
-            if [ -d  $1 ]
-            then
-                rm -rf $1
-            fi
-        }
-
-        assert_installation_complete () {
-            [ -f $1/$2_complete.flag ] && echo "true" || echo ""
-        }
-
-        ERR_VAR=""
-
-        error_exit () {
-            echo $ERR_VAR
-            echo -e "\e[30;41m!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-            echo -e "\e[30;41m                      THERE WAS AN ERROR WHILE BUILDING                      "
-            echo -e "\e[30;41m!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-            exit 0 # This hack allow us to build the singularity whether there is an error or not. Please check your output or log to see if everything has built
-        }
-
+        cd /mms/sources
+        . ./mmy_utils.sh
         cmake_version=3.10
         cmake_build=2
 
@@ -65,7 +35,6 @@ From: ubuntu:xenial
         FSL_sources=$SOURCES/fsl
         CUDA_91_sources=$SOURCES/cuda9.1
         DIAMOND_sources=$SOURCES/diamond
-        MMY_sources=$SOURCES/magic_monkey
         CMAKE_sources=$SOURCES/cmake
 
         remove_if_exists $PYTHON_27_sources
@@ -73,7 +42,6 @@ From: ubuntu:xenial
         remove_if_exists $FSL_sources
         remove_if_exists $CUDA_91_sources
         remove_if_exists $MRTRIX_sources
-        remove_if_exists $SCILPY_sources
         remove_if_exists $CMAKE_sources
 
         # PATHS VARIABLES FOR INSTALLATION
@@ -83,7 +51,6 @@ From: ubuntu:xenial
         FSL=$INSTALL/fsl
         MRTRIX=$INSTALL/mrtrix
         DIAMOND=$INSTALL/diamond
-        SCILPY=$INSTALL/scilpy
         ANTS=$INSTALL/ants
 
         mkdir -p $INSTALL
@@ -93,27 +60,6 @@ From: ubuntu:xenial
         export LD_LIBRARY_PATH=${CUDA_HOME}/lib64
         export PATH=$PYTHON_27/bin:$PYTHON_37/bin:$PATH
 
-        get_version () {
-            echo $1 | sed -E 's/.*-([[:digit:]]+(\.[[:digit:]]+)+(\.[^-]+)*)-.*/\1/'
-        }
-
-        last_mmy_ver_installed () {
-            cwd=$PWD
-            mmy_pip_descr="$(echo "$(pip3.7 list | grep magic-monkey)" || echo "NONE")"
-            curr_ver="NONE"
-
-            if [ "$mmy_pip_descr" != "NONE" ]
-            then
-                curr_ver="$(echo "$mmy_pip_descr" | cut -d' ' -f8)"
-            fi
-
-            cd $MMY_sources
-            mmy_wheel="$(basename "$(ls | grep *.whl)")"
-            cd $cwd
-
-            [ "$curr_ver" == "$(get_version $mmy_wheel)" ]
-        }
-
         # CHECK CURRENT COMPLETED INSTALLATION STATE
         python2_installed=$(assert_installation_complete $INSTALL python)
         python3_installed=$(assert_installation_complete $INSTALL python3)
@@ -121,12 +67,10 @@ From: ubuntu:xenial
         fsl_installed=$(assert_installation_complete $INSTALL fsl)
         mrtrix_installed=$(assert_installation_complete $INSTALL mrtrix)
         diamond_installed=$(assert_installation_complete $INSTALL diamond)
-        scilpy_installed=$(assert_installation_complete $INSTALL scilpy)
         ants_installed=$(assert_installation_complete $INSTALL ants)
         cmake_installed=$(assert_installation_complete $INSTALL cmake)
-        mmy_installed=$(assert_installation_complete $INSTALL magic_monkey)
 
-        if [ ! $python2_installed ] || [ ! $python3_installed ] || [ ! $cuda_installed ] || [ ! $fsl_installed ] || [ ! $mrtrix_installed ] || [ ! $diamond_installed ] || [ ! $scilpy_installed ] || [ ! $ants_installed ] || [ ! $cmake_installed ] || [ ! $mmy_installed ]
+        if [ ! $python2_installed ] || [ ! $python3_installed ] || [ ! $cuda_installed ] || [ ! $fsl_installed ] || [ ! $mrtrix_installed ] || [ ! $diamond_installed ] || [ ! $ants_installed ] || [ ! $cmake_installed ]
         then
             # Install required linux packages
             sed -i 's/main/main restricted universe/g' /etc/apt/sources.list
@@ -234,31 +178,6 @@ From: ubuntu:xenial
                 }
 
                 ERR_VAR=$(python3_installer) && touch $INSTALL/python3_complete.flag || error_exit
-            fi
-
-            if [ ! $scilpy_installed ]
-            then
-                scilpy_installer () {
-                    mkdir -p $SCILPY
-                    git clone https://github.com/scilus/scilpy.git $SCILPY
-
-                    cd $SCILPY
-                    pip3.7 install -e .
-                }
-
-                ERR_VAR=$(scilpy_installer) && touch $INSTALL/scilpy_complete.flag || error_exit
-            fi
-
-            if [ ! $mmy_installed ] || [ ! last_mmy_ver_installed ]
-            then
-                mmy_installer () {
-                    cd $MMY_sources
-                    ls $MMY_sources
-                    pip3.7 install -r requirements.txt
-                    pip3.7 install magic_monkey-*-py3-none-any.whl
-                }
-
-                ERR_VAR=$(mmy_installer) && touch $INSTALL/magic_monkey_complete.flag || error_exit
             fi
 
             if [ ! $cuda_installed ]
