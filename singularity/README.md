@@ -27,16 +27,54 @@ ready and available, since no setup is needed for the user.
     - Numpy / Scipy
     - Nibabel / Pynrrd
 - Cuda 9.1
+- Python 2.7 (comes vanilla, unloaded, we don't know what's inside. Use at your own risk, or please don't ...)
 
 ## Building the image
 
-Singularity makes it easy to build the image in one line of code. Before 
-calling the build sequence, ensure that your shell's current directory is 
-the one containing this Readme. Then, call
+The building of the singularity for this project takes two steps.
 
-> sudo singularity build <image_name>.<sif/simg> magic_monkey_singularity.def
+### Building the heavy base singularity
 
-The build process takes about half an hour on a conventional 3 cores processor.
+The base image must first be built if none is available or if some changes 
+need to be done to the base packages, that is :
+
+- Mrtrix 3
+- ANTs Registration
+- FSL
+- Diamond
+- Cuda 9.1
+
+Once in the directory **singularity/heavy**, call
+
+> singularity build ../magic_monkey_heavy.sif magic_monkey_heavy.def
+
+This will locally build a copy of the image, which will have to be 
+uploaded to the *Singularity Library* in order for it to be take into 
+account directly by the other definition file, or used locally using the 
+local version of the final build file.
+
+### Building the final image
+
+Once a base image is secured, the final image can be built, in the 
+directory **singularity/**, using :
+
+> singularity build magic_monkey_singularity.sif magic_monkey.def
+
+Alternatively, a local image can be provided as base for the final image 
+build. To do so, use *magic_monkey_local.def* instead. Be sure the base 
+singularity can be found in the **singularity** directory and that it is 
+named **magic_monkey_heavy.sif**
+
+### Sanity check on built images
+
+As of now, building the singularity will never lead to error, meaning you'll 
+always end up with an image at the end, just maybe not filled with all the 
+content that should be on it. This means that you should always check the 
+build outputs and the executables on the final image.
+
+A good indicator is the standard output of the build process. If anything 
+happened, it will have at the end of it an error message that is quite hard 
+to miss, with the error of the last program build cycle.
 
 ## Using the packaged applications
 
@@ -62,17 +100,13 @@ the definition file has been crafted to allow for installation checkpoints.
 This means that updating a *sandbox* image is possible. After creating a first 
 version of the image using
 
-> sudo singularity build --sandbox \<image> magic_monkey_singularity.def
+> sudo singularity build --sandbox \<image> magic_monkey.def
 
 subsequent versions of it can be updated with
 
-> sudo singularity build --update \<image> magic_monkey_singularity.def
+> sudo singularity build --update \<image> magic_monkey.def
 
-As of now, building the singularity will never lead to error, meaning you'll 
-always end up with an image at the end, just maybe not filled with all the 
-content that should be on it. This means that you should always check the 
-build outputs and the executables on the final image.
-
-A good indicator is the standard output of the build process. If anything 
-happened, it will have at the end of it an error message that is quite hard 
-to miss .
+It is unadvised to build the base heavy image under this mode, since it contains 
+programs whose sources are too heavy for the update cycle of singularity. Only 
+use this mode when developing directly on **magic-monkey** code or other 
+lightweight python libraries.

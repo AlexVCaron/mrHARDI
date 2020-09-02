@@ -10,6 +10,9 @@ From: ubuntu:xenial
         export ANTS_BIN=/mms/dev/ants/bin
 
         export PATH=$ANTS_BIN:$DIAMOND_BIN:$MRTRIX_BIN:$FSL_BIN:$PYTHON_37_BIN:$PYTHON_27_BIN:$PATH
+
+        export CUDA_HOME=/usr/local/cuda-9.1
+        export LD_LIBRARY_PATH=${CUDA_HOME}/lib64
 %setup
         export DIAMOND_PKG=diamond_package.tar.gz
 
@@ -21,7 +24,7 @@ From: ubuntu:xenial
 
         tar -zxf $DIAMOND_PKG -C $DIAMOND_sources
 
-        cp utils.sh $SINGULARITY_ROOTFS/mms/sources/mmy_utils.sh
+        cp ../utils.sh $SINGULARITY_ROOTFS/mms/sources/mmy_utils.sh
 %post
         cd /mms/sources
         . ./mmy_utils.sh
@@ -193,8 +196,6 @@ From: ubuntu:xenial
                     apt-get update
 
                     DEBIAN_FRONTEND=noninteractive apt-get -y install cuda-runtime-9.1
-
-                    ln -s /usr/local/cuda-9.1 /opt/cuda-9.1
                 }
 
                 ERR_VAR=$(cuda_installer) && touch $INSTALL/cuda_complete.flag || error_exit
@@ -210,6 +211,11 @@ From: ubuntu:xenial
                     cd $FSL_sources
                     wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py
                     python fslinstaller.py -d $FSL -D
+
+                    cd $FSL
+                    find . -maxdepth 1 -not \( -name . -or -name .. -or -name bin -or -name lib -or -name include -or -name etc -or -name config -or -name extras -or -name data \) -exec rm -rf "{}" \;
+                    cd extras
+                    find . -maxdepth 1 -not \( -name . -or -name .. -or -name bin -or -name lib -or -name include -or -name share \) -exec rm -rf "{}" \;
                 }
 
                 ERR_VAR=$(fsl_installer) && touch $INSTALL/fsl_complete.flag || error_exit
@@ -247,6 +253,9 @@ From: ubuntu:xenial
                     cd $DIAMOND_sources
                     ./build.sh --buildfolder $DIAMOND --nthreads $(nproc --all)
                     chmod 111 $DIAMOND/bin/crlDCIEstimate
+
+                    cd $DIAMOND
+                    find . -maxdepth 1 -not \( -name . -or -name .. -or -name bin \) -exec rm -rf "{}" \;
                 }
 
                 ERR_VAR=$(diamond_installer) && touch $INSTALL/diamond_complete.flag || error_exit
@@ -262,22 +271,26 @@ From: ubuntu:xenial
                     cd $ANTS
                     chmod 777 installANTs.sh
                     ./installANTs.sh
+
+                    rm -rf ANTs/ build/ LICENSE README.md installANTs.sh
+                    mv install/* .
+                    rm -rf install
                 }
 
                 ERR_VAR=$(ants_installer) && touch $INSTALL/ants_complete.flag || error_exit
             fi
 
-            cd $CMAKE_sources/cmake-${cmake_version}.${cmake_build}
-            make uninstall
+            if [ ! $cmake_installed ]
+            then
+                cd $CMAKE_sources/cmake-${cmake_version}.${cmake_build}
+                make uninstall
+            fi
 
-            apt-get -y remove acpid
             apt-get -y remove apt-transport-https
-            apt-get -y remove binutils
             apt-get -y remove build-essential
             apt-get -y remove checkinstall
             apt-get -y remove curl
             apt-get -y remove cpio
-            apt-get -y remove dkms
             apt-get -y remove git
             apt-get -y remove wget
             apt-get clean
