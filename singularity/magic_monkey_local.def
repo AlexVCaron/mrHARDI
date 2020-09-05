@@ -4,14 +4,18 @@ From: magic_monkey_heavy.sif
 %setup
         SOURCES=$SINGULARITY_ROOTFS/mms/sources
         MMY_sources=$SOURCES/magic_monkey
+        cwd=$PWD
 
         mkdir -p $MMY_sources
+        mkdir -p /tmp/tempwheel
+        cd ..
 
         pip3 install --upgrade setuptools wheel
-        pip3 wheel --no-deps --wheel-dir=$MMY_sources .
+        python3 setup.py bdist_wheel -b /tmp/tempwheel -d $MMY_sources
         cp requirements.txt $MMY_sources/.
 
-        cp utils.sh $SOURCE/mmy_utils.sh
+        cd $cwd
+        cp utils.sh $SOURCES/mmy_utils.sh
 %post
         . ./mms/sources/mmy_utils.sh
 
@@ -55,6 +59,14 @@ From: magic_monkey_heavy.sif
 
         if [ ! $scilpy_installed ] || [ ! $mmy_installed ]
         then
+            sed -i 's/main/main restricted universe/g' /etc/apt/sources.list
+            apt-get update && apt-get -y upgrade
+            apt-get -y install build-essential
+            apt-get -y install gfortran
+            apt-get -y install git
+            apt-get -y install libblas-dev
+            apt-get -y install liblapack-dev
+
             if [ ! $scilpy_installed ]
             then
                 scilpy_installer () {
@@ -80,9 +92,13 @@ From: magic_monkey_heavy.sif
                 ERR_VAR=$(mmy_installer) && touch $INSTALL/magic_monkey_complete.flag || error_exit
             fi
 
+            apt-get -y remove build-essential
+            apt-get -y remove gfortran
+            apt-get -y remove git
             apt-get clean
             apt autoremove -y
 
             remove_if_exists $SOURCES
+
             exit 0
         fi
