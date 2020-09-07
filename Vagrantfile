@@ -11,7 +11,7 @@ configuration = {}
 base_config = {
   base_box: {name: "avcaron/mmy-base-box", ver: "0.3.0"},
   network: {private: {name: "private_network", ip: "192.168.77.101"}},
-  vm: {name: "MAGIC-MONKEY_vbox", cpu: "3", ram: "10240", disk: "300GB"},
+  vm: {name: "MAGIC-MONKEY_vbox", cpu: "3", ram: "20480", disk: "300GB"},
   build: {type: :develop, cpu: 3, verbose: "vvvv", hostname: "MMY-host"}
 }
 base_config.merge(configuration)
@@ -49,6 +49,8 @@ Vagrant.configure("2") do |config|
     vb.cpus = vm[:cpu]
     vb.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/shared_python", "1"]
     vb.customize ["setextradata", :id, "VBoxInternal2/SharedFoldersEnableSymlinksCreate/vagrant", "1"]
+    vb.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
+    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
   end
 
   # Get base vm config from vagrant
@@ -63,11 +65,11 @@ Vagrant.configure("2") do |config|
   # Shared folders to manage shared python installation across the host and the remote
 
   share_type = ''
-  (OS.windows? or OS.mac?) ? (share_type = 'smb') : (share_type = 'nfs')
+  mount_opts = "rw,async,fsc,nolock,vers=3,udp,rsize=32768,wsize=32768,hard,noatime,actimeo=2"
 
-  config.vm.synced_folder "vm/python", "/shared_python", type: share_type
-  config.vm.synced_folder ".", "/home/vagrant/magic_monkey", type: share_type
-  config.vm.synced_folder ".", "/vagrant", type: share_type
+  config.vm.synced_folder "vm/python", "/shared_python", type: "nfs", mount_options: [mount_opts]
+  config.vm.synced_folder ".", "/home/vagrant/magic_monkey", type: "nfs", mount_options: [mount_opts]
+  config.vm.synced_folder ".", "/vagrant", type: "nfs", mount_options: [mount_opts]
 
   # VM provisioning via ansible playbook
   config.vm.provision "ansible_local" do |ansible|

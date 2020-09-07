@@ -89,6 +89,8 @@ correctly. To install them, enter the following commands in a terminal :
 
 > vagrant plugin install vagrant-disksize
 
+> vagrant plugin install vagrant-winnfsd
+
 #### Pre-installation
 
 Some platforms can be picky on symbolic links (Windows is a good example). In 

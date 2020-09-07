@@ -14,7 +14,9 @@
       'curl',
       'wget',
       'xz-utils',
-      'default-jdk'
+      'default-jdk',
+      'nfs-common',
+      'portmap'
     ]
     state: latest
   become: yes
