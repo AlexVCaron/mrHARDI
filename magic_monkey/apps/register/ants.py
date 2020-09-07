@@ -72,7 +72,7 @@ class AntsRegistration(MagicMonkeyBaseApplication):
             config_dict["t{}".format(i)] = target
             config_dict["m{}".format(i)] = moving
 
-        ants_config_fmt.format(**config_dict)
+        ants_config_fmt = ants_config_fmt.format(**config_dict)
 
         ants_config_fmt += " --output [{},{}]".format(
             "{}.mat".format(self.output_prefix),

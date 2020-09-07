@@ -113,7 +113,7 @@ class MagicMonkeyBaseApplication(Application):
 
     def __init__(self, **kwargs):
         conf_klass = self.__class__.configuration.klass
-        if MagicMonkeyConfigurable in (conf_klass,) + conf_klass.__bases__:
+        if MagicMonkeyConfigurable in conf_klass.mro():
             try:
                 self.configuration = conf_klass(parent=self)
                 self.classes.extend((conf_klass,) + conf_klass.__bases__)
