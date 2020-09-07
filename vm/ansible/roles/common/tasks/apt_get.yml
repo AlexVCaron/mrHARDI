@@ -13,7 +13,10 @@
       'llvm',
       'curl',
       'wget',
-      'xz-utils'
+      'xz-utils',
+      'default-jdk',
+      'nfs-common',
+      'portmap'
     ]
     state: latest
   become: yes

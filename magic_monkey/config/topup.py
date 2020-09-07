@@ -72,7 +72,7 @@ class TopupConfiguration(MagicMonkeyConfigurable):
     def serialize(self):
         if len(self.passes) > 1:
             self.passes[0].merge(*self.passes[1:])
-            self.passes = self.passes[:1]
+            self.passes = [self.passes[0]]
 
         return serialize_fsl_args(dict(
             ssqlambda=int(self.ssq_scale_lambda),

@@ -1,0 +1,301 @@
+BootStrap: docker
+From: ubuntu:xenial
+
+%environment
+        export PYTHON_27_BIN=/mms/dev/python2.7/bin
+        export PYTHON_37_BIN=/mms/dev/python3.7/bin
+        export FSL_BIN=/mms/dev/fsl/bin
+        export MRTRIX_BIN=/mms/dev/mrtrix/bin
+        export DIAMOND_BIN=/mms/dev/diamond/bin
+        export ANTS_BIN=/mms/dev/ants/bin
+
+        export PATH=$ANTS_BIN:$DIAMOND_BIN:$MRTRIX_BIN:$FSL_BIN:$PYTHON_37_BIN:$PYTHON_27_BIN:$PATH
+
+        export CUDA_HOME=/usr/local/cuda-9.1
+        export LD_LIBRARY_PATH=${CUDA_HOME}/lib64
+%setup
+        export DIAMOND_PKG=diamond_package.tar.gz
+
+        SOURCES=$SINGULARITY_ROOTFS/mms/sources
+        DIAMOND_sources=$SOURCES/diamond
+
+        mkdir -p $SOURCES
+        mkdir -p $DIAMOND_sources
+
+        tar -zxf $DIAMOND_PKG -C $DIAMOND_sources
+
+        cp ../utils.sh $SINGULARITY_ROOTFS/mms/sources/mmy_utils.sh
+%post
+        cd /mms/sources
+        . ./mmy_utils.sh
+        cmake_version=3.10
+        cmake_build=2
+
+        # PATHS VARIABLES FOR SOURCES
+        SOURCES=/mms/sources
+        PYTHON_27_sources=$SOURCES/python2.7
+        PYTHON_37_sources=$SOURCES/python3.7
+        FSL_sources=$SOURCES/fsl
+        CUDA_91_sources=$SOURCES/cuda9.1
+        DIAMOND_sources=$SOURCES/diamond
+        CMAKE_sources=$SOURCES/cmake
+
+        remove_if_exists $PYTHON_27_sources
+        remove_if_exists $PYTHON_37_sources
+        remove_if_exists $FSL_sources
+        remove_if_exists $CUDA_91_sources
+        remove_if_exists $MRTRIX_sources
+        remove_if_exists $CMAKE_sources
+
+        # PATHS VARIABLES FOR INSTALLATION
+        INSTALL=/mms/dev
+        PYTHON_27=$INSTALL/python2.7
+        PYTHON_37=$INSTALL/python3.7
+        FSL=$INSTALL/fsl
+        MRTRIX=$INSTALL/mrtrix
+        DIAMOND=$INSTALL/diamond
+        ANTS=$INSTALL/ants
+
+        mkdir -p $INSTALL
+
+        # SET ENVIRONMENT VARIABLES FOR LATER
+        export CUDA_HOME=/usr/local/cuda-9.1
+        export LD_LIBRARY_PATH=${CUDA_HOME}/lib64
+        export PATH=$PYTHON_27/bin:$PYTHON_37/bin:$PATH
+
+        # CHECK CURRENT COMPLETED INSTALLATION STATE
+        python2_installed=$(assert_installation_complete $INSTALL python)
+        python3_installed=$(assert_installation_complete $INSTALL python3)
+        cuda_installed=$(assert_installation_complete $INSTALL cuda)
+        fsl_installed=$(assert_installation_complete $INSTALL fsl)
+        mrtrix_installed=$(assert_installation_complete $INSTALL mrtrix)
+        diamond_installed=$(assert_installation_complete $INSTALL diamond)
+        ants_installed=$(assert_installation_complete $INSTALL ants)
+        cmake_installed=$(assert_installation_complete $INSTALL cmake)
+
+        if [ ! $python2_installed ] || [ ! $python3_installed ] || [ ! $cuda_installed ] || [ ! $fsl_installed ] || [ ! $mrtrix_installed ] || [ ! $diamond_installed ] || [ ! $ants_installed ] || [ ! $cmake_installed ]
+        then
+            # Install required linux packages
+            sed -i 's/main/main restricted universe/g' /etc/apt/sources.list
+            apt-get update && apt-get -y upgrade
+            apt-get -y install linux-headers-$(uname -r)
+            apt-get -y install acpid
+            apt-get -y install apt-transport-https
+            apt-get -y install binutils
+            apt-get -y install build-essential
+            apt-get -y install checkinstall
+            apt-get -y install curl
+            apt-get -y install cpio
+            apt-get -y install dkms
+            apt-get -y install git
+            apt-get -y install lib32gcc1
+            apt-get -y install libatk1.0-0
+            apt-get -y install libbz2-dev
+            apt-get -y install libcairo2
+            apt-get -y install libcairo-gobject2
+            apt-get -y install libeigen3-dev
+            apt-get -y install libblas-dev
+            apt-get -y install libffi-dev
+            apt-get -y install libfftw3-dev
+            apt-get -y install libgdbm-dev
+            apt-get -y install libgdk-pixbuf2.0-0
+            apt-get -y install libglib2.0-dev
+            apt-get -y install libgl1-mesa-dev
+            apt-get -y install libgtk2.0-0
+            apt-get -y install libgtk-3-0
+            apt-get -y install libjansson4
+            apt-get -y install liblapack-dev
+            apt-get -y install libncursesw5-dev
+            apt-get -y install libreadline-gplv2-dev
+            apt-get -y install libsqlite3-dev
+            apt-get -y install libssl-dev
+            apt-get -y install libtiff5-dev
+            apt-get -y install libvdpau1
+            apt-get -y install libxnvctrl0
+            apt-get -y install screen-resolution-extra
+            apt-get -y install tk-dev
+            apt-get -y install wget
+
+            if [ ! $cmake_installed ]
+            then
+                cmake_installer () {
+                    mkdir -p $CMAKE_sources
+
+                    cd $CMAKE_sources
+                    wget https://cmake.org/files/v${cmake_version}/cmake-${cmake_version}.${cmake_build}.tar.gz
+                    tar -xzvf cmake-${cmake_version}.${cmake_build}.tar.gz
+                    cd cmake-${cmake_version}.${cmake_build}/
+
+                    ./bootstrap
+                    make -j $(nproc --all)
+                    make install
+                }
+
+                ERR_VAR=$(cmake_installer) && touch $INSTALL/cmake_complete.flag || error_exit
+            fi
+
+            if [ ! $python2_installed ]
+            then
+                python2_installer () {
+                    remove_if_exists $PYTHON_27
+                    mkdir -p $PYTHON_27
+                    mkdir -p $PYTHON_27_sources
+
+                     # Download and install python 2.7
+                    cd $SOURCES
+                    wget https://www.python.org/ftp/python/2.7.16/Python-2.7.16.tgz
+                    tar -xzf Python-2.7.16.tgz -C $PYTHON_27_sources --strip-components=1
+                    rm -rf Python-2.7.16.tgz
+
+                    cd $PYTHON_27_sources
+                    ./configure --enable-optimizations --prefix=$PYTHON_27
+                    make -j 8 altinstall
+
+                    export PATH=$PYTHON_27/bin:$PATH
+                    curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+
+                    python2.7 get-pip.py
+                }
+
+                ERR_VAR=$(python2_installer) && touch $INSTALL/python_complete.flag || error_exit
+            fi
+
+            if [ ! $python3_installed ]
+            then
+                python3_installer () {
+                    remove_if_exists $PYTHON_37
+                    mkdir -p $PYTHON_37
+                    mkdir -p $PYTHON_37_sources
+
+                    # Download and install python 3.7
+                    cd $SOURCES
+                    wget https://www.python.org/ftp/python/3.7.7/Python-3.7.7.tgz
+                    tar -xzf Python-3.7.7.tgz -C $PYTHON_37_sources --strip-components=1
+                    rm -rf Python-3.7.7.tgz
+
+                    cd $PYTHON_37_sources
+                    ./configure --enable-optimizations --prefix=$PYTHON_37 --with-ensurepip=install --with-system-ffi
+                    make -j 8 altinstall
+
+                    export PATH=$PYTHON_37/bin:$PATH
+                }
+
+                ERR_VAR=$(python3_installer) && touch $INSTALL/python3_complete.flag || error_exit
+            fi
+
+            if [ ! $cuda_installed ]
+            then
+                cuda_installer () {
+                    mkdir -p $CUDA_91_sources
+
+                    # Download and install CUDA 9.1
+                    cd $CUDA_91_sources
+                    wget http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/cuda-repo-ubuntu1604_9.1.85-1_amd64.deb
+                    dpkg -i cuda-repo-ubuntu1604_9.1.85-1_amd64.deb
+                    apt-key adv --fetch-keys http://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub
+                    apt-get update
+
+                    DEBIAN_FRONTEND=noninteractive apt-get -y install cuda-runtime-9.1
+                }
+
+                ERR_VAR=$(cuda_installer) && touch $INSTALL/cuda_complete.flag || error_exit
+            fi
+
+            if [ ! $fsl_installed ]
+            then
+                fsl_installer () {
+                    remove_if_exists $FSL
+                    mkdir -p $FSL_sources
+
+                    # Download and install FSL
+                    cd $FSL_sources
+                    wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py
+                    python fslinstaller.py -d $FSL -D
+
+                    cd $FSL
+                    find . -maxdepth 1 -not \( -name . -or -name .. -or -name bin -or -name lib -or -name include -or -name etc -or -name config -or -name extras -or -name data \) -exec rm -rf "{}" \;
+                    cd extras
+                    find . -maxdepth 1 -not \( -name . -or -name .. -or -name bin -or -name lib -or -name include -or -name share \) -exec rm -rf "{}" \;
+                }
+
+                ERR_VAR=$(fsl_installer) && touch $INSTALL/fsl_complete.flag || error_exit
+            fi
+
+            if [ ! $mrtrix_installed ]
+            then
+                mrtrix_installer () {
+                    remove_if_exists $MRTRIX
+                    mkdir -p $MRTRIX
+
+                    pip install --exists-action i numpy
+
+                    # Download and install Mrtrix
+                    git clone https://github.com/MRtrix3/mrtrix3.git $MRTRIX
+
+                    cd $MRTRIX
+                    ./configure -nogui -openmp
+                    ./build
+
+                    find . -not \( -wholename './bin' -or -wholename './bin/*' -or -wholename './lib' -or -wholename './lib/*' -or -wholename './share' -or -wholename './share/*' \) -delete
+
+                    pip uninstall -y numpy
+                }
+
+                ERR_VAR=$(mrtrix_installer) && touch $INSTALL/mrtrix_complete.flag || error_exit
+            fi
+
+            if [ ! $diamond_installed ]
+            then
+                diamond_installer () {
+                    remove_if_exists $DIAMOND
+                    mkdir -p $DIAMOND
+
+                    cd $DIAMOND_sources
+                    ./build.sh --buildfolder $DIAMOND --nthreads $(nproc --all)
+                    chmod 111 $DIAMOND/bin/crlDCIEstimate
+
+                    cd $DIAMOND
+                    find . -maxdepth 1 -not \( -name . -or -name .. -or -name bin \) -exec rm -rf "{}" \;
+                }
+
+                ERR_VAR=$(diamond_installer) && touch $INSTALL/diamond_complete.flag || error_exit
+            fi
+
+            if [ ! $ants_installed ]
+            then
+                ants_installer () {
+                    remove_if_exists $ANTS
+                    mkdir -p $ANTS
+
+                    git clone https://github.com/cookpa/antsInstallExample.git $ANTS
+                    cd $ANTS
+                    chmod 777 installANTs.sh
+                    ./installANTs.sh
+
+                    rm -rf ANTs/ build/ LICENSE README.md installANTs.sh
+                    mv install/* .
+                    rm -rf install
+                }
+
+                ERR_VAR=$(ants_installer) && touch $INSTALL/ants_complete.flag || error_exit
+            fi
+
+            if [ ! $cmake_installed ]
+            then
+                cd $CMAKE_sources/cmake-${cmake_version}.${cmake_build}
+                make uninstall
+            fi
+
+            apt-get -y remove apt-transport-https
+            apt-get -y remove build-essential
+            apt-get -y remove checkinstall
+            apt-get -y remove curl
+            apt-get -y remove cpio
+            apt-get -y remove git
+            apt-get -y remove wget
+            apt-get clean
+            apt autoremove -y
+
+            remove_if_exists $SOURCES
+            exit 0
+        fi

@@ -89,16 +89,20 @@ class EddyConfiguration(MagicMonkeyConfigurable):
 
     def _config_section(self):
         if self.enable_cuda:
+            print("cuda enabled")
             for trait in self.traits(
                 none_to_default=True, cuda_required=True
             ).values():
                 if isinstance(trait, Instance):
-                    trait.set(self, trait.klass(parent=self))
+                    trait.set(self, trait.klass())
 
         return super()._config_section()
 
     def _validate(self):
-        if not self.enable_cuda and (self.outlier_model or self.slice_to_vol):
+        print(self.outlier_model)
+        if not self.enable_cuda and (
+            self.outlier_model or self.slice_to_vol or self.susceptibility
+        ):
             raise ConfigError(
                 "{} needs Cuda to be enabled to use :\n{}".format(
                     self.__class__.__name__, "\n".join([

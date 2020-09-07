@@ -1,23 +1,24 @@
 
 
 _args_template = """
-    POSITIONAL=()
-    while [ $# -gt 0 ]
-    do
-        key=\"${1}\"
-        case ${key} in
+POSITIONAL=()
+while [ $# -gt 0 ]
+do
+    key=\"$1\"
+    case $key in
         {}
-        *)
-            POSITIONAL+=(\"${2}\")
-            shift
-            ;;
-        esac
+    *)
+        POSITIONAL+=(\"$2\")
         shift
+        ;;
+    esac
+    shift
+done
 """
 
 _named_template = """
         {})
-            {}=\"${2}\"
+            {}=\"$2\"
             shift
             shift
             ;;
@@ -27,6 +28,8 @@ _named_template = """
 def build_script(
     script, positional_args, named_args, named_prefix="--", header=""
 ):
+    print(positional_args)
+    print(named_args)
     scr = "#!/usr/bin/env bash\n\n"
     scr += header
     scr += _args_template.format("\n".join(

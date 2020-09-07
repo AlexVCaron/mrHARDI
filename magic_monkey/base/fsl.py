@@ -1,3 +1,5 @@
+from typing import Generator
+
 from numpy import isclose
 from numpy.ma import clump_masked, clump_unmasked, masked_array
 
@@ -14,8 +16,13 @@ def serialize_fsl_args(args_dict, separator="\n", bool_as_flags=False):
         ])
         base_string += separator
 
+    def serialize_value(val):
+        if isinstance(val, (list, tuple, Generator)):
+            return ",".join(str(v) for v in val).strip(",")
+        return str(val)
+
     return base_string + separator.join(
-        "--{}={}".format(name, ",".join(str(v) for v in val).strip(","))
+        "--{}={}".format(name, serialize_value(val))
         for name, val in args_dict.items()
     )
 

@@ -5,6 +5,7 @@ nextflow.enable.dsl=2
 params.config.reconstruct.diamond = "../.config/diamond.py"
 params.config.reconstruct.dti = "../.config/dti.py"
 params.config.reconstruct.csd = "../.config/csd.py"
+params.config.reconstruct.response = "../.config/response.py"
 
 process diamond {
     input:
@@ -14,8 +15,8 @@ process diamond {
     script:
         """
         # Truncates the extension from the filename
-        in=$(echo ${input_prefix} | | sed 's/\..*//g')
-        magic_monkey diamond $in $mask ${sid}__diamond --config $params.config.reconstruct.diamond
+        in=\$(echo ${input_prefix} | | sed 's/\\..*//g')
+        magic-monkey diamond --in \$in --mask $mask --out ${sid}__diamond --config $params.config.reconstruct.diamond
         """
 }
 
@@ -25,14 +26,13 @@ process dti {
     output:
         tuple val(sid), path("${sid}__dti.nii.gz")
     script:
-    if ( "${mask}" == "")
-        """
-        magic_monkey dti $dwi $bvals $bvecs ${sid}__dti.nii.gz --config $params.config.reconstruct.dti
-        """
-    else
-        """
-        magic_monkey dti $dwi $bvals $bvecs ${sid}__dti.nii.gz --mask $mask --config $params.config.reconstruct.dti
-        """
+    args = "--in $dwi --bvals $bvals --bvecs $bvecs"
+    if ( "${mask}" == "" )
+        args += " --mask $mask"
+
+    """
+    magic-monkey dti $args --out ${sid}__dti.nii.gz --config $params.config.reconstruct.dti
+    """
 }
 
 process csd {
@@ -41,12 +41,11 @@ process csd {
     output:
         tuple val(sid), path("${sid}__csd.nii.gz")
     script:
-    if ( "${mask}" == "")
-        """
-        magic_monkey csd $dwi $bvals $bvecs ${sid}__csd.nii.gz --mask $mask --config $params.config.reconstruct.csd
-        """
-    else
-        """
-        magic_monkey csd $config $dwi $bvals $bvecs ${sid}__csd.nii.gz --config $params.config.reconstruct.csd
-        """
+    args = "--in $dwi --bvals $bvals --bvecs $bvecs"
+    if ( "${mask}" == "" )
+        args += " --mask $mask"
+
+    """
+    magic-monkey csd $args --out ${sid}__csd.nii.gz --config $params.config.reconstruct.csd
+    """
 }

@@ -1,4 +1,5 @@
 from os import getcwd
+from os.path import basename, join
 
 from traitlets import Dict, Instance, Unicode
 
@@ -71,7 +72,7 @@ class AntsRegistration(MagicMonkeyBaseApplication):
             config_dict["t{}".format(i)] = target
             config_dict["m{}".format(i)] = moving
 
-        ants_config_fmt.format(**config_dict)
+        ants_config_fmt = ants_config_fmt.format(**config_dict)
 
         ants_config_fmt += " --output [{},{}]".format(
             "{}.mat".format(self.output_prefix),
@@ -79,7 +80,10 @@ class AntsRegistration(MagicMonkeyBaseApplication):
         )
 
         launch_shell_process(
-            "antsRegistration {}".format(ants_config_fmt), current_path
+            "antsRegistration {}".format(ants_config_fmt),
+            join(current_path, "{}_ants.log".format(
+                basename(self.output_prefix)
+            ))
         )
 
 

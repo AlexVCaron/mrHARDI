@@ -14,7 +14,7 @@ from magic_monkey.config.topup import TopupConfiguration
 _aliases = dict(
     b0='Topup.b0',
     rev='Topup.rev',
-    dwell='Topup.dwell',
+    readout='Topup.readout',
     extra='Topup.extra_arguments',
     out='Topup.output_prefix'
 )
@@ -48,8 +48,10 @@ class Topup(MagicMonkeyBaseApplication):
         Unicode, [],
         help="Reverse acquisitions used for deformation correction"
     ).tag(config=True, ignore_write=True)
-    dwell = required_number(
-        description="Dwell time of the acquisitions", ignore_write=False
+    readout = required_number(
+        description="Readout time of the acquisitions in ms (from the center "
+                    "of the first echo to the center of the last)",
+        ignore_write=False
     )
 
     output_prefix = output_prefix_argument()
@@ -66,7 +68,7 @@ class Topup(MagicMonkeyBaseApplication):
         ap_shapes = [nib.load(b0).shape for b0 in self.b0]
         pa_shapes = [nib.load(b0).shape for b0 in self.rev]
 
-        acqp = prepare_acqp_file(ap_shapes, pa_shapes, self.dwell)
+        acqp = prepare_acqp_file(ap_shapes, pa_shapes, self.readout)
 
         with open("{}_acqp.txt".format(self.output_prefix), 'w+') as f:
             f.write("# MAGIC MONKEY -------------------------\n")
@@ -93,7 +95,7 @@ class Topup(MagicMonkeyBaseApplication):
                     "${out_prefix}",
                     "{}_params.txt".format(self.output_prefix),
                     "{}_config.cnf".format(self.output_prefix),
-                    "_topup_results.txt", "_topup_field.nii.gz", ".nii.gz",
+                    "_results.txt", "_field.nii.gz", ".nii.gz",
                     self.extra_arguments
                 ))
 

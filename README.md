@@ -21,6 +21,7 @@ wrapped inside a singularity, to ease out and shorten the installation process.
 #### Requirements
 
 - [Singularity 3](https://sylabs.io/guides/3.0/user-guide/installation.html)
+- [Nextflow 20](https://www.nextflow.io/) or higher
 - Python 3.7
 
 #### Installation
@@ -35,10 +36,10 @@ and then initiating the setup script using python 3.7
 
 ### Other platforms
 
-Singularity however isn't available on Windows. We refer those users to the 
-**Vagrant Installation** section of the readme for an alternative. For similar 
-reasons, if there is any problems installing the library and running the tests 
-on a Mac OSX operating system, the user should try using Vagrant.
+Singularity and Nextflow aren't available on Windows. We refer those users to 
+the **Vagrant Installation** section of the readme for an alternative. For 
+similar reasons, if there is any problems installing the library and running 
+the tests on a Mac OSX operating system, the user should try using Vagrant.
 
 ## Usage
 
@@ -65,6 +66,10 @@ when it isn't required to test the actual pipeline structure.
 
 ## Vagrant Installation
 
+The Vagrant VM allows for an easy installation of the whole stack of the 
+project. It includes *singularity*, *nextflow* and a standalone version of 
+*python 3* preloaded with the *Magic Monkey* project.
+
 #### Requirements
 
 - [VirtualBox](https://www.virtualbox.org/wiki/Downloads)
@@ -74,6 +79,17 @@ when it isn't required to test the actual pipeline structure.
 To automate the deployment of the library across different systems and on 
 multiple instances, a Vagrant definition has been implemented. This also 
 allows singularity to run on instead unsupported platforms like Windows.
+
+#### Vagrant configuration
+
+Some plugins are required by vagrant for it to setup and provision the vm 
+correctly. To install them, enter the following commands in a terminal : 
+
+> vagrant plugin install vagrant-vbguest
+
+> vagrant plugin install vagrant-disksize
+
+> vagrant plugin install vagrant-winnfsd
 
 #### Pre-installation
 

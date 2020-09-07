@@ -6,7 +6,7 @@ n_procs: 1
 
 pysrc_ver_major: 3
 pysrc_ver_minor: 7
-pysrc_ver_rev: 7
+pysrc_ver_rev: 5
 pysrc_ver: "{{ pysrc_ver_major }}.{{ pysrc_ver_minor }}.{{ pysrc_ver_rev }}"
 pysrc_ver_s: "{{ pysrc_ver_major }}.{{ pysrc_ver_minor }}"
 pysrc_pkg_name: "Python-{{ pysrc_ver }}"

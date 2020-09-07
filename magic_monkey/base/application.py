@@ -12,7 +12,7 @@ from numpy import arange, split
 from traitlets import Float, Integer, TraitType, Undefined
 from traitlets.config import (Application,
                               ArgumentError,
-                              Bool, Configurable,
+                              Configurable,
                               Dict,
                               Enum,
                               HasTraits, Instance,
@@ -113,7 +113,7 @@ class MagicMonkeyBaseApplication(Application):
 
     def __init__(self, **kwargs):
         conf_klass = self.__class__.configuration.klass
-        if MagicMonkeyConfigurable in (conf_klass,) + conf_klass.__bases__:
+        if MagicMonkeyConfigurable in conf_klass.mro():
             try:
                 self.configuration = conf_klass(parent=self)
                 self.classes.extend((conf_klass,) + conf_klass.__bases__)
@@ -176,7 +176,7 @@ class MagicMonkeyBaseApplication(Application):
             traits_bools = {}
             for k, t in trait_bundles.items():
                 traits_bools[k] = [
-                    tt.get(self) != self.get_default_value(tt) for tt in t
+                    tt.get(self) != self.get_default_value(tt) or not ("required" in tt.metadata and tt.metadata["required"]) for tt in t
                 ]
 
             if any(all(t) for t in traits_bools.values()):
@@ -203,7 +203,7 @@ class MagicMonkeyBaseApplication(Application):
     @catch_config_error
     def _validate_exclusive(self):
         invalid_exclusives = []
-        incomplete_exclusives = []
+        # incomplete_exclusives = []
         exclusive_traits = self.class_traits(
             exclusive_group=lambda t: t is not None
         )
@@ -233,13 +233,13 @@ class MagicMonkeyBaseApplication(Application):
                 ]
 
             i = iter(
-                all(t) for t in trait_bundles.values()
+                any(t) for t in trait_bundles.values()
             )
             if not (any(i) and not any(i)):
                 invalid_exclusives.append((group, traits))
 
-            if any(any(t) and not all(t) for t in trait_bundles.values()):
-                incomplete_exclusives.append((group, traits))
+            # if any(any(t) and not all(t) for t in trait_bundles.values()):
+            #     incomplete_exclusives.append((group, traits))
 
         msg = ""
         if len(invalid_exclusives) > 0:
@@ -249,13 +249,13 @@ class MagicMonkeyBaseApplication(Application):
                     "- {} : {}".format(g, list(tt[0] for tt in t)), 4
                 ) for g, t in invalid_exclusives)
             ) + "\n"
-        if len(incomplete_exclusives):
-            msg += "{} got incomplete exclusive groups :\n{}".format(
-                self.__class__.__name__,
-                "\n".join(indent(
-                    "- {} : {}".format(g, list(tt[0] for tt in t)), 4
-                ) for g, t in incomplete_exclusives)
-            ) + "\n"
+        # if len(incomplete_exclusives):
+        #     msg += "{} got incomplete exclusive groups :\n{}".format(
+        #         self.__class__.__name__,
+        #         "\n".join(indent(
+        #             "- {} : {}".format(g, list(tt[0] for tt in t)), 4
+        #         ) for g, t in incomplete_exclusives)
+        #     ) + "\n"
 
         if len(msg) > 0:
             raise ArgumentError(msg.strip("\n"))
@@ -266,6 +266,19 @@ class MagicMonkeyBaseApplication(Application):
             return trait.make_dynamic_default()
         else:
             return trait.get_default_value()
+
+    @catch_config_error
+    def initialize_subcommand(self, subc, argv=None):
+        if argv is None or len(argv) == 0:
+            argv = ["help"]
+        super().initialize_subcommand(subc, argv)
+
+    @catch_config_error
+    def parse_command_line(self, argv=None):
+        argv = sys.argv[1:] if argv is None else argv
+        if len(argv) == 0:
+            argv = ["help"]
+        super().parse_command_line(argv)
 
     @catch_config_error
     def initialize(self, argv=None):
@@ -371,7 +384,7 @@ class MagicMonkeyBaseApplication(Application):
         base_classes += (MagicMonkeyBaseApplication,)
         base_traits = dict()
         for base_class in base_classes:
-            if isinstance(base_class, HasTraits):
+            if HasTraits in base_class.mro():
                 base_traits.update(base_class.class_own_traits(config=True))
 
         for name, trait in sorted(self.traits(
@@ -870,16 +883,17 @@ class MagicMonkeyConfigurable(Configurable):
         return self._config_section()
 
     def __repr__(self):
+        print("repr traits {}".format(self.traits()))
         return json.dumps({
             k: t.get(self) for k, t in self.traits(config=True).items()
         }, cls=MagicConfigEncoder, indent=4)
 
 
 class DictInstantiatingInstance(Instance):
-    def __init__(self, klass=None, **kwargs):
-        if "args" not in kwargs:
+    def __init__(self, klass=None, allow_none=False, **kwargs):
+        if "args" not in kwargs and not allow_none:
             kwargs["args"] = ()
-        super().__init__(klass, **kwargs)
+        super().__init__(klass, **{**kwargs, **{"allow_none": allow_none}})
 
     def validate(self, obj, value):
         if isinstance(value, dict):
@@ -890,11 +904,11 @@ class DictInstantiatingInstance(Instance):
                 klass = getattr(import_module(module), klass)
             return klass(**value)
         elif value is None:
+            if self.allow_none:
+                return None
             try:
                 return self.klass()
             except Exception:
-                if self.allow_none:
-                    return None
                 self.error(obj, value)
 
         return super().validate(obj, value)
