@@ -35,3 +35,7 @@ def join_optional ( base_channel, opt_channel ) {
 def map_optional ( base_channel, opt_idx ) {
     return base_channel.map{ [it[0], it[opt_idx]] }.map{ it[1] ? it : [it[0], OPT_FILE_VALUE] }
 }
+
+def expand_path( short_path ) {
+    return file( short_path ).toAbsolutePath()
+}

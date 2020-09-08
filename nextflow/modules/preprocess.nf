@@ -2,8 +2,8 @@
 
 nextflow.enable.dsl=2
 
-params.config.preprocess.extract_b0 = "../.config/extract_b0.py"
-params.config.preprocess.squash_b0 = "../.config/squash_b0.py"
+params.config.preprocess.extract_b0 = "$projectDir/.config/extract_b0.py"
+params.config.preprocess.squash_b0 = "$projectDir/.config/squash_b0.py"
 
 process extract_b0 {
     input:

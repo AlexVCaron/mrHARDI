@@ -2,17 +2,18 @@
 
 nextflow.enable.dsl=2
 
-params.config.utils.apply_mask = "../.config/apply_mask.py"
-params.config.utils.concatenate = "../.config/cat.py"
+params.config.utils.apply_mask = "$projectDir/.config/apply_mask.py"
+params.config.utils.concatenate = "$projectDir/.config/cat.py"
 
 process apply_mask {
+    beforeScript "cp $params.config.utils.apply_mask config.py"
     input:
         tuple val(sid), path(img), path(mask)
     output:
         tuple val(sid), path("${sid}__masked.nii.gz")
     script:
         """
-        magic-monkey apply_mask $img $mask ${sid}__masked.nii.gz --config $params.config.utils.apply_mask
+        magic-monkey apply_mask $img $mask ${sid}__masked.nii.gz --config config.py
         """
 }
 
@@ -29,6 +30,7 @@ process bet_mask {
 }
 
 process cat_datasets {
+    beforeScript "cp $params.config.utils.concatenate config.py"
     input:
         tuple val(sid), file(imgs), file(bvals), file(bvecs)
     output:
@@ -43,6 +45,6 @@ process cat_datasets {
 
         println "$args"
         """
-        magic-monkey concatenate $args --out ${sid}__concatenated --config $params.config.utils.concatenate
+        magic-monkey concatenate $args --out ${sid}__concatenated --config config.py
         """
 }

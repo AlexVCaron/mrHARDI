@@ -2,9 +2,9 @@
 
 nextflow.enable.dsl=2
 
-params.config.denoise.topup = "../.config/topup.py"
-params.config.denoise.eddy = "../.config/eddy.py"
-params.config.denoise.eddy_cuda = "../.config/eddy_cuda.py"
+params.config.denoise.topup = "$projectDir/.config/topup.py"
+params.config.denoise.eddy = "$projectDir/.config/eddy.py"
+params.config.denoise.eddy_cuda = "$projectDir/.config/eddy_cuda.py"
 
 params.use_cuda = false
 params.topup_correction = true
@@ -27,13 +27,14 @@ process dwi_denoise {
 }
 
 process prepare_topup {
+    beforeScript "cp $params.config.denoise.topup config.py"
     input:
         tuple val(sid), file(b0s), file(revs)
     output:
         tuple val(sid), path("${sid}__topup_script.sh"), path("${sid}__topup_acqp.txt"), path("${sid}__topup_config.cnf"), val("${sid}__topup")
     script:
         """
-        magic-monkey topup --b0 $b0s --rev $revs --out ${sid}__topup --readout $params.acquisition.readout --config $params.config.denoise.topup
+        magic-monkey topup --b0 $b0s --rev $revs --out ${sid}__topup --readout $params.acquisition.readout --config config.py
         """
 }
 
@@ -64,27 +65,36 @@ process apply_topup {
 }
 
 process prepare_eddy {
+    beforeScript "cp $params.config.denoise.eddy config.py"
     input:
         tuple val(sid), path(bvals), file(topup_acqp), file(rev_bvals)
     output:
         tuple val(sid), path("${sid}__eddy_script.sh"), path("${sid}__eddy_index.txt"), path("${sid}__eddy_acqp.txt")
     script:
         args = "--bvals $bvals"
-        if ( !topup_acqp.empty() )
+        will_gen_acqp = true
+        if ( !topup_acqp.empty() ) {
             args += " --acqp $topup_acqp"
+            will_gen_acqp = false
+        }
         else if ( !rev_bvals.empty() )
             args += " --rev $rev_bvals --readout $params.acquisition.readout"
         else
             args += " --readout $params.acquisition.readout"
 
         if ( params.use_cuda )
-            args += " --cuda --config $params.config.denoise.eddy_cuda"
+            args += " --cuda --config config.py"
         else
-            args += " --config $params.config.denoise.eddy"
+            args += " --config config.py"
 
-        """
-        magic-monkey eddy $args --out ${sid}__eddy
-        """
+        if ( will_gen_acqp )
+            """
+            magic-monkey eddy $args --out ${sid}__eddy
+            """
+        else
+            """
+            magic-monkey eddy $args --out ${sid}__eddy && cp $topup_acqp "${sid}__eddy_acqp.txt"
+            """
 }
 
 process eddy {

@@ -2,10 +2,10 @@
 
 nextflow.enable.dsl=2
 
-params.config.reconstruct.diamond = "../.config/diamond.py"
-params.config.reconstruct.dti = "../.config/dti.py"
-params.config.reconstruct.csd = "../.config/csd.py"
-params.config.reconstruct.response = "../.config/response.py"
+params.config.reconstruct.diamond = "$projectDir/.config/diamond.py"
+params.config.reconstruct.dti = "$projectDir/.config/dti.py"
+params.config.reconstruct.csd = "$projectDir/.config/csd.py"
+params.config.reconstruct.response = "$projectDir/.config/response.py"
 
 process diamond {
     input:
