@@ -132,12 +132,12 @@ class AntsPass(MagicMonkeyConfigurable):
                 "--metric {}".format(metric)
                 for i, metric in enumerate(self.metrics)
             ),
-            "--convergence [{},{},{}] ".format(
+            "--convergence [{},{},{}]".format(
                 "x".join(str(i) for i in self.conv_max_iter),
                 self.conv_eps,
                 self.conv_win
             ),
-            "--shrink-factors {} ".format(
+            "--shrink-factors {}".format(
                 "x".join(str(s) for s in self.shrinks)
             ),
             "--smoothing-sigmas {}vox".format(
@@ -153,7 +153,7 @@ class AntsRigid(AntsPass):
 
     def serialize(self):
         return " ".join([
-            "--transform Rigid[{}] ".format(self.grad_step),
+            "--transform Rigid[{}]".format(self.grad_step),
             super().serialize()
         ])
 
@@ -165,7 +165,7 @@ class AntsAffine(AntsPass):
 
     def serialize(self):
         return " ".join([
-            "--transform Affine[{}] ".format(self.grad_step),
+            "--transform Affine[{}]".format(self.grad_step),
             super().serialize()
         ])
 
@@ -181,7 +181,7 @@ class AntsSyN(AntsPass):
 
     def serialize(self):
         return " ".join([
-            "--transform {}[{},{},{}] ".format(
+            "--transform {}[{},{},{}]".format(
                 self.type, self.grad_step, self.var_penality, self.var_total
             ),
             super().serialize()
