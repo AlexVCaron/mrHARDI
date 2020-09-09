@@ -1,10 +1,11 @@
 from os import getcwd
+from os.path import basename, join
 
 from traitlets import Dict, Instance, Unicode
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            mask_arg,
-                                           output_prefix_argument,
+                                           output_file_argument,
                                            required_file)
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.diamond import DiamondConfiguration
@@ -51,7 +52,7 @@ class Diamond(MagicMonkeyBaseApplication):
                     "use the same base filename for them to be detected "
                     "by diamond"
     )
-    output = output_prefix_argument()
+    output = output_file_argument()
 
     mask = mask_arg()
 
@@ -95,4 +96,6 @@ class Diamond(MagicMonkeyBaseApplication):
             self.image, self.output, " ".join(optionals)
         )
 
-        launch_shell_process(command, current_path)
+        launch_shell_process(command, join(current_path, "{}.log".format(
+            basename(self.output).split(".")[0]
+        )))

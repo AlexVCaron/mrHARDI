@@ -83,7 +83,7 @@ class AntsRegistration(MagicMonkeyBaseApplication):
 
         launch_shell_process(
             "antsRegistration {}".format(ants_config_fmt),
-            join(current_path, "{}_ants.log".format(
+            join(current_path, "{}.log".format(
                 basename(self.output_prefix)
             ))
         )
@@ -152,8 +152,10 @@ class AntsTransform(MagicMonkeyBaseApplication):
         if self.transformations and len(self.transformations) > 0:
             args += "".join(" -t {}".format(t) for t in self.transformations)
 
-        command = "antsApplyTransform {} {}".format(
+        command = "antsApplyTransforms {} {}".format(
             args, self.configuration.serialize()
         )
 
-        launch_shell_process(command, current_path)
+        launch_shell_process(command, join(current_path, "{}.log".format(
+            basename(self.output).split(".")[0]
+        )))
