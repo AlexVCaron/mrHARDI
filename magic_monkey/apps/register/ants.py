@@ -75,8 +75,7 @@ class AntsRegistration(MagicMonkeyBaseApplication):
         ants_config_fmt = ants_config_fmt.format(**config_dict)
 
         ants_config_fmt += " --output [{},{}]".format(
-            "{}.mat".format(self.output_prefix),
-            "{}_warped.nii.gz".format(self.output_prefix)
+            self.output_prefix, "{}_warped.nii.gz".format(self.output_prefix)
         )
 
         launch_shell_process(

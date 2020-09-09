@@ -10,7 +10,12 @@ params.use_cuda = false
 params.topup_correction = true
 params.rev_is_b0 = true
 
+include { get_size_in_gb; prevent_sci_notation } from './functions.nf'
+
 process dwi_denoise {
+    memory { "${prevent_sci_notation(get_size_in_gb(dwi))} GB" }
+    cpus 1
+
     input:
         tuple val(sid), path(dwi), path(mask)
     output:
@@ -39,6 +44,9 @@ process prepare_topup {
 }
 
 process topup {
+    memory { "${prevent_sci_notation(get_size_in_gb(b0))} GB" }
+    cpus 1
+
     input:
         tuple val(sid), path(topup_script), path(topup_acqp), path(b0), path(mask)
     output:
@@ -54,6 +62,8 @@ process topup {
 }
 
 process apply_topup {
+    memory { "${prevent_sci_notation(get_size_in_gb(image))} GB" }
+
     input:
         tuple val(sid), file(image), file(topup_params), val(topup_prefix)
     output:
@@ -98,6 +108,9 @@ process prepare_eddy {
 }
 
 process eddy {
+    memory { "${prevent_sci_notation(get_size_in_gb(dwi))} GB" }
+    label "res_full_node"
+
     input:
         tuple val(sid), path(eddy_script), path(eddy_index), path(eddy_acqp), path(dwi), path(bvals), path(bvecs), path(mask)
     output:

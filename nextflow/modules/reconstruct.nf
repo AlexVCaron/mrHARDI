@@ -7,7 +7,11 @@ params.config.reconstruct.dti = "$projectDir/.config/dti.py"
 params.config.reconstruct.csd = "$projectDir/.config/csd.py"
 params.config.reconstruct.response = "$projectDir/.config/response.py"
 
+include { get_size_in_gb; prevent_sci_notation } from './functions.nf'
+
 process diamond {
+    label "res_full_node"
+
     input:
         tuple val(sid), val(input_prefix), path(mask)
     output:
@@ -21,6 +25,8 @@ process diamond {
 }
 
 process dti {
+    memory { "${prevent_sci_notation(get_size_in_gb(dwi))} GB" }
+
     input:
         tuple val(sid), path(dwi), path(bvals), path(bvecs), path(mask)
     output:
@@ -36,6 +42,8 @@ process dti {
 }
 
 process csd {
+    memory { "${prevent_sci_notation(get_size_in_gb(dwi))} GB" }
+
     input:
         tuple val(sid), path(dwi), path(bvals), path(bvecs), path(mask)
     output:
