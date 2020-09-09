@@ -1,7 +1,10 @@
 from os import getcwd
 from os.path import basename, join
 
-from traitlets import Dict, Instance, Unicode
+import numpy as np
+from traitlets import Dict, Enum, Instance, Unicode
+
+import nibabel as nib
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            MultipleArguments,
@@ -90,7 +93,8 @@ _tr_aliases = {
     'in': 'AntsTransform.image',
     'out': 'AntsTransform.output',
     'mat': 'AntsTransform.transformation_matrix',
-    'ref': 'AntsTransform.transformation_ref'
+    'ref': 'AntsTransform.transformation_ref',
+    'trans': 'AntsTransform.transformations'
 }
 
 _tr_description = """
@@ -105,13 +109,19 @@ class AntsTransform(MagicMonkeyBaseApplication):
     configuration = Instance(AntsTransformConfiguration).tag(config=True)
 
     image = required_file(description="Input image to transform")
-    transformation_matrix = required_file(
-        description="Input transformation matrix computed by ants to apply"
-    )
+
     transformation_ref = required_file(
-        description="Input transformation field computed by ants to apply "
-                    "or reference image for affine/rigid transformation"
+        description="Reference image for initial rigid transformation"
     )
+
+    transformation_matrix = Unicode(
+        help="Input affine transformation matrix computed by ants"
+    ).tag(config=True, ignore_write=True)
+
+    transformations = MultipleArguments(
+        Unicode, help="List of transformations to apply after initial "
+                      "rigid registration (and affine if supplied)"
+    ).tag(config=True, ignore_write=True)
 
     output = output_file_argument()
 
@@ -120,9 +130,30 @@ class AntsTransform(MagicMonkeyBaseApplication):
     def _start(self):
         current_path = getcwd()
 
-        command = "antsApplyTransform -i {} -r {} -t {} -o {} {}".format(
-            self.image, self.transformation_matrix, self.transformation_ref,
-            self.output, self.configuration.serialize()
+        image = nib.load(self.image)
+        shape = image.shape
+        dtype = image.get_data_dtype()
+
+        is_3d_data = not (len(shape) == 4 and shape[-1] > 1)
+        img_type = (
+            0 if is_3d_data else
+            1 if shape[-1] == 3 and np.issubtype(dtype, np.number.inexact) else
+            2 if shape[-1] == 6 and np.issubtype(dtype, np.number.inexact) else
+            3
+        )
+
+        args = "-i {} -e {} -r {} -o {}".format(
+            self.image, img_type, self.transformation_ref, self.output
+        )
+
+        if self.transformation_matrix:
+            args += " -t {}".format(self.transformation_matrix)
+
+        if self.transformations and len(self.transformations) > 0:
+            args += "".join(" -t {}".format(t) for t in self.transformations)
+
+        command = "antsApplyTransform {} {}".format(
+            args, self.configuration.serialize()
         )
 
         launch_shell_process(command, current_path)
