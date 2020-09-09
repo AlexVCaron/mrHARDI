@@ -35,3 +35,20 @@ def join_optional ( base_channel, opt_channel ) {
 def map_optional ( base_channel, opt_idx ) {
     return base_channel.map{ [it[0], it[opt_idx]] }.map{ it[1] ? it : [it[0], OPT_FILE_VALUE] }
 }
+
+def expand_path( short_path ) {
+    return file( short_path ).toAbsolutePath()
+}
+
+def get_size_in_gb( files ) {
+    if ( files instanceof List ) {
+        println "files was a list ${files}"
+        return files.sum{ f -> f.size() * 1E-9 }
+    }
+    println "files was a simple file ${files}"
+    return files.size() * 1E-9
+}
+
+def prevent_sci_notation ( float_number ) {
+    return String.format("%f", float_number)
+}

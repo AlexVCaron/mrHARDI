@@ -2,22 +2,29 @@
 
 nextflow.enable.dsl=2
 
-params.config.utils.apply_mask = "../.config/apply_mask.py"
-params.config.utils.concatenate = "../.config/cat.py"
+params.config.utils.apply_mask = "$projectDir/.config/apply_mask.py"
+params.config.utils.concatenate = "$projectDir/.config/cat.py"
+
+include { get_size_in_gb; prevent_sci_notation } from './functions.nf'
 
 process apply_mask {
+    memory { "${prevent_sci_notation(2f * get_size_in_gb(img))} GB" }
+
+    beforeScript "cp $params.config.utils.apply_mask config.py"
     input:
         tuple val(sid), path(img), path(mask)
     output:
         tuple val(sid), path("${sid}__masked.nii.gz")
     script:
         """
-        magic-monkey apply_mask $img $mask ${sid}__masked.nii.gz --config $params.config.utils.apply_mask
+        magic-monkey apply_mask $img $mask ${sid}__masked.nii.gz --config config.py
         """
 }
 
 // TODO : Implement bet mask, if needed
 process bet_mask {
+    memory { "${prevent_sci_notation(get_size_in_gb(img))} GB" }
+
     input:
         tuple val(sid), path(img)
     output:
@@ -29,6 +36,10 @@ process bet_mask {
 }
 
 process cat_datasets {
+    memory { "${prevent_sci_notation(2f * get_size_in_gb(imgs))} GB" }
+    cpus 1
+
+    beforeScript "cp $params.config.utils.concatenate config.py"
     input:
         tuple val(sid), file(imgs), file(bvals), file(bvecs)
     output:
@@ -43,6 +54,6 @@ process cat_datasets {
 
         println "$args"
         """
-        magic-monkey concatenate $args --out ${sid}__concatenated --config $params.config.utils.concatenate
+        magic-monkey concatenate $args --out ${sid}__concatenated --config config.py
         """
 }

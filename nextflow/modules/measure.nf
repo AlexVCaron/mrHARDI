@@ -2,8 +2,8 @@
 
 nextflow.enable.dsl=2
 
-params.config.measure.diamond = "../.config/diamond_metrics.py"
-params.config.measure.dti = "../.config/dti_metrics.py"
+params.config.measure.diamond = "$projectDir/.config/diamond_metrics.py"
+params.config.measure.dti = "$projectDir/.config/dti_metrics.py"
 
 process dti_metrics {
     input:

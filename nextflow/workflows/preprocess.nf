@@ -65,7 +65,7 @@ workflow t1_mask_to_dwi_wkf {
         trans_channel
     main:
         ants_register(t1_channel.join(b0_channel))
-        ants_transform(trans_channel.join(ants_register.out))
+        ants_transform(trans_channel.join(ants_register.out.map{ it[-1].empty ? it : it.subList(0, it.size() - 1) + [it[-1].findAll{ s -> !s.getName().contains("registration_inv_") }] }))
     emit:
         ants_transform.out
 }
