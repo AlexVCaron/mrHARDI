@@ -14,7 +14,12 @@ def serialize_fsl_args(args_dict, separator="\n", bool_as_flags=False):
                 lambda kv: isinstance(kv[1], bool) and kv[1], args_dict
             )
         ])
-        base_string += separator
+        if base_string:
+            base_string += separator
+
+        args_dict = dict(
+            filter(lambda kv: not isinstance(kv[1], bool), args_dict)
+        )
 
     def serialize_value(val):
         if isinstance(val, (list, tuple, Generator)):

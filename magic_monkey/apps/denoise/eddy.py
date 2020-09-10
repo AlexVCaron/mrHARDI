@@ -38,7 +38,7 @@ fi
 base_args="--imain=$dwi --mask=$mask --acqp=$acqp --index=$index"
 base_args="$base_args --bvecs=$bvecs --bvals=$bvals"
 
-{executable} --out {output} $base_args $args {more_args}
+{executable} $base_args $args {more_args} --out {output}
 """
 
 _description = """
@@ -122,7 +122,7 @@ class Eddy(MagicMonkeyBaseApplication):
             script = build_script(
                 _eddy_script.format(
                     executable=eddy_exec,
-                    output="{}.nii.gz".format(self.output_prefix),
+                    output=self.output_prefix,
                     more_args=self.configuration.serialize()
                 ),
                 ["dwi", "bvals", "bvecs", "mask", "acqp", "index"],
