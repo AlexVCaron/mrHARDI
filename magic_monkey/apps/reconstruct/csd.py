@@ -1,4 +1,5 @@
 from os import getcwd
+from os.path import basename, join
 
 from traitlets import Instance, Unicode
 from traitlets.config import ArgumentError, Dict
@@ -161,7 +162,9 @@ class CSD(MagicMonkeyBaseApplication):
             ) for res in self.configuration.algorithm.responses)
         )
 
-        launch_shell_process(command, current_path)
+        launch_shell_process(command, join(current_path, "{}.log".format(
+            basename(self.output_prefix)
+        )))
 
 
 _fr_aliases = {
@@ -251,4 +254,6 @@ class FiberResponse(MagicMonkeyBaseApplication):
             " ".join(optionals)
         )
 
-        launch_shell_process(command, current_path)
+        launch_shell_process(command, join(current_path, "{}.log".format(
+            basename(self.output_prefix)
+        )))

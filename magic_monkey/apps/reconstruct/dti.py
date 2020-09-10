@@ -1,4 +1,5 @@
 from os import getcwd
+from os.path import basename, join
 
 from traitlets import Bool, Dict, Instance
 
@@ -106,4 +107,6 @@ class DTI(MagicMonkeyBaseApplication):
             "{}_dti.nii.gz".format(self.output_prefix)
         )
 
-        launch_shell_process(command, current_path)
+        launch_shell_process(command, join(current_path, "{}.log".format(
+            basename(self.output_prefix)
+        )))

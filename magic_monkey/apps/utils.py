@@ -1,6 +1,6 @@
 from copy import deepcopy
 from os import getcwd
-from os.path import join
+from os.path import basename, join
 
 import nibabel as nib
 import numpy as np
@@ -282,5 +282,7 @@ class ApplyTopup(MagicMonkeyBaseApplication):
             args += " --datatype={}".format(self.dtype)
 
         launch_shell_process(
-            'applytopup {}'.format(args), join(working_dir, "apply_topup.log")
+            'applytopup {}'.format(args), join(working_dir, "{}.log".format(
+                basename(self.output_prefix)
+            ))
         )
