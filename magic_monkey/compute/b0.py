@@ -35,8 +35,12 @@ def mean_b0_clusters(b0_vol, mask, output_shape):
     return output_vol
 
 
-def extract_b0(dwi_vol, bvals, b0_strides=None, mean=B0PostProcess.none):
-    b0_mask = np.isclose(bvals, 0)
+def extract_b0(
+    dwi_vol, bvals, b0_strides=None,
+    mean=B0PostProcess.none, ceil=0.9,
+    b0_comp=np.less_equal, metadata=None
+):
+    b0_mask = b0_comp(bvals, ceil)
 
     if b0_strides:
         print("Extracting b0 volumes at each {} volumes".format(b0_strides))
@@ -111,16 +115,62 @@ def extract_b0(dwi_vol, bvals, b0_strides=None, mean=B0PostProcess.none):
     return b0_vol
 
 
-def squash_b0(dwi_vol, bvals, bvecs, mean=B0PostProcess.batch):
-    b0_mask = np.isclose(bvals, 0)
+def squash_b0(
+    dwi_vol, bvals, bvecs, mean=B0PostProcess.batch,
+    ceil=0.9, b0_comp=np.less_equal, metadata=None
+):
+    b0_mask = b0_comp(bvals, ceil)
     mask = np.ma.masked_array(b0_mask)
     mask[~b0_mask] = np.ma.masked
 
     if mean is B0PostProcess.whole:
-        b0 = extract_b0(dwi_vol, bvals, mean=mean)
-        return np.hstack((b0, dwi_vol[~b0_mask])), \
-            bvals[~b0_mask], \
-            bvecs[~b0_mask]
+        meta_b0 = metadata.copy() if metadata else None
+        b0 = extract_b0(
+            dwi_vol, bvals, mean=mean, ceil=ceil,
+            b0_comp=b0_comp, metadata=meta_b0
+        )
+        if metadata:
+            metadata.directions = np.array(
+                metadata.directions
+            )[~b0_mask].tolist()
+
+            acquisition = metadata.acquisition_slices_to_list()
+            metadata.update_acquisition_from_list(
+                (np.array(acquisition)[~b0_mask]).tolist()
+            )
+
+            if metadata.is_multiband:
+                idxs = np.where(b0_mask[:dwi_vol.shape[-1]])[0].tolist()
+                dwi_idxs = np.where(~b0_mask[:dwi_vol.shape[-1]])[0].tolist()
+                mbs = filter(
+                    lambda l: len(l),
+                    list(
+                        list(filter(lambda i: i not in idxs, k))
+                        for k in metadata.multiband
+                    )
+                )
+                metadata.multiband = list(
+                    list(dwi_idxs.index(ki) + 1 for ki in k) for k in mbs
+                )
+                meta_b0.is_multiband = True
+                meta_b0.multiband = [[]]
+
+            metadata.n = len(metadata.directions)
+
+            meta_b0.extend(metadata)
+            metadata.becomes(meta_b0)
+
+        ret_tuple = (
+            np.concatenate((b0, dwi_vol[..., ~b0_mask]), -1),
+            np.hstack(([0], bvals[~b0_mask]))[None, :]
+        )
+
+        if bvecs is not None:
+            ret_tuple += (np.hstack(([[0], [0], [0]], bvecs[:, ~b0_mask])),)
+        else:
+            ret_tuple += (None,)
+
+        return ret_tuple
 
     b0_clusters = list(np.ma.notmasked_contiguous(mask, axis=0))
     dwi_clusters = list(np.ma.clump_masked(mask))
