@@ -14,7 +14,12 @@ def serialize_fsl_args(args_dict, separator="\n", bool_as_flags=False):
                 lambda kv: isinstance(kv[1], bool) and kv[1], args_dict
             )
         ])
-        base_string += separator
+        if base_string:
+            base_string += separator
+
+        args_dict = dict(
+            filter(lambda kv: not isinstance(kv[1], bool), args_dict)
+        )
 
     def serialize_value(val):
         if isinstance(val, (list, tuple, Generator)):
@@ -43,7 +48,7 @@ def prepare_eddy_index(bvals, dir0=1, strategy="closest"):
         for i in range(b0_clumps[-1].stop - b0_clumps[-1].start):
             indexes += [j]
 
-    return indexes
+    return clip(indexes, a_min=1, a_max=len(b0_clumps))
 
 
 def prepare_acqp_file(ap_b0_shapes, pa_b0_shapes, dwell):

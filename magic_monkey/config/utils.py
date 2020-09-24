@@ -1,10 +1,14 @@
 import numpy as np
 from traitlets import Enum, Integer, default
 
-from magic_monkey.base.application import MagicMonkeyConfigurable, convert_enum
+from magic_monkey.base.application import (MagicMonkeyConfigurable,
+                                           convert_enum,
+                                           ChoiceList)
+
+from magic_monkey.base.dwi import AcquisitionDirection, AcquisitionType
 from magic_monkey.compute.b0 import B0PostProcess
 
-_aliases = dict(
+_b0_aliases = dict(
     mean="B0UtilsConfiguration.mean_strategy",
     type="B0UtilsConfiguration.dtype",
     strides="B0UtilsConfiguration.strides"
@@ -20,14 +24,14 @@ class B0UtilsConfiguration(MagicMonkeyConfigurable):
 
     @default("app_aliases")
     def _app_aliases_default(self):
-        return _aliases
+        return _b0_aliases
 
     current_util = Enum(
         ["extract", "squash", None], None
     ).tag(config=True, required=True)
 
     mean_strategy = convert_enum(
-        B0PostProcess, B0PostProcess.batch
+        B0PostProcess, B0PostProcess.batch, allow_none=True
     ).tag(config=True)
     dtype = Enum(
         [

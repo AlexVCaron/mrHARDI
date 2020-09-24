@@ -1,6 +1,7 @@
 import json
 import sys
 from abc import abstractmethod
+from collections import MutableMapping
 from copy import copy
 from importlib import import_module
 from multiprocessing import cpu_count
@@ -30,6 +31,7 @@ from traitlets.config import (Application,
                               wrap_paragraphs)
 
 from magic_monkey.base.ListValuedDict import ListValuedDict
+from magic_monkey.base.config import ConfigurationWriter
 from magic_monkey.base.encoding import MagicConfigEncoder
 
 base_aliases = {
@@ -327,101 +329,7 @@ class MagicMonkeyBaseApplication(Application):
         pass
 
     def _generate_config_file(self, filename):
-        traits = self.class_traits(ignore_write=True, hidden=lambda a: a)
-        for k in traits.keys():
-            for klass in (self.__class__,) + self.__class__.__bases__:
-                try:
-                    delattr(klass, k)
-                except AttributeError:
-                    pass
-        with open(filename, 'w+') as f:
-            f.writelines([
-                "# Configuration file for %s.\n\n" % self.name,
-                "c = get_config()\n\n",
-                self._config_section()
-            ])
-
-        for k, v in traits.items():
-            for klass in (self.__class__,) + self.__class__.__bases__:
-                try:
-                    setattr(klass, k, v)
-                except AttributeError:
-                    pass
-
-    def _config_section(self):
-        """Get the config class config section"""
-
-        def c(blk):
-            """return a commented, wrapped block."""
-            blk = '\n\n'.join(wrap_paragraphs(blk, 76))
-
-            return '#  ' + blk.replace('\n', '\n#  ')
-
-        # section header
-        klass = self.__class__
-        breaker = '# ' + '-' * 77
-        parent_classes = ','.join(p.__name__ for p in klass.__bases__)
-        s = "# %s(%s) configuration" % (klass.__name__, parent_classes)
-        lines = [breaker, s]
-        # get the description trait
-        desc = klass.class_traits().get('description')
-        if desc:
-            desc = desc.default_value
-        if not desc:
-            # no description from trait, use __doc__
-            desc = getattr(klass, '__doc__', '')
-        if desc:
-            lines.append('#')
-            lines.append("# Description :")
-            lines.append(c(desc))
-
-        lines.append(breaker)
-
-        sub_configurables = []
-        # Get base traits, so we put them at the end of the
-        # application config section, before the configurables
-        base_classes = MagicMonkeyBaseApplication.__bases__
-        base_classes += (MagicMonkeyBaseApplication,)
-        base_traits = dict()
-        for base_class in base_classes:
-            if HasTraits in base_class.mro():
-                base_traits.update(base_class.class_own_traits(config=True))
-
-        for name, trait in sorted(self.traits(
-            config=True, ignore_write=None, required=None
-        ).items()):
-            if name not in base_traits:
-                inst = trait.get(self, klass)
-                if isinstance(inst, MagicMonkeyConfigurable):
-                    sub_configurables.append(inst)
-                else:
-                    lines.append('c.%s.%s = %s' % (
-                        klass.__name__,
-                        name,
-                        '"%s"' % inst if isinstance(inst, str) else inst
-                    ))
-                lines.append('')
-
-        if len(base_traits) > 0:
-            lines.append("# Application traits configuration")
-            lines.append('')
-
-        for name, trait in base_traits.items():
-            inst = trait.get(self, klass)
-            lines.append('c.%s.%s = %s' % (
-                klass.__name__,
-                name,
-                '"%s"' % inst if isinstance(inst, str) else inst
-            ))
-            lines.append('')
-
-        lines.append('')
-
-        for s_conf in sub_configurables:
-            lines.append('%s' % s_conf)
-            lines.append('')
-
-        return '\n'.join(lines)
+        ConfigurationWriter().write_configuration_file(filename, self)
 
     @catch_config_error
     def _validate(self):
@@ -722,9 +630,10 @@ class MagicMonkeyBaseApplication(Application):
         return flags
 
 
-def convert_enum(enum, default_value):
+def convert_enum(enum, default_value=None, allow_none=False):
     return Enum(
-        [v.name for v in enum], default_value.name
+        [v.name for v in enum], default_value.name if default_value else None,
+        allow_none=allow_none or default_value is None
     )
 
 
@@ -747,6 +656,7 @@ class BoundedInt(Integer):
 
 
 class MagicMonkeyConfigurable(Configurable):
+    name = Unicode()
     app_aliases = Dict({})
     app_flags = Dict({})
     klass = Unicode().tag(config=True)
@@ -758,6 +668,11 @@ class MagicMonkeyConfigurable(Configurable):
     @abstractmethod
     def _validate(self):
         pass
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.name = self.__class__.__name__
+
 
     @catch_config_error
     def validate(self):
@@ -776,114 +691,22 @@ class MagicMonkeyConfigurable(Configurable):
     def serialize(self):
         pass
 
+    def generate_config_file(self, filename):
+        ConfigurationWriter().write_configuration_file(filename, self)
+
     @classmethod
     def class_config_section(cls):
-        """Get the config class config section"""
-
-        def c(blk):
-            """return a commented, wrapped block."""
-            blk = '\n\n'.join(wrap_paragraphs(blk, 78))
-
-            return '# ' + blk.replace('\n', '\n#  ')
-
-        # section header
-        breaker = '# ' + '-' * 77
-        parent_classes = ','.join(p.__name__ for p in cls.__bases__)
-        s = "# %s(%s) configuration" % (cls.__name__, parent_classes)
-        lines = [breaker, s, breaker, '']
-        # get the description trait
-        desc = cls.class_traits().get('description')
-        if desc:
-            desc = desc.default_value
-        if not desc:
-            # no description from trait, use __doc__
-            desc = getattr(cls, '__doc__', '')
-        if desc:
-            lines.append(c(desc))
-            lines.append('')
-
-        config_item = None
-
-        for name, trait in sorted(cls.class_own_traits(config=True).items()):
-            if name == "configuration":
-                config_item = (name, trait)
-            else:
-                lines.append('c.%s.%s = %s' % (
-                    cls.__name__, name, trait.default_value_repr()
-                ))
-                lines.append('')
-
-        if config_item is not None:
-            name, trait = config_item
-            lines.append('c.%s.%s = %s' % (
-                cls.__name__, name, trait.default_value_repr()
-            ))
-            lines.append('')
-
-        return '\n'.join(lines)
+        return ConfigurationWriter().class_config_section(cls)
 
     def _config_section(self):
-        """Get the config class config section"""
-
-        def c(blk):
-            """return a commented, wrapped block."""
-            blk = '\n\n'.join(wrap_paragraphs(blk, 78))
-
-            return '#  ' + blk.replace('\n', '\n#  ')
-
-        # section header
-        klass = self.__class__
-        breaker = '# ' + '-' * 77
-        parent_classes = ','.join(p.__name__ for p in klass.__bases__)
-        s = "# %s(%s) configuration" % (klass.__name__, parent_classes)
-        lines = [breaker, s]
-        # get the description trait
-        desc = klass.class_traits().get('description')
-        if desc:
-            desc = desc.default_value
-        if not desc:
-            # no description from trait, use __doc__
-            desc = getattr(klass, '__doc__', '')
-        if desc:
-            lines.append('#')
-            lines.append("# Description :")
-            lines.append(c(desc))
-
-        lines.append(breaker)
-        lines.append('')
-        config_items = []
-
-        for name, trait in sorted(self.traits(
-            config=True, ignore_write=None, required=None
-        ).items()):
-            inst = trait.get(self, klass)
-            if isinstance(inst, MagicMonkeyConfigurable):
-                config_items.append((name, inst))
-            else:
-                lines.append('c.%s.%s = %s' % (
-                    klass.__name__,
-                    name,
-                    '"%s"' % inst if isinstance(inst, str) else repr(inst)
-                ))
-            lines.append('')
-
-        if len(config_items) > 0:
-            for name, inst in config_items:
-                lines.append('c.%s.%s = %s' % (
-                    klass.__name__,
-                    name,
-                    '"%s"' % inst if isinstance(inst, str) else repr(inst)
-                ))
-                # lines.append('%s' % inst)
-                lines.append('')
-
-        return '\n'.join(lines)
+        return ConfigurationWriter().config_section(
+            self, MagicMonkeyConfigurable, False
+        )
 
     def __str__(self):
         return self._config_section()
 
     def __repr__(self):
-        print("repr traits {}".format(self.traits()))
         return json.dumps({
             k: t.get(self) for k, t in self.traits(config=True).items()
         }, cls=MagicConfigEncoder, indent=4)
@@ -917,6 +740,14 @@ class DictInstantiatingInstance(Instance):
 class SelfInstantiatingInstance(DictInstantiatingInstance):
     def __init__(self, **kwargs):
         super().__init__(klass=self.__class__, **kwargs)
+
+
+class AnyInt(Integer):
+    def validate(self, obj, value):
+        if isinstance(value, np.integer):
+            return value
+
+        return super().validate(obj, value)
 
 
 class MultipleArguments(List):
@@ -1009,6 +840,11 @@ class ChoiceList(List):
         return value
 
 
+class Vector3D(List):
+    def __init__(self, **kwargs):
+        super().__init__(trait=Float, minlen=3, maxlen=3, **kwargs)
+
+
 _out_pre_help_line = "Output directory and prefix for files. Directory "\
                      "required, will overwrite files (Anything that can " \
                      "possibly go wrong, does - Murphy's Law)"
@@ -1020,6 +856,8 @@ _out_file_help_line = "Output filename (with extension, if absent, the file " \
                       "is obliteration of previous data in case of python " \
                       "script from Magic Monkey codebase."
 
+_dwi_pre_help_line = "Input DWI dataset prefix (for image/bvals/bvecs/metadata)"
+
 
 _nthreads_help_line = "Number of threads used by the application. The " \
                       "default value is set by python, so it may be far " \
@@ -1027,6 +865,15 @@ _nthreads_help_line = "Number of threads used by the application. The " \
 
 
 _mask_help_line = "Computing mask for the algorithm"
+
+
+def input_dwi_prefix(
+    default_value=Undefined, description=_dwi_pre_help_line,
+    config=True, required=True, ignore_write=True, **tags
+):
+    return required_file(
+        default_value, description, config, required, ignore_write, **tags
+    )
 
 
 def output_prefix_argument(
