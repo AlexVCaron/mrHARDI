@@ -46,9 +46,7 @@ c.EddyConfiguration.outlier_model = {
     "n_vox": 250,
     "method": "sw",
     "pos_neg": False,
-    "sum_squared": False,
-    "mb_factor": 1,
-    "mb_offset": 0
+    "sum_squared": False
 }
 
 c.EddyConfiguration.pre_filter_width = 0

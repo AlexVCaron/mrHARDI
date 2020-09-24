@@ -12,8 +12,11 @@ include { get_size_in_gb; prevent_sci_notation } from './functions.nf'
 process diamond {
     label "res_full_node"
 
+    publishDir "${params.output_root}/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode
+
     input:
         tuple val(sid), val(input_prefix), path(mask)
+        val(caller_name)
     output:
         tuple val(sid), val("${sid}__diamond")
     script:
@@ -27,8 +30,11 @@ process diamond {
 process dti {
     memory { "${prevent_sci_notation(get_size_in_gb(dwi))} GB" }
 
+    publishDir "${params.output_root}/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode
+
     input:
         tuple val(sid), path(dwi), path(bvals), path(bvecs), path(mask)
+        val(caller_name)
     output:
         tuple val(sid), path("${sid}__dti.nii.gz")
     script:
@@ -44,8 +50,11 @@ process dti {
 process csd {
     memory { "${prevent_sci_notation(get_size_in_gb(dwi))} GB" }
 
+    publishDir "${params.output_root}/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode
+
     input:
         tuple val(sid), path(dwi), path(bvals), path(bvecs), path(mask)
+        val(caller_name)
     output:
         tuple val(sid), path("${sid}__csd.nii.gz")
     script:

@@ -6,8 +6,11 @@ params.config.measure.diamond = "$projectDir/.config/diamond_metrics.py"
 params.config.measure.dti = "$projectDir/.config/dti_metrics.py"
 
 process dti_metrics {
+    publishDir "${params.output_root}/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode
+
     input:
         tuple val(sid), val(input_prefix), file(affine)
+        val(caller_name)
     output:
         tuple val(sid), val("${sid}__dti_metrics")
     script:
@@ -17,8 +20,11 @@ process dti_metrics {
 }
 
 process diamond_metrics {
+    publishDir "${params.output_root}/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode
+
     input:
         tuple val(sid), val(input_prefix), file(affine)
+        val(caller_name)
     output:
         tuple val(sid), val("${sid}__diamond_metrics")
     script:

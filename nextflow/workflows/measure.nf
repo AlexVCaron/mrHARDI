@@ -19,9 +19,9 @@ workflow measure_wkf {
         in_channel.join(affine_channel)
 
         if ( params.measure_dti )
-            dti_channel = dti_metrics(in_channel).out
+            dti_channel = dti_metrics(in_channel, "measure").out
         if ( params.measure_diamond )
-            diamond_channel = diamond_metrics(in_channel).out
+            diamond_channel = diamond_metrics(in_channel, "measure").out
     emit:
         metrics = dti_channel.join(diamond_channel)
         dti = dti_channel

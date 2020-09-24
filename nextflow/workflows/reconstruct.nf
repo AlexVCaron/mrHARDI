@@ -29,7 +29,7 @@ workflow csd_wkf {
         dwi_channel
         mask_channel
     main:
-        csd(dwi_channel.join(mask_channel))
+        csd(dwi_channel.join(mask_channel), "reconstruct")
     emit:
         csd.out
 }
@@ -39,7 +39,7 @@ workflow dti_wkf {
         dwi_channel
         mask_channel
     main:
-        dti(dwi_channel.join(mask_channel))
+        dti(dwi_channel.join(mask_channel), "reconstruct")
     emit:
         dti.out
 }
@@ -49,7 +49,7 @@ workflow diamond_wkf {
         dwi_channel
         mask_channel
     main:
-        diamond(dwi_channel.collect{ it.subTuple(0, 2) }.join(mask_channel))
+        diamond(dwi_channel.collect{ it.subTuple(0, 2) }.join(mask_channel), "reconstruct")
     emit:
         diamond.out
 }

@@ -10,11 +10,15 @@ include { get_size_in_gb; prevent_sci_notation } from './functions.nf'
 process apply_mask {
     memory { "${prevent_sci_notation(2f * get_size_in_gb(img))} GB" }
 
+    publishDir "${params.output_root}/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode
+
     beforeScript "cp $params.config.utils.apply_mask config.py"
     input:
-        tuple val(sid), path(img), path(mask)
+        tuple val(sid), path(img), path(mask), path(metadata)
+        val(caller_name)
     output:
-        tuple val(sid), path("${sid}__masked.nii.gz")
+        tuple val(sid), path("${sid}__masked.nii.gz"), emit: image
+        tuple val(sid), path("${sid}__masked_metadata.*"), optional: true, emit: metadata
     script:
         """
         magic-monkey apply_mask $img $mask ${sid}__masked.nii.gz --config config.py
@@ -25,8 +29,11 @@ process apply_mask {
 process bet_mask {
     memory { "${prevent_sci_notation(get_size_in_gb(img))} GB" }
 
+    publishDir "${params.output_root}/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode
+
     input:
         tuple val(sid), path(img)
+        val(caller_name)
     output:
         tuple val(sid), path("${sid}__bet_mask.nii.gz")
     script:
@@ -39,21 +46,25 @@ process cat_datasets {
     memory { "${prevent_sci_notation(2f * get_size_in_gb(imgs))} GB" }
     cpus 1
 
+    publishDir "${params.output_root}/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode
+
     beforeScript "cp $params.config.utils.concatenate config.py"
     input:
-        tuple val(sid), file(imgs), file(bvals), file(bvecs)
+        tuple val(sid), file(imgs), file(bvals), file(bvecs), path(metadatas)
+        val(suffix)
+        val(caller_name)
     output:
-        tuple val(sid), file("${sid}__concatenated.*")
+        tuple val(sid), file("${sid}__concatenated${suffix}.*"), emit: image
+        tuple val(sid), file("${sid}__concatenated${suffix}_metadata.*"), optional: true, emit: metadata
     script:
-        args = "--in $imgs"
+        args = "--in ${imgs.join(',')}"
 
         if ( bvals.size() > 0 )
-            args += "--bvals $bvals"
+            args += " --bvals ${bvals.join(',')}"
         if ( bvecs.size() > 0 )
-            args += "--bvecs $bvecs"
+            args += " --bvecs ${bvecs.join(',')}"
 
-        println "$args"
         """
-        magic-monkey concatenate $args --out ${sid}__concatenated --config config.py
+        magic-monkey concatenate $args --out ${sid}__concatenated${suffix} --config config.py
         """
 }

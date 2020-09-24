@@ -6,12 +6,16 @@ def key_from_filename ( chan, split_char ) {
     return chan.map{ [ it.getFileName().toString().substring(0, it.getFileName().toString().lastIndexOf(split_char)), it ] }
 }
 
-def group_subject_reps ( dwi_channel ) {
-    return dwi_channel.groupTuple().map{
+def group_channel_rep ( chan ) {
+    return chan.groupTuple().map{
         [it[0]] + it.subList(1, it.size()).inject((1..it.size()).collect{ [] }) { sub, rep ->
             sub.eachWithIndex { its, i -> its.add(rep[i]) } ; return sub
         }
     }
+}
+
+def group_subject_reps ( dwi_channel, metadata_channel ) {
+    return [group_channel_rep(dwi_channel), group_channel_rep(metadata_channel)]
 }
 
 def replace_dwi_file ( base_channel, dwi_channel ) {
