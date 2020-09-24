@@ -41,6 +41,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         dti=("magic_monkey.apps.DTI", 'Perform dti reconstruction'),
         dti_metrics=("magic_monkey.apps.TensorMetrics", 'Compute DTI metrics'),
         eddy=("magic_monkey.apps.Eddy", 'Execute eddy correction'),
+        metadata=(
+            "magic_monkey.apps.DwiMetadataUtils",
+            'Create metadata file(s) describing one or more dwi datasets'
+        ),
         pft=(
             "magic_monkey.apps.PftTracking",
             'Execute particle filtering tracking'

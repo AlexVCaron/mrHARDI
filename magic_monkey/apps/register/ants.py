@@ -12,9 +12,11 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            output_prefix_argument,
                                            required_arg,
                                            required_file)
+from magic_monkey.base.dwi import load_metadata, save_metadata
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.ants import (AntsConfiguration,
                                       AntsTransformConfiguration)
+
 from magic_monkey.traits.ants import AntsAffine, AntsRigid, AntsSyN
 
 _reg_aliases = {
@@ -69,6 +71,7 @@ class AntsRegistration(MagicMonkeyBaseApplication):
 
         ants_config_fmt = self.configuration.serialize()
         config_dict = {}
+
         for i, (target, moving) in enumerate(zip(
             self.target_images, self.moving_images
         )):
@@ -87,6 +90,10 @@ class AntsRegistration(MagicMonkeyBaseApplication):
                 basename(self.output_prefix)
             ))
         )
+
+        metadata = load_metadata(self.moving_images[0])
+        if metadata:
+            save_metadata("{}_warped".format(self.output_prefix), metadata)
 
 
 _tr_aliases = {
@@ -159,3 +166,7 @@ class AntsTransform(MagicMonkeyBaseApplication):
         launch_shell_process(command, join(current_path, "{}.log".format(
             basename(self.output).split(".")[0]
         )))
+
+        metadata = load_metadata(self.image)
+        if metadata:
+            save_metadata(self.output.split(".")[0], metadata)

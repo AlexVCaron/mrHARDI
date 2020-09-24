@@ -68,6 +68,9 @@ class Topup(MagicMonkeyBaseApplication):
         ap_shapes = [nib.load(b0).shape for b0 in self.b0]
         pa_shapes = [nib.load(b0).shape for b0 in self.rev]
 
+        ap_shapes = [1 if len(s) == 3 else s[-1] for s in ap_shapes]
+        pa_shapes = [1 if len(s) == 3 else s[-1] for s in pa_shapes]
+
         acqp = prepare_acqp_file(ap_shapes, pa_shapes, self.readout)
 
         with open("{}_acqp.txt".format(self.output_prefix), 'w+') as f:
@@ -100,3 +103,5 @@ class Topup(MagicMonkeyBaseApplication):
                 ))
 
         chmod("{}_script.sh".format(self.output_prefix), 0o0777)
+
+        save_metadata(self.output_prefix, metadata)

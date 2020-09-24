@@ -48,7 +48,7 @@ def prepare_eddy_index(bvals, dir0=1, strategy="closest"):
         for i in range(b0_clumps[-1].stop - b0_clumps[-1].start):
             indexes += [j]
 
-    return indexes
+    return clip(indexes, a_min=1, a_max=len(b0_clumps))
 
 
 def prepare_acqp_file(ap_b0_shapes, pa_b0_shapes, dwell):

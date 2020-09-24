@@ -12,8 +12,8 @@ class OutlierReplacement(MagicDict):
         both = "both"
 
     def __init__(
-        self, n_std=4, n_vox=250, mb_factor=1, mb_offset=0,
-        method=Method.slice, pos_neg=False, sum_squared=False
+        self, n_std=4, n_vox=250, method=Method.slice,
+        pos_neg=False, sum_squared=False
     ):
         super().__init__(
             dict(
@@ -21,9 +21,7 @@ class OutlierReplacement(MagicDict):
                 ol_nvox=n_vox,
                 ol_type=method if isinstance(method, str) else method.value,
                 ol_pos=pos_neg,
-                ol_sqr=sum_squared,
-                mb=mb_factor,
-                mb_offs=mb_offset
+                ol_sqr=sum_squared
             ),
             dict(
                 ol_nstd="n_std",

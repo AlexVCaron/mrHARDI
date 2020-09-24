@@ -1,23 +1,32 @@
 from os import chmod
+from os.path import basename
 
 import nibabel as nib
 import numpy as np
-from traitlets import Dict, Float, Instance, Unicode
+from traitlets import Dict, Instance, Unicode, Bool, Enum
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            output_prefix_argument,
-                                           required_file,
-                                           required_number)
+                                           input_dwi_prefix)
+
 from magic_monkey.base.fsl import prepare_acqp_file, prepare_eddy_index
+from magic_monkey.base.dwi import load_metadata, save_metadata
 from magic_monkey.base.scripting import build_script
 from magic_monkey.config.eddy import EddyConfiguration
 
-_aliases = dict(
-    bvals='Eddy.bvals',
-    acqp='Eddy.acquisition_file',
-    rev='Eddy.rev_bvals',
-    readout='Eddy.readout',
-    out='Eddy.output_prefix'
+_aliases = {
+    "in": 'Eddy.image',
+    "acqp": 'Eddy.acquisition_file',
+    "rev": 'Eddy.rev_image',
+    "out": 'Eddy.output_prefix'
+}
+
+_flags = dict(
+    rev_eddy=(
+        {"Eddy": {"eddy_on_rev": True}},
+        "Enables eddy correction on dwi and "
+        "reverse acquisition concatenated together"
+    )
 )
 
 _eddy_script = """
@@ -61,40 +70,45 @@ class Eddy(MagicMonkeyBaseApplication):
     description = _description
     configuration = Instance(EddyConfiguration).tag(config=True)
 
-    bvals = required_file(description="B-value file following fsl format")
+    image = input_dwi_prefix()
     output_prefix = output_prefix_argument()
 
-    acquisition_file = required_file(
-        description="Acquisition file describing the "
-                    "orientation and dwell of the volumes",
-        exclusive_group="acqp", group_index=0
-    )
+    acquisition_file = Unicode(
+        help="Acquisition file describing the "
+             "orientation and dwell of the volumes"
+    ).tag(config=True)
 
-    rev_bvals = Unicode(
-        help="Bvals for the reverse phase acquisition, used "
-             "to create the acquisition parameters file"
-    ).tag(config=True, exclusive_group="acqp", group_index=1)
+    rev_image = input_dwi_prefix(
+        description="Input reverse acquisition image prefix "
+                    "(for image and bvals/bvecs/metadata if not b0)"
+    ).tag(config=True)
 
-    readout = required_number(
-        Float, exclusive_group="acqp", group_index=1,
-        description="Readout time of the acquisitions in ms (from the"
-                    "center of the first echo to the center of the last)"
+    eddy_on_rev = Bool().tag(config=True)
+
+    indexing_strategy = Enum(
+        ["closest", "first"], "first",
+        help="Strategy used to find which line in the .acqp aligns "
+             "with which volume in the supplied dwi volume. For datasets "
+             "with evenly spaced b0, \"closest\" will give the best result. "
+             "In any other cases, or if you don't know, use \"first\""
     )
 
     aliases = Dict(_aliases)
+    flags = Dict(_flags)
 
     def _validate_required(self):
         super()._validate_required()
 
     def _start(self):
-        bvals = np.loadtxt(self.bvals)
+        bvals = np.loadtxt("{}.bvals".format(self.image))
+        metadata = load_metadata(self.image)
+        if self.rev_image:
+            rev_bvals = np.loadtxt("{}.bvals".format(self.rev_image))
+            metadata.extend(load_metadata(self.rev_image))
+        else:
+            rev_bvals = np.array([])
+
         if not self.acquisition_file:
-
-            if self.rev_bvals:
-                rev_bvals = np.loadtxt(self.rev_bvals)
-            else:
-                rev_bvals = np.array([])
-
             acqp = prepare_acqp_file(
                 [[np.count_nonzero(bvals == 0)]],
                 [[np.count_nonzero(rev_bvals == 0)]],
@@ -141,3 +155,10 @@ class Eddy(MagicMonkeyBaseApplication):
             f.write(script)
 
         chmod("{}_script.sh".format(self.output_prefix), 0o0777)
+
+        metadata.multiband_corrected = (
+            self.configuration.slice_to_vol is not None or
+            self.configuration.susceptibility is not None
+        ) or metadata.multiband_corrected
+
+        save_metadata(self.output_prefix, metadata)
