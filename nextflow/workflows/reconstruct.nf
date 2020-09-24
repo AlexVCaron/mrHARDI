@@ -12,16 +12,17 @@ workflow reconstruct_wkf {
     take:
         dwi_channel
         mask_channel
+        metadata_channel
     main:
-        out_channel = Channel.empty()
-        if ( params.recons_dti )
-            out_channel.join(dti_wkf(dwi_channel, mask_channel))
-        if ( params.recons_csd )
-            out_channel.join(csd_wkf(dwi_channel, mask_channel))
-        if ( params.recons_diamond )
-            out_channel.join(diamond_wkf(dwi_channel, mask_channel))
+        out_channels = [
+            params.recons_dti ? dti_wkf(dwi_channel, mask_channel) : null,
+            params.recons_csd ? csd_wkf(dwi_channel, mask_channel) : null,
+            params.recons_diamond ? diamond_wkf(dwi_channel, mask_channel) : null
+        ]
     emit:
-        out_channel
+        dti = out_channels[0]
+        csd = out_channels[1]
+        diamond = out_channels[2]
 }
 
 workflow csd_wkf {
@@ -49,7 +50,7 @@ workflow diamond_wkf {
         dwi_channel
         mask_channel
     main:
-        diamond(dwi_channel.collect{ it.subTuple(0, 2) }.join(mask_channel), "reconstruct")
+        diamond(dwi_channel.collect{ it.subList(0, 2) }.join(mask_channel), "reconstruct")
     emit:
         diamond.out
 }

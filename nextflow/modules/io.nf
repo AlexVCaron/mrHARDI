@@ -6,7 +6,6 @@ nextflow.enable.dsl=2
 params.metadata.acquisition = "Linear"
 params.metadata.direction = "AP"
 params.metadata.dwell = 0.112
-params.metadata.multiband = 1
 params.metadata.interleaved = false
 
 def metadata_from_params ( reverse ) {

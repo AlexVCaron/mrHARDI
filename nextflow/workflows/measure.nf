@@ -9,14 +9,14 @@ include { dti_metrics; diamond_metrics } from '../modules/measure.nf'
 
 workflow measure_wkf {
     take:
-        dwi_channel
-        affine_channel
+        data_channel
+        metadata_channel
     main:
         dti_channel = Channel.empty()
         diamond_channel = Channel.empty()
 
-        in_channel = dwi_channel.map { new Tuple2(it[0], it[1].split('.')[0]) }
-        in_channel.join(affine_channel)
+        in_channel = data_channel.map { new Tuple2(it[0], it[1].split('.')[0]) }
+        in_channel.join(metadata_channel)
 
         if ( params.measure_dti )
             dti_channel = dti_metrics(in_channel, "measure").out

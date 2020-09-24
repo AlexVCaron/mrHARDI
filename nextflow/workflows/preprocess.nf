@@ -79,6 +79,7 @@ workflow preprocess_wkf {
 
     emit:
         dwi = dwi_channel
+        mask = mask_channel
         metadata = meta_channel
 }
 
