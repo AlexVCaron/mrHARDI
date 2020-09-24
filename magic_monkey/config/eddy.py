@@ -1,6 +1,6 @@
 from enum import Enum
 
-from traitlets import Integer
+from traitlets import Integer, Float
 from traitlets.config import Bool, Instance, default
 from traitlets.config.loader import ConfigError
 
@@ -87,6 +87,15 @@ class EddyConfiguration(MagicMonkeyConfigurable):
         SusceptibilityCorrection, allow_none=True
     ).tag(config=True, none_to_default=True, cuda_required=True)
 
+    ceil_value = Float(
+        0.9, help="Higher bound determining a valid b-value for a b0 volume"
+    ).tag(config=True)
+
+    strict = Bool(
+        False, help="If True, test b0 b-values with "
+                    "\"<\" comparator instead of \"<=\""
+    ).tag(config=True)
+
     def _config_section(self):
         if self.enable_cuda:
             print("cuda enabled")
@@ -124,9 +133,9 @@ class EddyConfiguration(MagicMonkeyConfigurable):
             niter=self.n_iter,
             nvoxhp=self.n_voxels_hp,
             fep=self.fill_empty,
-            dont_sep_offs_move=not self.separate_subject_field,
-            dont_peas=not self.skip_end_alignment,
-            data_is_shelled=not self.check_if_shelled
+            dont_sep_offs_move=(not self.separate_subject_field),
+            dont_peas=(not self.skip_end_alignment),
+            data_is_shelled=(not self.check_if_shelled)
         ), " ", True)
 
         if self.outlier_model is not None:

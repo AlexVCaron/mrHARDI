@@ -90,11 +90,16 @@ class B0Utils(MagicMonkeyBaseApplication):
     def _extract_b0(self):
         in_dwi = nib.load(self.image)
         bvals = np.loadtxt(self.bvals)
+        kwargs = dict(b0_comp=np.less) if self.configuration.strict else dict()
+        metadata = load_metadata(self.image)
+        kwargs["metadata"] = metadata
 
         data = extract_b0(
             in_dwi.get_fdata(), bvals,
             self.configuration.strides,
-            self.configuration.mean_strategy
+            self.configuration.get_mean_strategy_enum(),
+            self.configuration.ceil_value,
+            **kwargs
         )
 
         if metadata:
@@ -108,11 +113,17 @@ class B0Utils(MagicMonkeyBaseApplication):
     def _squash_b0(self):
         in_dwi = nib.load(self.image)
         bvals = np.loadtxt(self.bvals)
+        kwargs = dict(b0_comp=np.less) if self.configuration.strict else dict()
+        metadata = load_metadata(self.image)
+        kwargs["metadata"] = metadata
 
         bvecs = np.loadtxt(self.bvecs) if self.bvecs else None
 
         data, bvals, bvecs = squash_b0(
-            in_dwi.get_fdata(), bvals, bvecs, self.configuration.mean_strategy
+            in_dwi.get_fdata(), bvals, bvecs,
+            self.configuration.get_mean_strategy_enum(),
+            self.configuration.ceil_value,
+            **kwargs
         )
 
         if metadata:
@@ -275,7 +286,7 @@ class ApplyTopup(MagicMonkeyBaseApplication):
     dtype = Enum(
         ["char", "short", "int", "float", "double"], None, allow_none=True,
         help="Force output type. If none supplied, "
-             "will be the same as the input type."
+             "will be the same as the inputold type."
     ).tag(config=True)
 
     def _start(self):

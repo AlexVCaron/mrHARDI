@@ -6,15 +6,14 @@ from traitlets import Dict, Instance, Unicode
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            MultipleArguments,
                                            output_prefix_argument,
-                                           required_arg,
-                                           required_number)
+                                           required_arg)
 from magic_monkey.base.fsl import prepare_acqp_file
+from magic_monkey.base.dwi import load_metadata, save_metadata
 from magic_monkey.config.topup import TopupConfiguration
 
 _aliases = dict(
     b0='Topup.b0',
     rev='Topup.rev',
-    readout='Topup.readout',
     extra='Topup.extra_arguments',
     out='Topup.output_prefix'
 )
@@ -44,15 +43,14 @@ class Topup(MagicMonkeyBaseApplication):
         "Principal B0 volumes used for Topup correction",
         traits_args=(Unicode,)
     )
+
     rev = MultipleArguments(
         Unicode, [],
-        help="Reverse acquisitions used for deformation correction"
+        help="Reverse acquisitions used for deformation correction, will be "
+             "paired with same index dataset from the b0 argument. Acquisition "
+             "direction will be determined inverting the related dataset one "
+             "if none is supplied."
     ).tag(config=True, ignore_write=True)
-    readout = required_number(
-        description="Readout time of the acquisitions in ms (from the center "
-                    "of the first echo to the center of the last)",
-        ignore_write=False
-    )
 
     output_prefix = output_prefix_argument()
 
@@ -65,13 +63,21 @@ class Topup(MagicMonkeyBaseApplication):
     aliases = Dict(_aliases)
 
     def _start(self):
+        metadata = load_metadata(self.b0[0])
+        for b0 in self.b0[1:]:
+            metadata.extend(load_metadata(b0))
+        for b0 in self.rev:
+            metadata.extend(load_metadata(b0))
+
         ap_shapes = [nib.load(b0).shape for b0 in self.b0]
         pa_shapes = [nib.load(b0).shape for b0 in self.rev]
 
         ap_shapes = [1 if len(s) == 3 else s[-1] for s in ap_shapes]
         pa_shapes = [1 if len(s) == 3 else s[-1] for s in pa_shapes]
 
-        acqp = prepare_acqp_file(ap_shapes, pa_shapes, self.readout)
+        acqp = prepare_acqp_file(
+            ap_shapes, pa_shapes, metadata.dwell, metadata.directions
+        )
 
         with open("{}_acqp.txt".format(self.output_prefix), 'w+') as f:
             f.write("# MAGIC MONKEY -------------------------\n")
@@ -96,9 +102,9 @@ class Topup(MagicMonkeyBaseApplication):
                 "--out=\"{0}{3}\" --fout=\"{0}{4}\" "
                 "--iout=\"{0}{5}\" {6}\n".format(
                     "${out_prefix}",
-                    "{}_params.txt".format(self.output_prefix),
+                    "{}_acqp.txt".format(self.output_prefix),
                     "{}_config.cnf".format(self.output_prefix),
-                    "_results.txt", "_field.nii.gz", ".nii.gz",
+                    "_results", "_field.nii.gz", ".nii.gz",
                     self.extra_arguments
                 ))
 

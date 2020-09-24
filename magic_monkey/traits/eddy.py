@@ -29,8 +29,7 @@ class OutlierReplacement(MagicDict):
                 ol_type="method",
                 ol_pos="pos_neg",
                 ol_sqr="sum_squared",
-                mb="mb_factor",
-                mb_offs="mb_offset"
+                repol="repol"
             )
         )
 
@@ -83,7 +82,8 @@ class SusceptibilityCorrection(MagicDict):
             dict(
                 mbs_niter="n_iter",
                 mbs_lambda="w_reg",
-                mbs_ksp="knot_spacing"
+                mbs_ksp="knot_spacing",
+                estimate_move_by_susceptibility="est_suscep"
             )
         )
 
