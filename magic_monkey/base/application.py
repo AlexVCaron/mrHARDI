@@ -115,7 +115,10 @@ class MagicMonkeyBaseApplication(Application):
         conf_klass = self.__class__.configuration.klass
         if MagicMonkeyConfigurable in conf_klass.mro():
             try:
-                self.configuration = conf_klass(parent=self)
+                config = conf_klass(parent=self)
+                config.update_config(self.configuration.config)
+                config.default_value = self.configuration.default_value
+                self.configuration = config
                 self.classes.extend((conf_klass,) + conf_klass.__bases__)
             except AttributeError:
                 pass

@@ -10,6 +10,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         return "magic_monkey command <args> <flags>"
 
     subcommands = dict(
+        acquisition=(
+            "magic_monkey.apps.AcquisitionOptimizer",
+            "Optimize acquisition parametrization on nextflow pipeline"
+        ),
         ants_registration=(
             "magic_monkey.apps.AntsRegistration", 'Register images via ants'
         ),
