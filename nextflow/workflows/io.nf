@@ -34,9 +34,9 @@ workflow load_dataset {
             }.map{
                 it[3] ? it.subList(0, 4) : it.subList(0, 3) + [it[-1]]
             }
-            rev_meta_channel = key_from_filename(Channel.fromPath("$root/**/*rev.json"), "_").map{ [it[0].substring(0, it[0].lastIndexOf("_"))] + it.subList(1, it.size()) }
-            in_meta_rev = rev_channel.map{ it.subList(0, 2) }.join(rev_meta_channel, remainder: true).map{ it.size() > 2 ? it[-1] ? it : [it[0], it[1], ""] : it + [""] }
-            rev_meta_channel = pmeta_rev(in_meta_rev, true)
+            rev_json_channel = key_from_filename(Channel.fromPath("$root/**/*rev.json"), "_").map{ [it[0].substring(0, it[0].lastIndexOf("_"))] + it.subList(1, it.size()) }
+            in_meta_rev = rev_channel.map{ it.subList(0, 2) }.join(rev_json_channel, remainder: true).map{ it.size() > 2 ? it[-1] ? it : [it[0], it[1], ""] : it + [""] }
+            rev_meta_channel = pmeta_rev(in_meta_rev.map{ it + ["true"] })
         }
 
         if ( params.masked_t1 )
@@ -44,7 +44,7 @@ workflow load_dataset {
         else if ( params.masked )
             dwi_channel = dwi_channel.join(key_from_filename(Channel.fromPath("$root/**/*mask.nii.gz"), "_"))
 
-        dwi_meta_channel = pmeta_dwi(dwi_channel.map{ it.subList(0, 2) }.join(dwi_meta_channel, remainder: true).map{ it.size() > 2 ? it[-1] ? it : [it[0], it[1], ""] : it + [""] }, false)
+        dwi_meta_channel = pmeta_dwi(dwi_channel.map{ it.subList(0, 2) }.join(dwi_meta_channel, remainder: true).map{ it.size() > 2 ? it[-1] ? it : [it[0], it[1], ""] : it + [""] }.map{ it + ["false"] })
     emit:
         dwi = dwi_channel
         affine = affine_channel

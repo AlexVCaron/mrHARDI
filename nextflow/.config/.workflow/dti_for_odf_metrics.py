@@ -5,9 +5,9 @@ c = get_config()
 # -----------------------------------------------------------------------------
 # TensorMetrics(MagicMonkeyBaseApplication) configuration
 # -----------------------------------------------------------------------------
-c.TensorMetrics.metrics = ['fa', 'md', 'ad', 'rd', 'peaks']
+c.TensorMetrics.metrics = ['fa', 'md']
 
-c.TensorMetrics.output_colors = True
+c.TensorMetrics.output_colors = False
 
 c.TensorMetrics.save_eigs = False
 

@@ -6,8 +6,6 @@ c = get_config()
 # Eddy(MagicMonkeyBaseApplication) configuration
 # -----------------------------------------------------------------------------
 
-c.Eddy.rev_bvals = ""
-
 # Application traits configuration
 
 c.Eddy.log_datefmt = "%Y-%m-%d %H:%M:%S"
@@ -25,7 +23,7 @@ c.Eddy.base_config_file = ""
 
 c.EddyConfiguration.check_if_shelled = True
 
-c.EddyConfiguration.current_model = "none"
+c.EddyConfiguration.current_model = "linear"
 
 c.EddyConfiguration.enable_cuda = False
 
@@ -39,11 +37,11 @@ c.EddyConfiguration.klass = "magic_monkey.config.eddy.EddyConfiguration"
 
 c.EddyConfiguration.n_iter = 5
 
-c.EddyConfiguration.n_voxels_hp = 1000
+c.EddyConfiguration.n_voxels_hp = 2000
 
 c.EddyConfiguration.outlier_model = None
 
-c.EddyConfiguration.pre_filter_width = 0
+c.EddyConfiguration.pre_filter_width = [2, 0, 0, 0, 0]
 
 c.EddyConfiguration.qspace_smoothing = 10
 

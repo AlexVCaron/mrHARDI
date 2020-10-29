@@ -41,7 +41,7 @@ c.DiamondConfiguration.gen_error_iters = 0
 
 c.DiamondConfiguration.initial_stick = None
 
-c.DiamondConfiguration.iso_if_no_fascicle = False
+c.DiamondConfiguration.iso_no_fascicle = False
 
 c.DiamondConfiguration.klass = "magic_monkey.config.diamond.DiamondConfiguration"
 

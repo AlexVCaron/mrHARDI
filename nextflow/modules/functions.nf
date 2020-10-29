@@ -56,3 +56,53 @@ def get_size_in_gb( files ) {
 def prevent_sci_notation ( float_number ) {
     return String.format("%f", float_number)
 }
+
+def extract_extension ( f ) {
+    return "$f".tokenize(".").subList(1, "$f".tokenize(".").size()).join(".")
+}
+
+def copy_and_rename ( f, p, overwrite ) {
+    def ext = extract_extension(f)
+    if ( !file("${file(f).getParent()}/${p}.${ext}").exists() || overwrite == "true" )
+        file(f).copyTo("${file(f).getParent()}/${p}.${ext}")
+    return file("${file(f).getParent()}/${p}.${ext}")
+}
+
+def uniformize_naming ( files_channel, prefix, overwrite ) {
+    return files_channel.map{ it ->
+        [it[0]] + it.subList(1, it.size()).collect{ i ->
+            copy_and_rename(i, "${it[0]}__$prefix", overwrite)
+        }
+    }
+}
+
+def replace_naming_to_underscore ( files_channel, prefix, overwrite ) {
+    return files_channel.map{ it ->
+        [it[0]] + it.subList(1, it.size()).collect{ i ->
+            def suffix = i.getSimpleName().tokenize("_")[-1]
+            copy_and_rename(i, "${prefix}_${suffix}", overwrite)
+        }
+    }
+}
+
+def sort_by_name ( channel, reg_list ) {
+    return channel.map{ [it[0]] + it[1].sort{ f -> f_token = file("$f").getSimpleName(); reg_list.find{ pt -> f_token ==~ pt } } }
+}
+
+def sort_by_extension ( channel, ext_list ) {
+    return channel.map{ [it[0]] + it[1].sort{ f -> f_token = "$f".tokenize('.'); ext_list.indexOf(f_token.subList(1, f_token.size()).join('.')) } }
+}
+
+def swap_configurations ( base_config, new_config ) {
+    if ( new_config && !new_config.empty() )
+        return new_config
+    return base_config
+}
+
+def sort_as_with_name ( channel, sorting_channel ) {
+    channel.map{ [it[0], it.subList(1, it.size())] }.join(
+        sorting_channel.map{ [it[0], it.subList(1, it.size())] }
+    ).map{
+        [it[0]] + it[1].sort{ f -> f_token = file("$f").getSimpleName(); it[2].find{ pt -> f_token ==~ pt } }
+    }
+}

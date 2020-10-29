@@ -7,31 +7,32 @@ nextflow.enable.dsl=2
 params.config.register.ants_registration = "$projectDir/.config/ants_registration.py"
 params.config.register.ants_transform = "$projectDir/.config/ants_transform.py"
 
-include { get_size_in_gb; prevent_sci_notation } from './functions.nf'
+include { get_size_in_gb; prevent_sci_notation; swap_configurations } from './functions.nf'
 
 process ants_register {
     memory { "${prevent_sci_notation(get_size_in_gb(moving) + get_size_in_gb(target))} GB" }
-    label "res_full_node"
+    label "res_full_node_minus1"
 
-    publishDir "${params.output_root}/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode
+    publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
+    publishDir "${params.output_root}/${sid}/$caller_name", saveAs: { f -> f.contains("metadata") ? null : f }, mode: params.publish_mode
 
     beforeScript "cp $params.config.register.ants_registration config.py"
     input:
-        tuple val(sid), file(moving), file(target), path(metadata)
+        tuple val(sid), file(moving), file(target), val(reference), path(metadata)
         val(caller_name)
-        path(forced_config)
+        file(config_overwrite)
     output:
-        tuple val(sid), path("${sid}__registration_ref.nii.gz"), path("${sid}__registration_affine.mat"), emit: affine
+        tuple val(sid), path("${sid}__registration_affine.mat"), path("${sid}__registration_rigid.nii.gz"), emit: affine
+        tuple val(sid), path("${sid}__registration_ref.nii.gz"), emit: reference
         tuple val(sid), path("${sid}__registration_warped.nii.gz"), emit: image
         tuple val(sid), path("${sid}__registration*syn.nii.gz"), optional: true, emit: syn
         tuple val(sid), path("${sid}__registration_warped_metadata.*"), optional: true, emit: metadata
     script:
-        config = "config.py"
-        if ( forced_config )
-            config = "$forced_config"
+        config = swap_configurations(file("$workDir/config.py"), config_overwrite)
         """
-        magic-monkey ants_registration --moving $moving --target $target --out ${sid}__registration --config $config
-        cp ${sid}__registration_warped.nii.gz ${sid}__registration_ref.nii.gz
+        magic-monkey ants_registration --moving ${moving.join(",")} --target ${target.join(",")} --out ${sid}__registration --config $config
+        cp $reference ${sid}__registration_ref.nii.gz
+        cp ${sid}__registration_warped.nii.gz ${sid}__registration_rigid.nii.gz
         mv ${sid}__registration0GenericAffine.mat ${sid}__registration_affine.mat
         if [ -f "${sid}__registration1Warp.nii.gz" ]
         then
@@ -44,7 +45,8 @@ process ants_register {
 process ants_transform {
     memory { "${prevent_sci_notation(get_size_in_gb(img) * 2f)} GB" }
 
-    publishDir "${params.output_root}/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode
+    publishDir "${params.output_root}/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
+    publishDir "${params.output_root}/${sid}/$caller_name", saveAs: { f -> f.contains("metadata") ? null : f }, mode: params.publish_mode
 
     beforeScript "cp $params.config.register.ants_transform config.py"
     input:
