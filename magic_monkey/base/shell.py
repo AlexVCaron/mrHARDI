@@ -65,6 +65,11 @@ def process_pipes_to_log_file(
             logging_callback(log_file_path)
             time.sleep(poll_timer)
 
+        _dequeue_pipe(log_file, stdout_queue, "STD")
+        _dequeue_pipe(log_file, stderr_queue, "ERR")
+
+        logging_callback(log_file_path)
+
 
 def basic_error_manager(process):
     raise CalledProcessError(
@@ -118,6 +123,7 @@ def launch_shell_process(
                     "[ERR]    {}".format(t)
                     for t in traceback.format_exc().split("\n")
                 ]))
+                log_file.flush()
 
             error_manager(process)
 
@@ -127,6 +133,7 @@ def launch_shell_process(
     except SubprocessError as e:
         with open(log_file_path, "a+") as log_file:
             log_file.write("Error : {}\n".format(e))
+            log_file.flush()
 
         if process:
             process.stdout.close()

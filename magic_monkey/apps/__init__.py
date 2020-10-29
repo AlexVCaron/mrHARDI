@@ -8,4 +8,6 @@ from .utils import (ApplyMask,
                     B0Utils,
                     Concatenate,
                     DwiMetadataUtils,
-                    DwiMetadata)
+                    DwiMetadata,
+                    SplitImage,
+                    ConvertImage)

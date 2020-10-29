@@ -1,3 +1,4 @@
+import glob
 import re
 
 from copy import deepcopy
@@ -14,9 +15,11 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            output_file_argument,
                                            output_prefix_argument,
                                            required_arg,
-                                           required_file)
+                                           required_file, prefix_argument,
+                                           required_number,
+                                           output_suffix_argument)
 
-from magic_monkey.base.dwi import (AcquisitionDirection,
+from magic_monkey.base.dwi import (Direction,
                                    DwiMetadata,
                                    AcquisitionType,
                                    load_metadata,
@@ -79,7 +82,7 @@ class B0Utils(MagicMonkeyBaseApplication):
             sub_command
         )
 
-    def _start(self):
+    def execute(self):
         if self.configuration.current_util == "extract":
             self._extract_b0()
         elif self.configuration.current_util == "squash":
@@ -105,10 +108,13 @@ class B0Utils(MagicMonkeyBaseApplication):
         if metadata:
             save_metadata(self.output_prefix, metadata)
 
-        nib.save(
-            nib.Nifti1Image(data, in_dwi.affine),
-            "{}.nii.gz".format(self.output_prefix)
+        img = nib.Nifti1Image(
+            data.astype(self.configuration.dtype),
+            in_dwi.affine, in_dwi.header
         )
+        img.set_data_dtype(self.configuration.dtype)
+
+        nib.save(img, "{}.nii.gz".format(self.output_prefix))
 
     def _squash_b0(self):
         in_dwi = nib.load(self.image)
@@ -129,17 +135,20 @@ class B0Utils(MagicMonkeyBaseApplication):
         if metadata:
             save_metadata(self.output_prefix, metadata)
 
-        nib.save(
-            nib.Nifti1Image(
-                data.astype(self.configuration.dtype), in_dwi.affine
-            ),
-            "{}.nii.gz".format(self.output_prefix)
+        img = nib.Nifti1Image(
+            data.astype(self.configuration.dtype),
+            in_dwi.affine, in_dwi.header
         )
+        img.set_data_dtype(self.configuration.dtype)
+
+        nib.save(img, "{}.nii.gz".format(self.output_prefix))
 
         np.savetxt("{}.bvals".format(self.output_prefix), bvals, fmt="%d")
 
         if self.bvecs:
-            np.savetxt("{}.bvecs".format(self.output_prefix), bvecs, fmt="%.6f")
+            np.savetxt(
+                "{}.bvecs".format(self.output_prefix), bvecs, fmt="%.6f"
+            )
 
 
 _apply_mask_aliases = {
@@ -168,7 +177,7 @@ class ApplyMask(MagicMonkeyBaseApplication):
 
     aliases = Dict(_apply_mask_aliases)
 
-    def _start(self):
+    def execute(self):
         data = nib.load(self.image)
         mask = nib.load(self.mask).get_fdata().astype(bool)
 
@@ -204,7 +213,7 @@ class Concatenate(MagicMonkeyBaseApplication):
 
     aliases = Dict(_cat_aliases)
 
-    def _start(self):
+    def execute(self):
         dwi_list = [nib.load(dwi) for dwi in self.images]
         bvals_list = [
             np.loadtxt(bvals) for bvals in self.bvals
@@ -246,6 +255,15 @@ class Concatenate(MagicMonkeyBaseApplication):
             np.savetxt("{}.bvecs".format(self.prefix), out_bvecs.T, fmt="%.6f")
 
 
+_apply_topup_aliases = dict(
+    dwi="ApplyTopup.dwi",
+    rev="ApplyTopup.rev",
+    acqp="ApplyTopup.acquisition_file",
+    topup="ApplyTopup.topup_prefix",
+    out="ApplyTopup.output_prefix"
+)
+
+
 class ApplyTopup(MagicMonkeyBaseApplication):
     name = u"Apply Topup"
     description = "Apply a Topup transformation to an image"
@@ -255,27 +273,25 @@ class ApplyTopup(MagicMonkeyBaseApplication):
                     "to the transformation calculated by Topup"
     )
 
-    images = required_arg(
-        MultipleArguments, traits_args=(Unicode,),
-        description="Input forward acquired images"
+    acquisition_file = required_file(
+        description="Acquisition file describing the "
+                    "orientation and dwell of the volumes"
     )
 
-    rev_images = MultipleArguments(
-        Unicode, help="Input reverse acquired images"
-    ).tag(config=True, ignore_write=True)
+    dwi = required_arg(
+        MultipleArguments, traits_args=(Unicode,),
+        description="Input image or list of images"
+    )
+
+    rev = MultipleArguments(
+        Unicode, default_value=[],
+        help="Input reverse encoded image or list of images"
+    ).tag(config=True)
 
     output_prefix = output_prefix_argument()
 
-    mode = Enum(
-        ["interlaced", "sequential"], "interlaced",
-        help="Mode in which Topup was applied to the dataset. Either the "
-             "forward and reversed acquisition B0 volumes were interlaced, "
-             "one pair after another, or the forward block is all put in "
-             "first, the revered in last."
-    ).tag(config=True)
-
     resampling = Enum(
-        ["jac", "slr"], "slr", help="Resampling method"
+        ["jac", "lsr"], "jac", help="Resampling method"
     ).tag(config=True)
 
     interpolation = Enum(
@@ -286,10 +302,12 @@ class ApplyTopup(MagicMonkeyBaseApplication):
     dtype = Enum(
         ["char", "short", "int", "float", "double"], None, allow_none=True,
         help="Force output type. If none supplied, "
-             "will be the same as the inputold type."
+             "will be the same as the input type."
     ).tag(config=True)
 
-    def _start(self):
+    aliases = Dict(_apply_topup_aliases)
+
+    def execute(self):
         working_dir = getcwd()
 
         args = "--topup={} --out={} --method={} --interp={}".format(
@@ -297,26 +315,24 @@ class ApplyTopup(MagicMonkeyBaseApplication):
             self.resampling, self.interpolation
         )
 
-        if self.mode == "interlaced" and len(self.rev_images) > 0:
-            args = "--imain={} {}".format(
-                ",".join([
-                    img for p in zip(self.images, self.rev_images) for img in p
-                ]),
-                args
-            )
-        else:
-            args = "--imain={} {}".format(
-                ",".join(self.images + self.rev_images), args
-            )
+        args = "--imain={} {}".format(",".join(self.dwi + self.rev), args)
 
+        indexes = np.concatenate(tuple(
+            load_metadata(img).topup_indexes for img in self.dwi + self.rev
+        ))
         args += " --inindex={}".format(
-            ",".join(str(i) for i in range(
-                1, len(self.images) + len(self.rev_images) + 1
-            ))
+            ",".join(str(i) for i in indexes.tolist())
         )
+        args += " --datain={}".format(self.acquisition_file)
 
         if self.dtype:
             args += " --datatype={}".format(self.dtype)
+
+        metadata = load_metadata(self.dwi[0])
+        for img in self.dwi[1:]:
+            metadata.extend(load_metadata(img))
+
+        save_metadata(self.output_prefix, metadata)
 
         launch_shell_process(
             'applytopup {}'.format(args), join(working_dir, "{}.log".format(
@@ -396,6 +412,14 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             )
             self.update_config(self._split_config(dict(config)))
 
+        if (
+            self.configuration.multiband_factor and
+            self.configuration.multiband_factor > 1
+        ):
+            self.configuration.traits()["slice_direction"].tag(
+                required=True
+            )
+
         super()._validate_configuration()
 
     def _split_config(self, config):
@@ -422,20 +446,43 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
         return configuration
 
     def _get_multiband_indexes(self, images):
+        directions = self.get_multiband_directions(images)
         idxs = np.array([
             np.pad(
-                np.arange(img["data"].shape[-1]),
-                (0, img["data"].shape[-1] % 2),
+                np.arange(img["data"].shape[np.absolute(d).argmax()]),
+                (0, img["data"].shape[np.absolute(d).argmax()] %
+                 self.configuration.multiband_factor
+                 ),
                 constant_values=-1
             ).reshape(
                 (self.configuration.multiband_factor, -1)
-            ).T.astype(int) for img in images
+            ).T.astype(int) for img, d in zip(images, directions)
         ])
 
         if self.configuration.interleaved:
             idxs = np.vstack((idxs[:, :2, ...], idxs[:, 1::2, ...])).reshape(
                 (-1, self.configuration.multiband_factor)
             )
+
+        if self.configuration.gslider_factor:
+            idxs = np.pad(
+                idxs,
+                (
+                    (0, 0),
+                    (0, idxs.shape[1] % self.configuration.gslider_factor),
+                    (0, 0)
+                ),
+                constant_values=(
+                    (None, None),
+                    (None, np.repeat(-1, self.configuration.multiband_factor)),
+                    (None, None)
+                )
+            ).reshape((
+                idxs.shape[0],
+                -1,
+                self.configuration.multiband_factor *
+                self.configuration.gslider_factor
+            ))
 
         return [
             [list(filter(lambda i: not i == -1, k)) for k in ki]
@@ -448,26 +495,38 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             for img, direction in zip(images, directions)
         ]
 
-    def get_directions(self, images, val_extractor=lambda v: v.value):
-        if len(self.configuration.direction) == 1:
-            d = self.configuration.direction[0]
+    def _unpack_directions(
+        self, images, directions, val_extractor=lambda v: v.value
+    ):
+        if len(directions) == 1:
+            d = directions[0]
             return self._expand_to_slices(
                 np.repeat(
-                    [val_extractor(AcquisitionDirection[d])],
+                    [val_extractor(Direction[d])],
                     len(images), 0
                 ),
                 images
             )
-        elif len(self.configuration.direction) == len(images):
+        elif len(directions) == len(images):
             return self._expand_to_slices(
                 [
-                    val_extractor(AcquisitionDirection[d])
+                    val_extractor(Direction[d])
                     for d in self.configuration.direction
                 ],
                 images
             )
         else:
             return []
+
+    def get_phase_directions(self, images, val_extractor=lambda v: v.value):
+        return self._unpack_directions(
+            images, self.configuration.direction, val_extractor
+        )
+
+    def get_multiband_directions(self, images, val_extractor=lambda v: v.value):
+        return self._unpack_directions(
+            images, self.configuration.slice_direction, val_extractor
+        )
 
     def preload_images(self):
         return [
@@ -482,9 +541,9 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             name
         )
 
-    def _start(self):
+    def execute(self):
         images = self.preload_images()
-        directions = self.get_directions(images)
+        directions = self.get_phase_directions(images)
         multibands = None
 
         if (
@@ -496,10 +555,19 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
         if multibands is None:
             multibands = [None for _ in range(len(directions))]
 
-        for img, d, mb in zip(images, directions, multibands):
+        slice_dirs = self.configuration.slice_direction
+        if len(self.configuration.slice_direction) == 1:
+            slice_dirs = np.repeat(
+                self.configuration.slice_direction, len(images)
+            ).tolist()
+
+        for img, d, mb, sd in zip(images, directions, multibands, slice_dirs):
             shape = img["data"].shape
             metadata = DwiMetadata()
             metadata.n = shape[-1] if len(shape) > 3 else 1
+            metadata.n_excitations = int(shape[
+                np.argmax(np.absolute(Direction[sd].value))
+            ] / self.configuration.multiband_factor)
             metadata.affine = img["data"].affine.tolist()
             metadata.directions = d.tolist()
             metadata.dwell = self.configuration.dwell
@@ -517,3 +585,123 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             metadata.acquisition_slices = [[0, None]]
 
             metadata.generate_config_file(self._get_file_for(img["name"]))
+
+
+_split_aliases = {
+    'image': 'SplitImage.image',
+    'prefix': 'SplitImage.prefix',
+    'axis': 'SplitImage.axis'
+}
+
+_split_flags = dict(
+    inverse=(
+        {"SplitImage": {'inverse': True}},
+        "reconstruct image from images found by the prefix argument"
+    )
+)
+
+
+class SplitImage(MagicMonkeyBaseApplication):
+    name = u"Split image given an axis"
+    description = (
+        "Given an axis into an image, split the image into it's sub-parts "
+        "along it. Can also reverse the split to reconstruct the initial image."
+    )
+
+    image = required_file(
+        description="Input file to split (or, if inverse flag "
+                    "supplied, output file to create)"
+    )
+
+    prefix = prefix_argument(
+        "Prefix for output image sub-parts (or, if inverse flag "
+        "supplied, input sub-parts to stitch together)"
+    )
+
+    axis = required_number(Integer, description="Axis for the split")
+
+    inverse = Bool(
+        False, help="If True, tries to reconstruct image from images "
+                    "found by the prefix argument"
+    ).tag(config=True)
+
+    _affine = None
+
+    aliases = Dict(_split_aliases)
+    flags = Dict(_split_flags)
+
+    def _split_to_img(self):
+        n_subs = len(glob.glob("{}*".format(self.prefix)))
+        self._affine = nib.load(
+            "{}_ax{}_0.nii.gz".format(self.prefix, self.axis)
+        ).affine
+        fn = np.frompyfunc(self._load_split, 1, 1)
+        data = fn(np.arange(0, n_subs))
+        nib.save(
+            nib.Nifti1Image(np.stack(data, self.axis), self._affine),
+            self.image
+        )
+
+    def _load_split(self, i):
+        return nib.load(
+            "{}_ax{}_{}.nii.gz".format(self.prefix, self.axis, i)
+        ).get_fdata()
+
+    def _img_to_split(self):
+        img = nib.load(self.image)
+        metadata = load_metadata(self.image)
+        self._affine = img.affine
+        for i, sub in enumerate(np.moveaxis(img.get_fdata(), self.axis, 0)):
+            mt = metadata.copy()
+            try:
+                mt.topup_indexes = [metadata.topup_indexes[i]]
+            except IndexError:
+                print("What the hellllll {}".format(self.image))
+                mt.topup_indexes = []
+            mt.directions = [metadata.directions[i]]
+
+            self._save_image(i, sub, mt)
+
+    def _save_image(self, idx, data, meta):
+        nib.save(
+            nib.Nifti1Image(data, self._affine),
+            "{}_ax{}_{}.nii.gz".format(self.prefix, self.axis, idx)
+        )
+        save_metadata("{}_ax{}_{}".format(self.prefix, self.axis, idx), meta)
+
+    def execute(self):
+        if self.inverse:
+            self._split_to_img()
+        else:
+            self._img_to_split()
+
+
+_convert_aliases = {
+    'in': 'ConvertImage.image',
+    'out': 'ConvertImage.output',
+    'dt': 'ConvertImage.datatype'
+}
+
+
+class ConvertImage(MagicMonkeyBaseApplication):
+    name = u"Apply conversion operations on image"
+
+    image = required_file(
+        description="Input image to convert"
+    )
+
+    output = output_file_argument()
+
+    datatype = Unicode().tag(config=True, required=True)
+
+    aliases = Dict(_convert_aliases)
+
+    def execute(self):
+        img = nib.load(self.image)
+        nib.save(
+            nib.Nifti1Image(
+                img.get_fdata().astype(np.dtype(self.datatype)),
+                img.affine
+            ),
+            self.output
+        )

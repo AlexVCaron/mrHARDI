@@ -33,7 +33,7 @@ def serialize_fsl_args(args_dict, separator="\n", bool_as_flags=False):
     )
 
 
-def prepare_eddy_index(
+def prepare_topup_index(
     bvals, dir0=1, strategy="closest", ceil=0.9, b0_comp=less_equal
 ):
     strat = value_closest if strategy == "closest" else value_first
@@ -52,6 +52,7 @@ def prepare_eddy_index(
             indexes += [j]
 
     return clip(indexes, a_min=1, a_max=len(b0_clumps))
+
 
 def prepare_acqp_file(ap_b0_shapes, pa_b0_shapes, dwell, direction):
     if len(direction) == 1:
@@ -82,6 +83,6 @@ def prepare_acqp_file(ap_b0_shapes, pa_b0_shapes, dwell, direction):
     print("Here are the dirs !!!!! {}".format(dirs))
     dirs[less_equal(absolute(dirs), 1e-8)] = 0.
 
-    return "\n".join("{} {:.8f}\n".format(
+    return "\n".join("{} {:.8f}".format(
         " ".join(str(dd) for dd in d), dwell
     ) for d in dirs)

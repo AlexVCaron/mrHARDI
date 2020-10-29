@@ -8,7 +8,7 @@ from magic_monkey.base.fsl import serialize_fsl_args
 class OutlierReplacement(MagicDict):
     class Method(Enum):
         slice = "sw"
-        multi_band = "mb"
+        multi_band = "gw"
         both = "both"
 
     def __init__(
@@ -36,7 +36,7 @@ class OutlierReplacement(MagicDict):
     def serialize(self):
         args = deepcopy(self)
         args["repol"] = True
-        return serialize_fsl_args(self, " ", True)
+        return serialize_fsl_args(args, " ", True)
 
 
 class IntraVolMotionCorrection(MagicDict):
@@ -47,11 +47,12 @@ class IntraVolMotionCorrection(MagicDict):
     def __init__(
         self, n_iter=5, w_reg=1,
         interpolation=Interpolation.trilinear,
-        t_motion_order=0
+        t_motion_fraction=1
     ):
+        self.motion_fraction = t_motion_fraction
         super().__init__(
             dict(
-                mporder=t_motion_order,
+                mporder=0,
                 s2v_niter=n_iter,
                 s2v_lambda=w_reg,
                 s2v_interp=(
@@ -66,6 +67,9 @@ class IntraVolMotionCorrection(MagicDict):
                 s2v_interp="interpolation"
             )
         )
+
+    def set_mporder(self, n_excitations):
+        self["mporder"] = int(n_excitations / self.motion_fraction)
 
     def serialize(self):
         return serialize_fsl_args(self, " ", True)

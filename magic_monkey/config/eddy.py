@@ -1,7 +1,7 @@
 from enum import Enum
 
 from traitlets import Integer, Float
-from traitlets.config import Bool, Instance, default
+from traitlets.config import Bool, Instance, default, List
 from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import (BoundedInt,
@@ -29,6 +29,10 @@ _flags = dict(
     link_move=(
         {'EddyConfiguration': {'separate_subject_field', False}},
         "Link subject movement and field DC component"
+    ),
+    umask=(
+        {'EddyConfiguration': {'mask_output': True}},
+        "Outputs unmasked eddy corrected images"
     )
 )
 
@@ -62,7 +66,7 @@ class EddyConfiguration(MagicMonkeyConfigurable):
     current_model = convert_enum(
         CurrentModel, CurrentModel.none
     ).tag(config=True)
-    pre_filter_width = Integer(0).tag(config=True)
+    pre_filter_width = List(Integer, [0]).tag(config=True)
     n_iter = Integer(5).tag(config=True)
     fill_empty = Bool(False).tag(config=True)
     interpolation = convert_enum(
@@ -75,6 +79,8 @@ class EddyConfiguration(MagicMonkeyConfigurable):
     skip_end_alignment = Bool(False).tag(config=True)
     separate_subject_field = Bool(True).tag(config=True)
     check_if_shelled = Bool(True).tag(config=True)
+
+    mask_output = Bool(True).tag(config=True)
 
     enable_cuda = Bool(False).tag(config=True)
     outlier_model = DictInstantiatingInstance(
@@ -129,13 +135,17 @@ class EddyConfiguration(MagicMonkeyConfigurable):
         base_arguments = serialize_fsl_args(dict(
             flm=self.field_model,
             slm=self.current_model,
-            fwhm=self.pre_filter_width,
+            fwhm=",".join(str(pfw) for pfw in self.pre_filter_width),
             niter=self.n_iter,
             nvoxhp=self.n_voxels_hp,
             fep=self.fill_empty,
+            resamp=EddyConfiguration.Resampling[self.resampling].value,
+            interp=self.interpolation,
+            ff=self.qspace_smoothing,
             dont_sep_offs_move=(not self.separate_subject_field),
-            dont_peas=(not self.skip_end_alignment),
-            data_is_shelled=(not self.check_if_shelled)
+            dont_peas=self.skip_end_alignment,
+            data_is_shelled=(not self.check_if_shelled),
+            dont_mask_output=(not self.mask_output)
         ), " ", True)
 
         if self.outlier_model is not None:

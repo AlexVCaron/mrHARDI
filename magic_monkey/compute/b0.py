@@ -65,9 +65,6 @@ def extract_b0(
 
             metadata.n = b0_vol.shape[-1]
 
-            metadata.is_multiband = False
-            metadata.multiband = None
-
             metadata.directions = [
                 metadata.directions[cluster.start] for cluster in clusters
             ]
@@ -86,19 +83,6 @@ def extract_b0(
 
             metadata.n = b0_vol.shape[-1]
 
-            if metadata.is_multiband:
-                idxs = np.where(b0_mask[:dwi_vol.shape[-1]])[0].tolist()
-                mbs = list(filter(
-                    lambda l: len(l) > 0,
-                    list(
-                        list(filter(lambda i: b0_mask[i], k))
-                        for k in metadata.multiband
-                    )
-                ))
-                metadata.multiband = list(
-                    list(idxs.index(ki) for ki in k) for k in mbs
-                )
-
         print("Found {} b0 volumes in dataset".format(b0_vol.shape[-1]))
 
         if mean is B0PostProcess.whole:
@@ -109,9 +93,6 @@ def extract_b0(
             metadata.acquisition_types = [metadata.acquisition_types[0]]
             metadata.acquisition_slices = [[0, None]]
             metadata.directions = [metadata.directions[0]]
-            metadata.is_multiband = False
-            metadata.multiband = None
-
     return b0_vol
 
 
@@ -138,22 +119,6 @@ def squash_b0(
             metadata.update_acquisition_from_list(
                 (np.array(acquisition)[~b0_mask]).tolist()
             )
-
-            if metadata.is_multiband:
-                idxs = np.where(b0_mask[:dwi_vol.shape[-1]])[0].tolist()
-                dwi_idxs = np.where(~b0_mask[:dwi_vol.shape[-1]])[0].tolist()
-                mbs = filter(
-                    lambda l: len(l),
-                    list(
-                        list(filter(lambda i: i not in idxs, k))
-                        for k in metadata.multiband
-                    )
-                )
-                metadata.multiband = list(
-                    list(dwi_idxs.index(ki) + 1 for ki in k) for k in mbs
-                )
-                meta_b0.is_multiband = True
-                meta_b0.multiband = [[]]
 
             metadata.n = len(metadata.directions)
 
@@ -203,18 +168,6 @@ def squash_b0(
 
         metadata.n = len(metadata.directions)
 
-        if metadata.is_multiband:
-            mbs = list(filter(
-                lambda l: len(l),
-                list(
-                    list(filter(lambda i: i in idxs, k))
-                    for k in metadata.multiband
-                )
-            ))
-            metadata.multiband = list(
-                list(idxs.index(ki) for ki in k) for k in mbs
-            )
-
     output_shape = dwi_vol.shape[:-1] + (
         dwi_vol.shape[-1] + len(b0_clusters) - np.sum(b0_mask),
     )
@@ -234,7 +187,7 @@ def squash_b0(
             dwi_vol[..., b0_clusters[i]]
         )
         out_bvals.append(0)
-        if bvecs:
+        if bvecs is not None:
             out_bvecs.append([1, 0, 0])
         shape_reduce += b0_clusters[i].stop - b0_clusters[i].start - 1
         data_slice = slice(
@@ -243,17 +196,17 @@ def squash_b0(
         )
         data[..., data_slice] = dwi_vol[..., dwi_clusters[i]]
         out_bvals += bvals[dwi_clusters[i]].tolist()
-        if bvecs:
+        if bvecs is not None:
             out_bvecs += bvecs[:, dwi_clusters[i]].T.tolist()
 
     if len(b0_clusters) > len(dwi_clusters):
         data[..., -1] = b0_extractor(dwi_vol[..., b0_clusters[-1]])
         out_bvals.append(0)
-        if bvecs:
+        if bvecs is not None:
             out_bvecs.append([0, 0, 0])
 
     return (
         data,
         np.array(out_bvals)[None, ...],
-        np.array(out_bvecs).T if bvecs else None
+        np.array(out_bvecs).T if bvecs is not None else None
     )

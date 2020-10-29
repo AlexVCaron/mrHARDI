@@ -1,19 +1,21 @@
 from os import chmod
 
 import nibabel as nib
-from traitlets import Dict, Instance, Unicode
+import numpy as np
+from traitlets import Dict, Instance, Unicode, Enum
+from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            MultipleArguments,
                                            output_prefix_argument,
                                            required_arg)
-from magic_monkey.base.fsl import prepare_acqp_file
+from magic_monkey.base.fsl import prepare_acqp_file, prepare_topup_index
 from magic_monkey.base.dwi import load_metadata, save_metadata
 from magic_monkey.config.topup import TopupConfiguration
 
 _aliases = dict(
-    b0='Topup.b0',
-    rev='Topup.rev',
+    bvals='Topup.bvals',
+    rev='Topup.rev_bvals',
     extra='Topup.extra_arguments',
     out='Topup.output_prefix'
 )
@@ -38,18 +40,18 @@ class Topup(MagicMonkeyBaseApplication):
     description = _description
     configuration = Instance(TopupConfiguration).tag(config=True)
 
-    b0 = required_arg(
+    bvals = required_arg(
         MultipleArguments, [],
-        "Principal B0 volumes used for Topup correction",
+        "B-values of the volumes used for Topup correction",
         traits_args=(Unicode,)
     )
 
-    rev = MultipleArguments(
+    rev_bvals = MultipleArguments(
         Unicode, [],
-        help="Reverse acquisitions used for deformation correction, will be "
-             "paired with same index dataset from the b0 argument. Acquisition "
-             "direction will be determined inverting the related dataset one "
-             "if none is supplied."
+        help="B-values for the reverse acquisitions used for deformation "
+             "correction, will be paired with same index b-values from the "
+             "bvals argument. Acquisition direction will be determined "
+             "inverting the related dataset one if none is supplied."
     ).tag(config=True, ignore_write=True)
 
     output_prefix = output_prefix_argument()
@@ -60,33 +62,69 @@ class Topup(MagicMonkeyBaseApplication):
              "as a string, will be passed directly"
     ).tag(config=True)
 
+    indexing_strategy = Enum(
+        ["closest", "first"], "first",
+        help="Strategy used to find which line in the .acqp aligns "
+             "with which volume in the supplied dwi volume. For datasets "
+             "with evenly spaced b0, \"closest\" will give the best result. "
+             "In any other cases, or if you don't know, use \"first\""
+    )
+
     aliases = Dict(_aliases)
 
-    def _start(self):
-        metadata = load_metadata(self.b0[0])
-        for b0 in self.b0[1:]:
-            metadata.extend(load_metadata(b0))
-        for b0 in self.rev:
-            metadata.extend(load_metadata(b0))
+    def execute(self):
+        metadata = load_metadata(self.bvals[0])
+        for bvals in self.bvals[1:]:
+            metadata.extend(load_metadata(bvals))
+        for bvals in self.rev_bvals:
+            metadata.extend(load_metadata(bvals))
 
-        ap_shapes = [nib.load(b0).shape for b0 in self.b0]
-        pa_shapes = [nib.load(b0).shape for b0 in self.rev]
+        bvals = [np.loadtxt(bvs) for bvs in self.bvals]
+        rev_bvals = [np.loadtxt(bvs) for bvs in self.rev_bvals]
 
-        ap_shapes = [1 if len(s) == 3 else s[-1] for s in ap_shapes]
-        pa_shapes = [1 if len(s) == 3 else s[-1] for s in pa_shapes]
+        cts = [np.count_nonzero(np.isclose(bvs, 0.)) for bvs in bvals]
+        rev_cts = [np.count_nonzero(np.isclose(bvs, 0.)) for bvs in rev_bvals]
+        bvals = np.ravel(np.column_stack((bvals, rev_bvals)))
 
         acqp = prepare_acqp_file(
-            ap_shapes, pa_shapes, metadata.dwell, metadata.directions
+            cts, rev_cts, metadata.dwell, np.array(metadata.directions)[np.isclose(bvals, 0.)]
         )
 
+        kwargs = dict(b0_comp=np.less) if self.configuration.strict else dict()
+
+        indexes = prepare_topup_index(
+            bvals, 1, strategy=self.indexing_strategy,
+            ceil=self.configuration.ceil_value, **kwargs
+        )
+
+        if indexes.max() > len(acqp):
+            if not len(acqp) == 2:
+                raise ConfigError(
+                    "No matching configuration found for index "
+                    "(maxing at {}) "
+                    "and acqp file (containing {} lines)\n{}".format(
+                        indexes.max(), len(acqp), acqp
+                    )
+                )
+
+            indexes[-len(rev_bvals):] = 2
+            indexes[:len(indexes) - len(rev_bvals)] = 1
+
+        metadata.topup_indexes = np.unique(indexes).tolist()
+
+        used_indexes = 0
+        for i, bvals in enumerate(self.bvals + self.rev_bvals):
+            metadata = load_metadata(bvals)
+            metadata.topup_indexes = [int(indexes[used_indexes])]
+            save_metadata(
+                "{}_topup_indexes".format(bvals.split(".")[0]), metadata
+            )
+            used_indexes += metadata.n
+
         with open("{}_acqp.txt".format(self.output_prefix), 'w+') as f:
-            f.write("# MAGIC MONKEY -------------------------\n")
-            f.write("# Autogenerated acquisition parameters file\n\n")
             f.write(acqp)
 
         with open("{}_config.cnf".format(self.output_prefix), 'w+') as f:
-            f.write("# MAGIC MONKEY -------------------------\n")
-            f.write("# Autogenerated Topup configuration file\n\n")
             f.write(self.configuration.serialize())
 
         with open("{}_script.sh".format(self.output_prefix), 'w+') as f:

@@ -89,7 +89,7 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
     gen_error_iters = Integer(0).tag(config=True)
     regularization = Float(1.0).tag(config=True)
     estimate_b0 = Bool(False).tag(config=True)
-    iso_if_no_fascicle = Bool(False).tag(config=True)
+    iso_no_fascicle = Bool(False).tag(config=True)
     bounding_box = BoundingBox(allow_none=True).tag(config=True)
 
     initial_stick = Stick(allow_none=True).tag(config=True)
@@ -127,30 +127,32 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
         if self.initial_stick:
             optionals.append("--initstick {}".format(self.initial_stick))
 
+        if self.multi_restart:
+            optionals.append("--multirestart")
+
         if self.estimate_mose:
             optionals.extend([
                 "--automose {}".format(self.mose_model),
                 "--moseminfraction {}".format(self.mose_min_fraction),
                 "--moseiter {}".format(self.mose_iter),
-                "--mosefulltensor".format(self.mose_tensor)
+                "--mosefulltensor".format(int(self.mose_tensor))
             ])
 
         return " ".join([
             "-n {} -r {}".format(self.n_tensors, self.regularization),
             "-s {} -p {}".format(self.splits, self.processes),
-            "--estimb0 {}".format(self.estimate_b0),
+            "--estimb0 {}".format(int(self.estimate_b0)),
             "--noisemodel {}".format(self.noise_model),
             "--fascicle {}".format(self.fascicle),
-            "--waterfraction {}".format(self.estimate_water),
-            "--waterDiamond {}".format(self.water_tensor),
-            "--isorfraction {}".format(self.estimate_restriction),
-            "--isorDiamond {}".format(self.restriction_tensor),
+            "--waterfraction {}".format(int(self.estimate_water)),
+            "--waterDiamond {}".format(int(self.water_tensor)),
+            "--isorfraction {}".format(int(self.estimate_restriction)),
+            "--isorDiamond {}".format(int(self.restriction_tensor)),
             "--maxevals {}".format(self.max_evals),
             "--maxpasses {}".format(self.max_passes),
             "--initMD {}".format(self.md_higher_bound),
             "--initFA {}".format(self.fa_lower_bound),
-            "--fractions_sumto1 {}".format(self.sum_fractions_to_1),
-            "--estimateDisoIfNoFascicle {}".format(self.iso_if_no_fascicle),
-            "--algo {}".format(self.optimizer),
-            "--mutirestart {}".format(self.multi_restart)
+            "--fractions_sumto1 {}".format(int(self.sum_fractions_to_1)),
+            "--estimateDisoIfNoFascicle {}".format(int(self.iso_no_fascicle)),
+            "-a {}".format(self.optimizer)
         ] + optionals)

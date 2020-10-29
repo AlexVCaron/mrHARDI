@@ -1,4 +1,7 @@
-from numpy import apply_along_axis, diag, eye, flip, isclose, trace, zeros
+from functools import partial
+
+from numpy import apply_along_axis, diag, eye, flip, isclose, trace, zeros, \
+    moveaxis, array, float64
 from numpy.linalg import eigh
 
 
@@ -11,12 +14,17 @@ def vec_to_tens(dt, convention=(0, 1, 2, 3, 4, 5)):
     ]
 
 
-def compute_eigenvalues(tensors, mask):
+def compute_eigenvalues(tensors, mask, convention=(0, 1, 2, 3, 4, 5)):
+    vtt = partial(vec_to_tens, convention=convention)
     evals, evecs = zeros(mask.shape + (3,)), zeros(mask.shape + (3, 3))
     evals[mask], evecs[mask] = eigh(
-        apply_along_axis(vec_to_tens, 1, tensors[mask])
+        apply_along_axis(vtt, 1, tensors[mask])
     )
-    return flip(evals, -1), flip(evecs, -1).swapaxes(-1, -2)
+
+    neg_evals = evals < 0
+    evals[neg_evals] = 0.
+
+    return flip(evals, -1), moveaxis(flip(evecs, -1), -2, -1)
 
 
 def compute_haeberlen(tensors, mask):

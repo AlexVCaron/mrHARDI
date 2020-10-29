@@ -1,5 +1,6 @@
 from enum import Enum as BaseEnum
 
+from traitlets import Float
 from traitlets.config import Bool, List, Unicode
 
 from magic_monkey.base.application import (DictInstantiatingInstance,
@@ -68,6 +69,15 @@ class TopupConfiguration(MagicMonkeyConfigurable):
     ).tag(config=True)
 
     precision = Unicode(u'double').tag(config=True)
+
+    ceil_value = Float(
+        0.9, help="Higher bound determining a valid b-value for a b0 volume"
+    ).tag(config=True)
+
+    strict = Bool(
+        False, help="If True, test b0 b-values with "
+                    "\"<\" comparator instead of \"<=\""
+    ).tag(config=True)
 
     def serialize(self):
         if len(self.passes) > 1:

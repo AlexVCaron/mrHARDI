@@ -21,7 +21,8 @@ from numpy.ma import array as masked
 
 from magic_monkey.traits.metrics.base import (BaseMetric,
                                               get_from_metric_cache,
-                                              load_from_cache)
+                                              load_from_cache,
+                                              eigs_with_strides)
 from magic_monkey.compute.math.linalg import (compute_ad,
                                               compute_fa,
                                               compute_md,
@@ -308,11 +309,8 @@ class PeaksMetric(DiamondMetric):
 
             peaks = zeros((5,) + self._get_shape() + (3,))
             f_mask = self._get_fascicles_mask()
-            in_mask_vox = count_nonzero(f_mask[:n])
 
-            peaks[:n][f_mask] = eigs[f_mask[:n], 0, :].swapaxes(
-                0, 1
-            ).reshape((in_mask_vox, -1))
+            peaks[:n][f_mask] = eigs[f_mask[:n], 0, :]
 
             weights = self._get_fascicle_fractions()
             peaks[:n] = moveaxis(weights, -1, 0)[..., None] * peaks[:n]

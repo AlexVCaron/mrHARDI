@@ -3,7 +3,7 @@ from abc import ABCMeta
 import nibabel as nib
 from numpy import float32
 
-from magic_monkey.traits.metrics.base import BaseMetric
+from magic_monkey.traits.metrics.base import BaseMetric, eigs_with_strides
 from magic_monkey.compute.math.linalg import (compute_ad,
                                               compute_fa,
                                               compute_md,
@@ -15,11 +15,13 @@ from magic_monkey.compute.math.tensor import compute_eigenvalues
 class DTIMetric(BaseMetric, metaclass=ABCMeta):
     def _get_eigs(self):
         return self.load_from_cache(
-            "eigs", lambda _: compute_eigenvalues(
+            "eigs", lambda _: eigs_with_strides(
+                self.strides,
                 nib.load(
                     "{}_dti.nii.gz".format(self.prefix)
                 ).get_fdata().squeeze(),
-                self.get_mask()
+                self.get_mask(),
+                (0, 3, 1, 4, 5, 2)
             )
         )
 

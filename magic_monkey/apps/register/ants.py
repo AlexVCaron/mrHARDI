@@ -66,7 +66,7 @@ class AntsRegistration(MagicMonkeyBaseApplication):
         ]
         super()._generate_config_file(filename)
 
-    def _start(self):
+    def execute(self):
         current_path = getcwd()
 
         ants_config_fmt = self.configuration.serialize()
@@ -134,7 +134,7 @@ class AntsTransform(MagicMonkeyBaseApplication):
 
     aliases = Dict(_tr_aliases)
 
-    def _start(self):
+    def execute(self):
         current_path = getcwd()
 
         image = nib.load(self.image)
@@ -153,11 +153,11 @@ class AntsTransform(MagicMonkeyBaseApplication):
             self.image, img_type, self.transformation_ref, self.output
         )
 
-        if self.transformation_matrix:
-            args += " -t {}".format(self.transformation_matrix)
-
         if self.transformations and len(self.transformations) > 0:
             args += "".join(" -t {}".format(t) for t in self.transformations)
+
+        if self.transformation_matrix:
+            args += " -t {}".format(self.transformation_matrix)
 
         command = "antsApplyTransforms {} {}".format(
             args, self.configuration.serialize()

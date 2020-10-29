@@ -25,7 +25,7 @@ class Life(MagicMonkeyBaseApplication):
 
     cache_sphere = Bool(True)
 
-    def _start(self):
+    def execute(self):
         bvals, bvecs = np.loadtxt(self.bvals), np.loadtxt(self.bvecs)
         gtab = gradient_table(bvals, bvecs)
 

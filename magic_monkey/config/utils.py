@@ -5,7 +5,7 @@ from magic_monkey.base.application import (MagicMonkeyConfigurable,
                                            convert_enum,
                                            ChoiceList)
 
-from magic_monkey.base.dwi import AcquisitionDirection, AcquisitionType
+from magic_monkey.base.dwi import Direction, AcquisitionType
 from magic_monkey.compute.b0 import B0PostProcess
 
 _b0_aliases = dict(
@@ -73,6 +73,8 @@ class B0UtilsConfiguration(MagicMonkeyConfigurable):
 _meta_aliases = dict(
     dir="DwiMetadataUtilsConfiguration.direction",
     mb="DwiMetadataUtilsConfiguration.multiband_factor",
+    sd="DwiMetadataUtilsConfiguration.slice_direction",
+    gsl="DwiMetadataUtilsConfiguration.gslider_factor",
     acq="DwiMetadataUtilsConfiguration.acquisition",
     dwell="DwiMetadataUtilsConfiguration.dwell"
 )
@@ -103,18 +105,29 @@ class DwiMetadataUtilsConfiguration(MagicMonkeyConfigurable):
         return _meta_flags
 
     direction = ChoiceList(
-        [d.name for d in AcquisitionDirection], Unicode,
+        [d.name for d in Direction], Unicode,
+        help="List of phase encoding directions of the input datasets. "
+             "There can be N directions, with N either :\n"
+             "   - 1 : the same direction will apply to all datasets\n"
+             "   - N : one direction per dataset, applied to all slices"
+    ).tag(config=True, required=True)
+
+    slice_direction = ChoiceList(
+        [d.name for d in Direction], Unicode,
         help="List of acquisition directions of the input datasets. There can "
              "be N directions, with N either :\n"
              "   - 1 : the same direction will apply to all datasets\n"
              "   - N : one direction per dataset, applied to all slices"
-    ).tag(config=True, required=True)
+    ).tag(config=True)
 
     dwell = Float(help="Acquisition readout time (in ms)").tag(
         config=True, required=True
     )
 
     multiband_factor = Integer(None, allow_none=True).tag(config=True)
+
+    gslider_factor = Integer(None, allow_none=True).tag(config=True)
+
     interleaved = Bool(
         None, allow_none=True,
         help="If True, will output interleaved "

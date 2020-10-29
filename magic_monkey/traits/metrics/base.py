@@ -2,7 +2,10 @@ from abc import abstractmethod
 from typing import Generator
 
 import nibabel as nib
-from numpy import loadtxt, ones, ubyte, absolute, zeros
+from numpy import loadtxt, ones, ubyte, absolute, zeros, sign, array, diag
+from numpy.linalg import eigh
+
+from magic_monkey.compute.math.tensor import compute_eigenvalues
 
 
 def load_from_cache(cache, keys, alternative=None):
@@ -37,6 +40,11 @@ def _load_mask(path, shape):
         return ones(shape)
 
 
+def eigs_with_strides(strides, *args):
+    evals, evecs = compute_eigenvalues(*args)
+    return evals, evecs * strides
+
+
 class BaseMetric:
     def __init__(
         self, prefix, output, cache, affine, mask=None,
@@ -48,10 +56,15 @@ class BaseMetric:
         self.affine = affine
         self.mask = mask
         self.shape = shape
+        self.strides = self._strides_from_affine(self.affine)
         self.colors = colors
 
     def load_from_cache(self, key, alternative=None):
         return load_from_cache(self.cache, key, alternative)
+
+    def _strides_from_affine(self, affine):
+        evals, evecs = eigh(array(affine)[:3, :3])
+        return [sign(ev) for ev in evals]
 
     def _get_shape(self):
         return self.shape

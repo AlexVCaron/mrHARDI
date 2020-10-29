@@ -74,7 +74,7 @@ class PftTracking(MagicMonkeyBaseApplication):
         if not self.seed_list:
             self.compute_seeds = True
 
-    def _start(self):
+    def execute(self):
         coeffs = nib.load(self.sh_coefficients).get_data()
         affine = np.loadtxt(self.affine)
 

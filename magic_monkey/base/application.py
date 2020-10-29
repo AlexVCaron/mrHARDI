@@ -313,7 +313,7 @@ class MagicMonkeyBaseApplication(Application):
             return False
         else:
             self._validate()
-            self._start()
+            self.execute()
             return True
 
     def document_config_options(self):
@@ -325,7 +325,7 @@ class MagicMonkeyBaseApplication(Application):
                          for c in self._classes_inc_parents())
 
     @abstractmethod
-    def _start(self):
+    def execute(self):
         pass
 
     def _generate_config_file(self, filename):
@@ -642,7 +642,7 @@ class BoundedInt(Integer):
 
     def __init__(self, val, lb=None, hb=None, **kwargs):
         super().__init__(default_value=val, **kwargs)
-        self.bounds = [lb, hb]
+        self.bounds = [lb if lb else -sys.maxsize, hb if hb else sys.maxsize]
         self.info_text = "between {} and {}".format(lb, hb)
 
     def validate(self, obj, value):
@@ -849,6 +849,7 @@ _out_pre_help_line = "Output directory and prefix for files. Directory "\
                      "required, will overwrite files (Anything that can " \
                      "possibly go wrong, does - Murphy's Law)"
 
+_out_suf_help_line = "Output suffix to append to file names."
 
 _out_file_help_line = "Output filename (with extension, if absent, the file " \
                       "will be declared invalid). Will follow underlying " \
@@ -876,8 +877,26 @@ def input_dwi_prefix(
     )
 
 
+def prefix_argument(
+    description, default_value=Undefined, config=True,
+    required=True, ignore_write=True, **tags
+):
+    return required_file(
+        default_value, description, config, required, ignore_write, **tags
+    )
+
+
 def output_prefix_argument(
     default_value=Undefined, description=_out_pre_help_line,
+    config=True, required=True, ignore_write=True, **tags
+):
+    return prefix_argument(
+        description, default_value, config, required, ignore_write, **tags
+    )
+
+
+def output_suffix_argument(
+    default_value=Undefined, description=_out_suf_help_line,
     config=True, required=True, ignore_write=True, **tags
 ):
     return required_file(

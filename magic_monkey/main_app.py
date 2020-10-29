@@ -2,7 +2,7 @@ from magic_monkey.base.application import MagicMonkeyBaseApplication
 
 
 class MagicMonkeyApplication(MagicMonkeyBaseApplication):
-    def _start(self):
+    def execute(self):
         if self.subapp:
             self.subapp.start()
 
@@ -28,6 +28,9 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         concatenate=(
             "magic_monkey.apps.Concatenate", 'Concatenates images together'
         ),
+        convert=(
+            "magic_monkey.apps.ConvertImage", "Convert attributes of images"
+        ),
         csd=(
             "magic_monkey.apps.CSD",
             'Perform constrained spherical deconvolution'
@@ -45,6 +48,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.DwiMetadataUtils",
             'Create metadata file(s) describing one or more dwi datasets'
         ),
+        n4=(
+            "magic_monkey.apps.N4BiasCorrection",
+            'Denoise rician and chi squared noise artifacts from dwi datasets'
+        ),
         pft=(
             "magic_monkey.apps.PftTracking",
             'Execute particle filtering tracking'
@@ -53,7 +60,8 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.FiberResponse",
             'Compute single fiber response (and gm and csf if msmt)'
         ),
-        topup=("magic_monkey.apps.Topup", 'Execute topup correction')
+        topup=("magic_monkey.apps.Topup", 'Execute topup correction'),
+        split=("magic_monkey.apps.SplitImage", 'Split an image given an axis')
     )
 
 

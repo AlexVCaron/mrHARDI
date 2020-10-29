@@ -1,6 +1,7 @@
 from os import getcwd
 from os.path import basename, join
 
+import numpy as np
 from traitlets import Instance, Unicode
 from traitlets.config import ArgumentError, Dict
 
@@ -68,8 +69,9 @@ class CSD(MagicMonkeyBaseApplication):
 
     responses = required_arg(
         MultipleArguments,
-        description="Response names for the different tissues "
-                    "(depending on the algorithm of choice)",
+        description="Response filenames for the different tissues "
+                    "(depending on the algorithm of choice), must be "
+                    "in order [wm, gm, csf] (if using MSMT)",
         traits_args=(Unicode,), traits_kwargs=dict(minlen=1, maxlen=3)
     )
 
@@ -130,9 +132,24 @@ class CSD(MagicMonkeyBaseApplication):
         self.configuration.algorithm = CSDAlgorithm()
         super()._generate_config_file(filename)
 
-    def _start(self):
+    def execute(self):
         current_path = getcwd()
         optionals = []
+
+        if not self.configuration.shells:
+            shells, counts = np.unique(
+                np.loadtxt(self.bvals),
+                return_counts=True
+            )
+            mask = shells > 0
+            shells = shells[mask]
+            counts = counts[mask]
+
+            if not self.configuration.algorithm.multishell:
+                self.configuration.shells = [shells[counts.argmax()]]
+            else:
+                self.configuration.shells = shells.tolist()
+
 
         if self.mask:
             optionals.append("-mask {}".format(self.mask))
@@ -150,16 +167,19 @@ class CSD(MagicMonkeyBaseApplication):
                 ))
 
         optionals.append("-nthreads {}".format(self.n_threads))
-        optionals.append("-fslgrad {} {}".format(self.bvals, self.bvecs))
-        optionals.append(self.configuration.serialize())
+        optionals.append("-fslgrad {} {}".format(self.bvecs, self.bvals))
 
-        command = "dwi2fod {} {} {} {}".format(
+        command = "dwi2fod {} {} {} {} {}".format(
+            self.configuration.algorithm.cli_name,
             " ".join(optionals),
-            self.configuration.algorithm.name,
             self.image,
             " ".join("{} {}".format(
-                res, "{}_{}.nii.gz".format(self.output_prefix, res)
-            ) for res in self.configuration.algorithm.responses)
+                res_file, "{}_{}.nii.gz".format(self.output_prefix, res)
+            ) for res_file, res in zip(
+                self.responses,
+                self.configuration.algorithm.responses
+            )),
+            self.configuration.serialize()
         )
 
         launch_shell_process(command, join(current_path, "{}.log".format(
@@ -233,26 +253,37 @@ class FiberResponse(MagicMonkeyBaseApplication):
         self.configuration.algorithm = TournierResponseAlgorithm()
         super()._generate_config_file(filename)
 
-    def _start(self):
+    def execute(self):
         current_path = getcwd()
         optionals = []
+
+        if not self.configuration.shells:
+            shells, counts = np.unique(np.loadtxt(self.bvals), return_counts=True)
+            mask = shells > 0
+            shells = shells[mask]
+            counts = counts[mask]
+
+            if not self.configuration.algorithm.multishell:
+                self.configuration.shells = [shells[counts.argmax()]]
+            else:
+                self.configuration.shells = shells.tolist()
 
         if self.mask:
             optionals.append("-mask {}".format(self.mask))
 
         optionals.append("-nthreads {}".format(self.n_threads))
-        optionals.append("-fslgrad {} {}".format(self.bvals, self.bvecs))
-        optionals.append(self.configuration.serialize())
+        optionals.append("-fslgrad {} {}".format(self.bvecs, self.bvals))
 
-        command = "dwi2response {} {} {} {}".format(
-            self.configuration.algorithm.name,
+        command = "dwi2response {} {} {} {} {}".format(
+            self.configuration.algorithm.cli_name,
+            " ".join(optionals),
             self.image,
             " ".join(
-                "{}_{}".format(self.output_prefix, res)
+                "{}_{}.txt".format(self.output_prefix, res)
                 for res in self.configuration.algorithm.responses
             ),
-            " ".join(optionals)
-        )
+            self.configuration.serialize()
+        ).rstrip(" ")
 
         launch_shell_process(command, join(current_path, "{}.log".format(
             basename(self.output_prefix)

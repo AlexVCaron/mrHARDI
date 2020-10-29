@@ -77,7 +77,7 @@ class Diamond(MagicMonkeyBaseApplication):
 
         super()._validate_required()
 
-    def _start(self):
+    def execute(self):
         current_path = getcwd()
         optionals = []
 
@@ -93,7 +93,7 @@ class Diamond(MagicMonkeyBaseApplication):
         optionals.append(self.configuration.serialize())
 
         command = "crlDCIEstimate -i {} -o {} {}".format(
-            self.image, self.output, " ".join(optionals)
+            self.image, "{}.nii.gz".format(self.output), " ".join(optionals)
         )
 
         launch_shell_process(command, join(current_path, "{}.log".format(

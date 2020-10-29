@@ -83,4 +83,4 @@ class FiberResponseConfiguration(MagicMonkeyConfigurable):
                 "-lmax {}".format(self.lmax)
             )
 
-        return " ".join([self.algorithm.serialize()] + optionals)
+        return " ".join(self.algorithm.serialize() + optionals)
