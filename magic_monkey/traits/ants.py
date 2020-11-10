@@ -1,6 +1,8 @@
+from abc import abstractmethod
 from copy import deepcopy
 
-from traitlets import Float, Integer, List, TraitType, Unicode, default
+import numpy as np
+from traitlets import Float, Integer, List, TraitType, Unicode, default, Bool
 from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.ListValuedDict import MagicDict
@@ -101,6 +103,16 @@ class MetricCC(AntsMetric):
 
 
 class AntsPass(MagicMonkeyConfigurable):
+    def __init__(self, is_motion_correction=False, name_dict=None, **kwargs):
+        super().__init__(**kwargs)
+        self._metrics_opts_names = name_dict
+        self._is_motion_corr = is_motion_correction
+        self._conv_fmt = self.ants_registration_conv_formatter
+        if is_motion_correction:
+            del self.__class__.conv_eps
+            del self.__class__.conv_win
+            self.conv_fmt = self.ants_motion_corr_iter_formatter
+
     def _validate(self):
         if not (
             len(self.shrinks) == len(self.smoothing) == len(self.conv_max_iter)
@@ -126,32 +138,53 @@ class AntsPass(MagicMonkeyConfigurable):
     shrinks = List(Integer, [8, 4, 2, 1]).tag(config=True)
     smoothing = List(Integer, [3, 2, 1, 0]).tag(config=True)
 
-    def serialize(self):
+    @abstractmethod
+    def get_time_restriction(self, ndim):
+        pass
+
+    def ants_registration_conv_formatter(self):
+        return "--convergence [{},{},{}]".format(
+            "x".join(str(i) for i in self.conv_max_iter),
+            self.conv_eps,
+            self.conv_win
+        )
+
+    def ants_motion_corr_iter_formatter(self):
+        return "--iterations {}".format(
+            self.conv_max_iter
+        )
+
+    def serialize(self, with_convergence=True):
         return " ".join([
             " ".join(
                 "--metric {}".format(metric)
                 for i, metric in enumerate(self.metrics)
             ),
-            "--convergence [{},{},{}]".format(
-                "x".join(str(i) for i in self.conv_max_iter),
-                self.conv_eps,
-                self.conv_win
-            ),
-            "--shrink-factors {}".format(
+            self._conv_fmt(),
+            "--{} {}".format(
+                self._metrics_opts_names["shrink"],
                 "x".join(str(s) for s in self.shrinks)
             ),
-            "--smoothing-sigmas {}vox".format(
-                "x".join(str(s) for s in self.smoothing)
+            "--{} {}{}".format(
+                self._metrics_opts_names["smooth"],
+                "x".join(str(s) for s in self.smoothing),
+                "" if self._is_motion_corr else "vox"
             )
         ])
 
 
 class AntsRigid(AntsPass):
+    def get_time_restriction(self, ndim):
+        return "x".join(
+            ["1" for _ in range(ndim - 1)] + ["0"] +
+            ["1" for _ in range(ndim - 1)] + ["0"]
+        )
+
     @default("metrics")
     def _metrics_default(self):
         return [MetricMI(0, 0)]
 
-    def serialize(self):
+    def serialize(self, with_convergence=True):
         return " ".join([
             "--transform Rigid[{}]".format(self.grad_step),
             super().serialize()
@@ -159,11 +192,18 @@ class AntsRigid(AntsPass):
 
 
 class AntsAffine(AntsPass):
+    def get_time_restriction(self, ndim):
+        mat = np.ones((ndim, ndim), dtype=int)
+        mat[:, ndim - 1] = 0
+        mat[-1, :] = 0
+        trans = ["1" for _ in range(ndim - 1)] + ["0"]
+        return "x".join(mat.astype(str).flatten().tolist() + trans)
+
     @default("metrics")
     def _metrics_default(self):
         return [MetricMI(0, 0)]
 
-    def serialize(self):
+    def serialize(self, with_convergence=True):
         return " ".join([
             "--transform Affine[{}]".format(self.grad_step),
             super().serialize()
@@ -171,6 +211,9 @@ class AntsAffine(AntsPass):
 
 
 class AntsSyN(AntsPass):
+    def get_time_restriction(self, ndim):
+        return "x".join(["1" for _ in range(ndim - 1)] + ["0"])
+
     type = Unicode(u'SyN').tag(config=True)
     var_penality = Integer(3).tag(config=True)
     var_total = Integer(0).tag(config=True)
@@ -179,7 +222,7 @@ class AntsSyN(AntsPass):
     def _metrics_default(self):
         return [MetricCC(0, 0)]
 
-    def serialize(self):
+    def serialize(self, with_convergence=True):
         return " ".join([
             "--transform {}[{},{},{}]".format(
                 self.type, self.grad_step, self.var_penality, self.var_total

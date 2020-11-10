@@ -39,7 +39,7 @@ class N4BiasCorrectionConfiguration(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = ['']
         if self.rescale:
             optionals.append('--rescale-intensities 1')

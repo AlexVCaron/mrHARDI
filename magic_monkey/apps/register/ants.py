@@ -2,7 +2,7 @@ from os import getcwd
 from os.path import basename, join
 
 import numpy as np
-from traitlets import Dict, Enum, Instance, Unicode
+from traitlets import Dict, Enum, Instance, Unicode, Bool
 
 import nibabel as nib
 
@@ -15,7 +15,8 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
 from magic_monkey.base.dwi import load_metadata, save_metadata
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.ants import (AntsConfiguration,
-                                      AntsTransformConfiguration)
+                                      AntsTransformConfiguration,
+                                      AntsMotionCorrectionConfiguration)
 
 from magic_monkey.traits.ants import AntsAffine, AntsRigid, AntsSyN
 
@@ -24,6 +25,13 @@ _reg_aliases = {
     'moving': 'AntsRegistration.moving_images',
     'out': 'AntsRegistration.output_prefix'
 }
+
+_reg_flags = dict(
+    verbose=(
+        {"AntsRegistration": {'verbose': True}},
+        "Enables verbose output"
+    )
+)
 
 _reg_description = """
 Perform registration of a dataset over another one using Ants [1]. More 
@@ -58,7 +66,10 @@ class AntsRegistration(MagicMonkeyBaseApplication):
 
     output_prefix = output_prefix_argument()
 
+    verbose = Bool(False).tag(config=True)
+
     aliases = Dict(_reg_aliases)
+    flags = Dict(_reg_flags)
 
     def _generate_config_file(self, filename):
         self.configuration.passes = [
@@ -69,8 +80,7 @@ class AntsRegistration(MagicMonkeyBaseApplication):
     def execute(self):
         current_path = getcwd()
 
-        ants_config_fmt = self.configuration.serialize()
-        config_dict = {}
+        ants_config_fmt, config_dict = self.configuration.serialize(), {}
 
         for i, (target, moving) in enumerate(zip(
             self.target_images, self.moving_images
@@ -83,6 +93,9 @@ class AntsRegistration(MagicMonkeyBaseApplication):
         ants_config_fmt += " --output [{},{}]".format(
             self.output_prefix, "{}_warped.nii.gz".format(self.output_prefix)
         )
+
+        if self.verbose:
+            ants_config_fmt += " --verbose"
 
         launch_shell_process(
             "antsRegistration {}".format(ants_config_fmt),
@@ -170,3 +183,42 @@ class AntsTransform(MagicMonkeyBaseApplication):
         metadata = load_metadata(self.image)
         if metadata:
             save_metadata(self.output.split(".")[0], metadata)
+
+
+_motion_description = """
+Perform motion correction (registration) of timeseries over templates using 
+Ants [1]. The stages of registration are the same as antsRegistration, except 
+there isn't a specification of convergence. The algorithm will thus run the 
+total number of iterations specified for each stage before going to the next. 
+An example of execution can be found at [2] or [3].
+
+References :
+------------
+[1] http://stnava.github.io/ANTs/
+[2] https://github.com/ANTsX/ANTs/blob/master/Scripts/antsMotionCorrExample
+[3] https://stnava.github.io/fMRIANTs/
+"""
+
+
+class AntsMotionCorrection(MagicMonkeyBaseApplication):
+    name = u"ANTs Motion Correction"
+    description = _motion_description
+    configuration = Instance(AntsMotionCorrectionConfiguration).tag(config=True)
+
+    target_images = required_arg(
+        MultipleArguments, traits_args=(Unicode,),
+        description="List of target images (2D or 3D) used in the passes of "
+                    "registration. Those must equal the number of metric "
+                    "evaluations of the resulting output command"
+    )
+
+    moving_images = required_arg(
+        MultipleArguments, traits_args=(Unicode,),
+        description="List of moving images (must be 3D or 4D timeseries) used "
+                    "in the passes of registration. Those must equal the "
+                    "number of metric evaluations of the resulting output "
+                    "command"
+    )
+
+    def execute(self):
+        pass

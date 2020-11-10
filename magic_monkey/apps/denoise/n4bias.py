@@ -8,7 +8,7 @@ from traitlets import Unicode, Bool, Instance, Dict
 
 from magic_monkey.base.application import MagicMonkeyBaseApplication, \
     required_file, mask_arg, output_prefix_argument
-from magic_monkey.base.dwi import load_metadata
+from magic_monkey.base.dwi import load_metadata, load_metadata_file
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.n4bias import N4BiasCorrectionConfiguration
 
@@ -59,8 +59,12 @@ class N4BiasCorrection(MagicMonkeyBaseApplication):
         else:
             output_fmt += "]"
 
+        d = len(input_image.shape)
+        if input_image.shape[-1] <= 1:
+            d -= 1
+
         arguments = "--input-image {} -d {} --output {}".format(
-            self.image, len(input_image.shape), output_fmt
+            self.image, d, output_fmt
         )
 
         if self.mask:
@@ -80,10 +84,14 @@ class N4BiasCorrection(MagicMonkeyBaseApplication):
             arguments += " --weight-image {}".format(self.weights)
 
         metadata = load_metadata(self.image)
+        if metadata is None and self.metadata:
+            metadata = load_metadata_file(self.metadata)
+
         self.configuration.spacing = metadata.get_spacing()
 
         if len(self.configuration.spacing) < len(input_image.shape):
-            self.configuration.spacing += [1.]
+            if input_image.shape[-1] > 1:
+                self.configuration.spacing += [1.]
 
         launch_shell_process(
             "N4BiasFieldCorrection {} {}".format(
