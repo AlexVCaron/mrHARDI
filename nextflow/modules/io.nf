@@ -11,8 +11,6 @@ def metadata_from_params ( reverse ) {
     def margs = "--acq ${params.metadata.acquisition} --dir $direction --dwell ${params.metadata.dwell}"
     if ( params.metadata.multiband && params.metadata.multiband > 1 ) {
         margs += " --mb ${params.metadata.multiband} --sd ${params.metadata.slice_direction}"
-        if ( params.metadata.gslider )
-            margs += " --gsl ${params.metadata.gslider}"
     }
     args += margs
 

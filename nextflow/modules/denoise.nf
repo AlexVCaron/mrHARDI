@@ -52,7 +52,7 @@ process n4_denoise {
 
     beforeScript "cp $params.config.denoise.n4 config.py"
     input:
-        tuple val(sid), path(dwi), file(mask), path(metadata)
+        tuple val(sid), path(dwi), path(b0), file(mask), path(metadata)
         val(caller_name)
     output:
         tuple val(sid), path("${sid}__n4denoise.nii.gz"), emit: image
@@ -67,7 +67,8 @@ process n4_denoise {
         export OMP_NUM_THREADS=$task.cpus
         export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=$task.cpus
         export OPENBLAS_NUM_THREADS=1
-        magic-monkey n4 --in $dwi --out n4denoise --mask $mask --config config.py
+        magic-monkey n4 --in $b0 --out n4denoise --mask $mask --config config.py --metadata $metadata
+        scil_apply_bias_field_on_dwi.py $dwi n4denoise_bias_field.nii.gz  n4denoise.nii.gz --mask $mask -f
         $after_denoise
         """
     else
@@ -75,7 +76,8 @@ process n4_denoise {
         export OMP_NUM_THREADS=$task.cpus
         export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=$task.cpus
         export OPENBLAS_NUM_THREADS=1
-        magic-monkey n4 --in $dwi --out n4denoise --config config.py
+        magic-monkey n4 --in $b0 --out n4denoise --config config.py --metadata $metadata
+        scil_apply_bias_field_on_dwi.py $dwi n4denoise_bias_field.nii.gz  n4denoise.nii.gz --mask $mask -f
         $after_denoise
         """
 }
@@ -83,14 +85,14 @@ process n4_denoise {
 process prepare_topup {
     beforeScript "cp $params.config.denoise.topup config.py"
     input:
-        tuple val(sid), path(b0s), path(revs), file(metadata)
+        tuple val(sid), path(b0s), path(dwi_bvals), path(rev_bvals), file(metadata)
     output:
         tuple val(sid), path("${sid}__topup_script.sh"), path("${sid}__topup_acqp.txt"), path("${sid}__topup_config.cnf"), val("${sid}__topup_results"), emit: config
         tuple val(sid), path("${sid}__topup_metadata.*"), emit: metadata
         tuple val(sid), path("${sid}__*_topup_indexes_metadata.*"), optional: true, emit : in_metadata_w_topup
     script:
         """
-        magic-monkey topup --bvals $b0s --rev $revs --out ${sid}__topup --config config.py
+        magic-monkey topup --b0s $b0s --bvals $dwi_bvals --rev_bvals $rev_bvals --out ${sid}__topup --config config.py --verbose
         """
 }
 
@@ -123,6 +125,7 @@ process prepare_eddy {
     output:
         tuple val(sid), path("${sid}__eddy_script.sh"), path("${sid}__eddy_index.txt"), path("${sid}__eddy_acqp.txt"), emit: config
         tuple val(sid), path("${sid}__eddy_slspec.txt"), emit: slspec, optional: true
+        tuple val(sid), path("${sid}__*non_zero.bvecs"), emit: bvecs, optional: true
         tuple val(sid), path("${sid}__eddy_metadata.*"), emit: metadata
     script:
         args = "--in $prefix --debug"
@@ -196,6 +199,7 @@ process eddy {
         mv eddy_corrected.eddy_rotated_bvecs ${sid}__eddy_corrected.bvecs
         cp $bvals ${sid}__eddy_corrected.bvals
         fslmaths eddy_corrected.nii.gz -thr 0 ${sid}__eddy_corrected.nii.gz
+        magic-monkey check --in ${sid}__eddy_corrected.nii.gz --bvals $bvals --bvecs ${sid}__eddy_corrected.bvecs --strat fix
         $after_script
         """
 }

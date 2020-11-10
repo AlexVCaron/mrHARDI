@@ -2,6 +2,8 @@
 
 nextflow.enable.dsl=2
 
+params.verbose_outputs = false
+
 params.config.reconstruct.diamond = "$projectDir/.config/diamond.py"
 params.config.reconstruct.dti = "$projectDir/.config/dti.py"
 params.config.reconstruct.csd = "$projectDir/.config/csd.py"
@@ -30,7 +32,7 @@ process diamond {
         """
 }
 
-process dti {
+process mrtrix_dti {
     memory { "${prevent_sci_notation(get_size_in_gb(dwi))} GB" }
     label "res_full_node"
 

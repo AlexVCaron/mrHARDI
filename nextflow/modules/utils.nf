@@ -169,3 +169,18 @@ process convert_datatype {
         magic-monkey convert --in $image --out "${image.simpleName}_dt_${datatype}.nii.gz" --dt $datatype
         """
 }
+
+process replicate_image {
+    input:
+        tuple val(sid), path(img), path(ref_img)
+        val(idx_to_rep)
+    output:
+        tuple val(sid), path("${sid}__replicated.nii.gz"), emit: image
+    script:
+        args = ""
+        if ( "$idx_to_rep" )
+            args += "--idx $idx_to_rep"
+        """
+        magic-monkey replicate --in $img --ref $ref_img --out ${sid}__replicated.nii.gz $args
+        """
+}

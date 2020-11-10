@@ -61,11 +61,11 @@ def extract_extension ( f ) {
     return "$f".tokenize(".").subList(1, "$f".tokenize(".").size()).join(".")
 }
 
-def copy_and_rename ( f, p, overwrite ) {
-    def ext = extract_extension(f)
-    if ( !file("${file(f).getParent()}/${p}.${ext}").exists() || overwrite == "true" )
-        file(f).copyTo("${file(f).getParent()}/${p}.${ext}")
-    return file("${file(f).getParent()}/${p}.${ext}")
+def copy_and_rename ( fl, prefix, overwrite ) {
+    def ext = extract_extension(fl)
+    if ( !file("${file(fl).getParent()}/${prefix}.${ext}").exists() || overwrite == "true" )
+        file(fl).copyTo("${file(fl).getParent()}/${prefix}.${ext}")
+    return file("${file(fl).getParent()}/${prefix}.${ext}")
 }
 
 def uniformize_naming ( files_channel, prefix, overwrite ) {

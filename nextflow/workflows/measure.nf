@@ -2,10 +2,9 @@
 
 nextflow.enable.dsl=2
 
-params.measure_diamond = true
-params.measure_dti = true
-params.measure_odfs = true
-params.recons_dti = false
+params.recons_diamond = true
+params.recons_dti = true
+params.recons_csd = true
 
 params.config.workflow.dti_for_odf_metrics = file("$projectDir/.config/.workflow/dti_for_odf_metrics.py")
 
@@ -25,17 +24,16 @@ workflow measure_wkf {
         odfs_channel = Channel.empty()
         data_dti = Channel.empty()
 
-        if ( params.measure_dti ) {
+        if ( params.recons_dti ) {
             data_dti = data_channel.map{ [it[0], it[1]] }
             metadata_dti = uniformize_naming(metadata_channel, "dti_metadata", false)
             mask_dti = uniformize_naming(mask_channel, "dti_mask", false)
-            mask_dti.view()
             prefix_dti = data_dti.map{ [it[0], "${it[0]}__dti"] }
             dti_metrics(prefix_dti.join(mask_dti).join(data_dti).join(metadata_dti), "measure", "")
             dti_channel = dti_metrics.out.metrics
         }
 
-        if ( params.measure_diamond ) {
+        if ( params.recons_diamond ) {
             data = data_channel.map{ [it[0], it[3]] }
             metadata = uniformize_naming(metadata_channel, "diamond_metadata", false)
             mask_diamond = uniformize_naming(mask_channel, "diamond_mask", false)
@@ -44,7 +42,7 @@ workflow measure_wkf {
             diamond_channel = diamond_metrics.out.metrics
         }
 
-        if ( params.measure_odfs ) {
+        if ( params.recons_csd ) {
             if ( !params.recons_dti ) {
                 dti_wkf(dwi_channel, mask_channel)
                 data_dti = dti_wkf.out.dti

@@ -8,7 +8,6 @@ params.config.measure.diamond = "$projectDir/.config/diamond_metrics.py"
 params.config.measure.dti = "$projectDir/.config/dti_metrics.py"
 
 process dti_metrics {
-    memory { "${prevent_sci_notation(get_size_in_gb(data[0]))} GB" }
     cpus 1
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -26,6 +25,42 @@ process dti_metrics {
         config = swap_configurations("config.py", config_overwrite)
         """
         magic-monkey dti_metrics --in $input_prefix --out ${sid}__dti_metrics --config $config
+        """
+}
+
+process scil_dti_and_metrics {
+    memory { "${prevent_sci_notation(get_size_in_gb(dwi))} GB" }
+    label "res_full_node"
+
+    publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
+    publishDir "${params.output_root}/${sid}/$processing_caller_name", saveAs: { f -> f.contains("dti_dti") ? f : null }, mode: params.publish_mode
+    publishDir "${params.output_root}/${sid}/$measuring_caller_name", saveAs: { f -> f.contains("dti_dti") ? null : f.contains("metadata") ? null : f }, mode: params.publish_mode
+
+    input:
+        tuple val(sid), path(dwi), path(bvals), path(bvecs), path(mask)
+        val(processing_caller_name)
+        val(measuring_caller_name)
+    output:
+        tuple val(sid), val("${sid}__dti"), emit: prefix
+        tuple val(sid), path("${sid}__dti_dti.nii.gz"), emit: dti
+        tuple val(sid), path("${sid}__dti_evals.nii.gz"), path("${sid}__dti_evecs.nii.gz"), path("${sid}__dti_evals_*.nii.gz"), path("${sid}__dti_evecs_*.nii.gz"), emit: eigen
+        tuple val(sid), path("${sid}__dti_fa.nii.gz"), path("${sid}__dti_ga.nii.gz"), path("${sid}__dti_rgb.nii.gz"), emit: aniso
+        tuple val(sid), path("${sid}__dti_md.nii.gz"), path("${sid}__dti_ad.nii.gz"), path("${sid}__dti_rd.nii.gz"), path("${sid}__dti_mode.nii.gz"), path("${sid}__dti_norm.nii.gz"), emit: iso
+        tuple val(sid), path("${sid}__dti_non_physical.nii.gz"), path("${sid}__dti_pulsation*.nii.gz"), emit: artifacts, optional: true
+        tuple val(sid), path("${sid}__dti_residuals.nii.gz"), path("${sid}__dti_residuals*.nii.gz"), emit: residuals, optional: true
+    script:
+        avail_threads = $task.cpus / 3
+        remainder_threads = $task.cpus - avail_threads
+        args = "--tensor ${sid}__dti_dti.nii.gz --evals ${sid}__dti_evals.nii.gz --evecs ${sid}__dti_evecs.nii.gz"
+        args += " --fa ${sid}__dti_fa.nii.gz --ga ${sid}__dti_ga.nii.gz --rgb ${sid}__dti_rgb.nii.gz"
+        args += " --md ${sid}__dti_md.nii.gz --ad ${sid}__dti_ad.nii.gz --rd ${sid}__dti_rd.nii.gz --mode ${sid}__dti_mode.nii.gz --norm ${sid}__dti_norm.nii.gz"
+        if ( params.verbose_outputs )
+            args += " --residual ${sid}__dti_residuals.nii.gz --non-physical ${sid}__dti_non_physical.nii.gz --pulsation ${sid}__dti_pulsation.nii.gz"
+        """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=${avail_threads + remainder_threads}
+        export OMP_NUM_THREADS=$avail_threads
+        export OPENBLAS_NUM_THREADS=$avail_threads
+        scil_compute_dti_metrics.py $dwi $bvals $bvecs --mask $mask -f $args
         """
 }
 

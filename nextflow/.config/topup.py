@@ -31,7 +31,7 @@ c.TopupConfiguration.passes = [{
     "warp_resolution": 20,
     "subsampling": 2,
     "blur_fwhm": 8,
-    "n_iter": 10,
+    "n_iter": 20,
     "estimate_motion": 1,
     "minimizer": 0,
     "w_reg": 3.3e-4
@@ -39,7 +39,7 @@ c.TopupConfiguration.passes = [{
     "warp_resolution": 16,
     "subsampling": 2,
     "blur_fwhm": 6,
-    "n_iter": 10,
+    "n_iter": 20,
     "estimate_motion": 1,
     "minimizer": 0,
     "w_reg": 6.7e-5
@@ -47,7 +47,7 @@ c.TopupConfiguration.passes = [{
     "warp_resolution": 14,
     "subsampling": 2,
     "blur_fwhm": 4,
-    "n_iter": 10,
+    "n_iter": 20,
     "estimate_motion": 1,
     "minimizer": 0,
     "w_reg": 6.7e-6
@@ -55,7 +55,7 @@ c.TopupConfiguration.passes = [{
     "warp_resolution": 12,
     "subsampling": 2,
     "blur_fwhm": 3,
-    "n_iter": 10,
+    "n_iter": 20,
     "estimate_motion": 1,
     "minimizer": 0,
     "w_reg": 1e-6
@@ -63,7 +63,7 @@ c.TopupConfiguration.passes = [{
     "warp_resolution": 10,
     "subsampling": 2,
     "blur_fwhm": 3,
-    "n_iter": 10,
+    "n_iter": 20,
     "estimate_motion": 1,
     "minimizer": 0,
     "w_reg": 3.3e-7
@@ -71,7 +71,7 @@ c.TopupConfiguration.passes = [{
     "warp_resolution": 6,
     "subsampling": 1,
     "blur_fwhm": 2,
-    "n_iter": 20,
+    "n_iter": 40,
     "estimate_motion": 0,
     "minimizer": 1,
     "w_reg": 3.3e-8
@@ -79,7 +79,7 @@ c.TopupConfiguration.passes = [{
     "warp_resolution": 4,
     "subsampling": 1,
     "blur_fwhm": 1,
-    "n_iter": 20,
+    "n_iter": 40,
     "estimate_motion": 0,
     "minimizer": 1,
     "w_reg": 3.3e-9
@@ -87,7 +87,7 @@ c.TopupConfiguration.passes = [{
     "warp_resolution": 4,
     "subsampling": 1,
     "blur_fwhm": 0,
-    "n_iter": 30,
+    "n_iter": 60,
     "estimate_motion": 0,
     "minimizer": 1,
     "w_reg": 3.3e-11
@@ -95,7 +95,7 @@ c.TopupConfiguration.passes = [{
     "warp_resolution": 4,
     "subsampling": 1,
     "blur_fwhm": 0,
-    "n_iter": 30,
+    "n_iter": 60,
     "estimate_motion": 0,
     "minimizer": 1,
     "w_reg": 6.7e-13

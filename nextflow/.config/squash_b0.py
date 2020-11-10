@@ -24,7 +24,7 @@ c.B0UtilsConfiguration.dtype = "float64"
 
 c.B0UtilsConfiguration.klass = "magic_monkey.config.utils.B0UtilsConfiguration"
 
-c.B0UtilsConfiguration.mean_strategy = "whole"
+c.B0UtilsConfiguration.mean_strategy = "none"
 
 c.B0UtilsConfiguration.strides = None
 
