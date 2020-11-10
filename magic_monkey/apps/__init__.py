@@ -3,11 +3,14 @@ from .measure import *
 from .reconstruct import *
 from .register import *
 from .track import *
+from .visualize import *
 from .utils import (ApplyMask,
                     ApplyTopup,
+                    AssertDwiDimensions,
                     B0Utils,
                     Concatenate,
-                    DwiMetadataUtils,
+                    ConvertImage,
                     DwiMetadata,
-                    SplitImage,
-                    ConvertImage)
+                    DwiMetadataUtils,
+                    ReplicateImage,
+                    SplitImage)
