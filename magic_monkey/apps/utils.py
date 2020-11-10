@@ -17,13 +17,14 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            required_arg,
                                            required_file, prefix_argument,
                                            required_number,
-                                           output_suffix_argument)
+                                           output_suffix_argument,
+                                           input_dwi_prefix)
 
 from magic_monkey.base.dwi import (Direction,
                                    DwiMetadata,
                                    AcquisitionType,
                                    load_metadata,
-                                   save_metadata)
+                                   save_metadata, DwiMismatchError)
 
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.compute.b0 import extract_b0, squash_b0
@@ -464,25 +465,25 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
                 (-1, self.configuration.multiband_factor)
             )
 
-        if self.configuration.gslider_factor:
-            idxs = np.pad(
-                idxs,
-                (
-                    (0, 0),
-                    (0, idxs.shape[1] % self.configuration.gslider_factor),
-                    (0, 0)
-                ),
-                constant_values=(
-                    (None, None),
-                    (None, np.repeat(-1, self.configuration.multiband_factor)),
-                    (None, None)
-                )
-            ).reshape((
-                idxs.shape[0],
-                -1,
-                self.configuration.multiband_factor *
-                self.configuration.gslider_factor
-            ))
+        # if self.configuration.gslider_factor:
+        #     idxs = np.pad(
+        #         idxs,
+        #         (
+        #             (0, 0),
+        #             (0, idxs.shape[1] % self.configuration.gslider_factor),
+        #             (0, 0)
+        #         ),
+        #         constant_values=(
+        #             (None, None),
+        #             (None, np.repeat(-1, self.configuration.multiband_factor)),
+        #             (None, None)
+        #         )
+        #     ).reshape((
+        #         idxs.shape[0],
+        #         -1,
+        #         self.configuration.multiband_factor *
+        #         self.configuration.gslider_factor
+        #     ))
 
         return [
             [list(filter(lambda i: not i == -1, k)) for k in ki]
@@ -698,10 +699,120 @@ class ConvertImage(MagicMonkeyBaseApplication):
 
     def execute(self):
         img = nib.load(self.image)
+        arr = img.get_fdata()
+        arr[~np.isclose(arr, 0)] = 1.
         nib.save(
             nib.Nifti1Image(
-                img.get_fdata().astype(np.dtype(self.datatype)),
+                arr.astype(np.dtype(self.datatype)),
                 img.affine
             ),
             self.output
         )
+
+
+_replicate_aliases = {
+    'in': 'ReplicateImage.image',
+    'out': 'ReplicateImage.output',
+    'ref': 'ReplicateImage.reference',
+    'idx': 'ReplicateImage.index'
+}
+
+
+class ReplicateImage(MagicMonkeyBaseApplication):
+    image = required_file(
+        description="Input image to replicate along the last dimension"
+    )
+
+    reference = required_file(
+        description="Image with required output dimensions"
+    )
+
+    output = output_file_argument()
+
+    index = Integer(
+        help="Index in the input image where to pick the data to replicate"
+    ).tag(config=True)
+
+    aliases = Dict(_replicate_aliases)
+
+    def execute(self):
+        img = nib.load(self.image)
+        ref = nib.load(self.reference)
+
+        data = img.get_fdata()
+        if self.index is not None:
+            data = data[..., self.index]
+
+        if len(data.shape) < len(ref.shape):
+            data = data[..., None]
+
+        data = np.repeat(data, ref.shape[-1], axis=-1)
+
+        nib.save(nib.Nifti1Image(data, img.affine, img.header), self.output)
+
+
+_assert_aliases = {
+    "in": "AssertDwiDimensions.dwi",
+    "bvals": "AssertDwiDimensions.bvals",
+    "bvecs": "AssertDwiDimensions.bvecs",
+    "strat": "AssertDwiDimensions.strategy"
+}
+
+
+class AssertDwiDimensions(MagicMonkeyBaseApplication):
+    dwi = required_arg(
+        Unicode,
+        description="Input dwi file to which to compare bvals and bvecs"
+    )
+
+    bvals = required_arg(Unicode, description="Input b-values file")
+    bvecs = required_arg(Unicode, description="Input b-vectors file")
+
+    strategy = Enum(
+        ["error", "fix"], "error",
+        help="Strategy to employ when discrepancies are found, either "
+             "output an error message or try to fix the problem"
+    ).tag(config=True)
+
+    aliases = Dict(_assert_aliases)
+
+    def execute(self):
+        img = nib.load(self.dwi)
+        bvals, bvecs = np.loadtxt(self.bvals), np.loadtxt(self.bvecs).T
+
+        if self.strategy is "error":
+            if img.shape[-1] != len(bvals) != bvecs.shape[-1]:
+                raise DwiMismatchError(img.shape[-1], len(bvals), len(bvecs))
+        else:
+            if len(bvals) > img.shape[-1]:
+                bvals = bvals[:img.shape[-1]]
+            elif img.shape[-1] != len(bvals):
+                if img.shape[-1] % len(bvals) == 0:
+                    bvals = np.repeat(bvals, int(img.shape[-1] / len(bvals)))
+                else:
+                    raise DwiMismatchError(
+                        img.shape[-1], len(bvals), len(bvecs),
+                        "Could not fix b-values of the supplied dataset"
+                    )
+
+            if bvecs.shape[-1] > len(bvals):
+                bvecs = bvecs[:, :len(bvals)]
+            elif bvecs.shape[-1] != len(bvals):
+                if len(bvals) % bvecs.shape[-1] == 0:
+                    bvecs = np.repeat(
+                        bvecs, int(len(bvals) / bvecs.shape[-1]), axis=1
+                    )
+                else:
+                    b0_mask = np.isclose(bvals, 0)
+                    if np.sum(b0_mask) == (len(bvals) - bvecs.shape[-1]):
+                        new_bvecs = np.zeros((3, len(bvals)))
+                        new_bvecs[~b0_mask] = bvecs
+                        bvecs = new_bvecs
+                    else:
+                        raise DwiMismatchError(
+                            img.shape[-1], len(bvals), len(bvecs),
+                            "Could not fix b-vectors the supplied dataset"
+                        )
+
+            np.savetxt(self.bvals, bvals)
+            np.savetxt(self.bvecs, bvecs)

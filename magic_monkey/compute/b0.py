@@ -72,6 +72,7 @@ def extract_b0(
         b0_vol = dwi_vol[..., b0_mask[:dwi_vol.shape[-1]]]
 
         if metadata:
+            print(metadata.acquisition_slices_to_list())
             acquisition = (np.array(
                 metadata.acquisition_slices_to_list()
             )[b0_mask[:dwi_vol.shape[-1]]]).tolist()
@@ -188,7 +189,7 @@ def squash_b0(
         )
         out_bvals.append(0)
         if bvecs is not None:
-            out_bvecs.append([1, 0, 0])
+            out_bvecs.append([0, 0, 0])
         shape_reduce += b0_clusters[i].stop - b0_clusters[i].start - 1
         data_slice = slice(
             dwi_clusters[i].start - shape_reduce,

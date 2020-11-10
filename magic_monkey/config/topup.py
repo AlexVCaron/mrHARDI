@@ -79,7 +79,7 @@ class TopupConfiguration(MagicMonkeyConfigurable):
                     "\"<\" comparator instead of \"<=\""
     ).tag(config=True)
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         if len(self.passes) > 1:
             self.passes[0].merge(*self.passes[1:])
             self.passes = [self.passes[0]]

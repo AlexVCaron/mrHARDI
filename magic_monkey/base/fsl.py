@@ -54,35 +54,7 @@ def prepare_topup_index(
     return clip(indexes, a_min=1, a_max=len(b0_clumps))
 
 
-def prepare_acqp_file(ap_b0_shapes, pa_b0_shapes, dwell, direction):
-    if len(direction) == 1:
-        dirs = repeat(direction, len(ap_b0_shapes), 0)
-        d1 = concatenate(
-            (repeat(dirs, s, 0) for s in ap_b0_shapes),
-            axis=0
-        )
-        d2 = concatenate(
-            (repeat(-dirs, s, 0) for s in pa_b0_shapes),
-            axis=0
-        )
-        dirs = concatenate((d1, d2), axis=0)
-    elif len(direction) == len(ap_b0_shapes):
-        assert len(ap_b0_shapes) == len(pa_b0_shapes), \
-            "This way of passing the directions is limited " \
-            "to cases of equal sets of ap and pa shapes"
-
-        dirs = concatenate((direction, -array(direction)), axis=0)
-    elif len(direction) == len(ap_b0_shapes) + len(pa_b0_shapes):
-        if len(array(direction).shape) == 2:
-            dirs = array(direction)
-        else:
-            dirs = concatenate(direction, axis=0)
-    else:
-        dirs = array(direction)
-
-    print("Here are the dirs !!!!! {}".format(dirs))
-    dirs[less_equal(absolute(dirs), 1e-8)] = 0.
-
+def prepare_acqp_file(dwell, directions):
     return "\n".join("{} {:.8f}".format(
         " ".join(str(dd) for dd in d), dwell
-    ) for d in dirs)
+    ) for d in directions)

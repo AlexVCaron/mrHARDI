@@ -110,7 +110,7 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.bounding_box:

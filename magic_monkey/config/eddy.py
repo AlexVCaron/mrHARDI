@@ -77,6 +77,7 @@ class EddyConfiguration(MagicMonkeyConfigurable):
     qspace_smoothing = BoundedInt(10, 1, 10).tag(config=True)
 
     skip_end_alignment = Bool(False).tag(config=True)
+    use_b0_peas = Bool(False).tag(config=True)
     separate_subject_field = Bool(True).tag(config=True)
     check_if_shelled = Bool(True).tag(config=True)
 
@@ -131,7 +132,7 @@ class EddyConfiguration(MagicMonkeyConfigurable):
                 )
             )
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         base_arguments = serialize_fsl_args(dict(
             flm=self.field_model,
             slm=self.current_model,
@@ -144,6 +145,7 @@ class EddyConfiguration(MagicMonkeyConfigurable):
             ff=self.qspace_smoothing,
             dont_sep_offs_move=(not self.separate_subject_field),
             dont_peas=self.skip_end_alignment,
+            b0_peas=self.use_b0_peas,
             data_is_shelled=(not self.check_if_shelled),
             dont_mask_output=(not self.mask_output)
         ), " ", True)

@@ -19,7 +19,7 @@ class SphericalDeconvAlgorithm(MagicMonkeyConfigurable):
     non_neg_lambda = Float(1.).tag(config=True)
     norm_lambda = Float(1.).tag(config=True)
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         return " ".join([
             "-neg_lambda {}".format(self.non_neg_lambda),
             "-norm_lambda {}".format(self.norm_lambda)
@@ -36,7 +36,7 @@ class CSDAlgorithm(SphericalDeconvAlgorithm):
     def _cli_name_default(self):
         return "csd"
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         return " ".join([
             super().serialize(),
             "-threshold {}".format(self.threshold),
@@ -71,7 +71,7 @@ class ResponseAlgorithm(MagicMonkeyConfigurable):
         pass
 
     @abstractmethod
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         pass
 
 
@@ -95,7 +95,7 @@ class DhollanderResponseAlgorithm(ResponseAlgorithm):
     def _responses_default(self):
         return ["wm", "gm", "csf"]
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.wm_alg:
@@ -123,7 +123,7 @@ class FAResponseAlgorithm(ResponseAlgorithm):
     def _responses_default(self):
         return ["wm"]
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         return [
             "-erode {}".format(self.erode_iters),
             "-number {}".format(self.n_voxels),
@@ -147,7 +147,7 @@ class MSMT5TTResponseAlgorithm(ResponseAlgorithm):
     def _responses_default(self):
         return ["wm", "gm", "csf"]
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.sfwm_fa_threshold:
@@ -175,7 +175,7 @@ class TaxResponseAlgorithm(ResponseAlgorithm):
     def _responses_default(self):
         return ["wm"]
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.peak_ratio_thr:
@@ -202,7 +202,7 @@ class TournierResponseAlgorithm(ResponseAlgorithm):
     def _responses_default(self):
         return ["wm"]
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.n_voxels:

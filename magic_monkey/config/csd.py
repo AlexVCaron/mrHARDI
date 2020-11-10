@@ -28,7 +28,7 @@ class CSDConfiguration(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.shells:
@@ -70,7 +70,7 @@ class FiberResponseConfiguration(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.shells:

@@ -2,22 +2,30 @@ from os import chmod
 
 import nibabel as nib
 import numpy as np
-from traitlets import Dict, Instance, Unicode, Enum
+from traitlets import Dict, Instance, Unicode, Enum, Bool
 from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            MultipleArguments,
                                            output_prefix_argument,
-                                           required_arg)
+                                           required_arg, required_file)
 from magic_monkey.base.fsl import prepare_acqp_file, prepare_topup_index
 from magic_monkey.base.dwi import load_metadata, save_metadata
 from magic_monkey.config.topup import TopupConfiguration
 
 _aliases = dict(
-    bvals='Topup.bvals',
-    rev='Topup.rev_bvals',
+    b0s='Topup.b0_volumes',
     extra='Topup.extra_arguments',
-    out='Topup.output_prefix'
+    out='Topup.output_prefix',
+    bvals='Topup.bvals',
+    rev_bvals='Topup.rev_bvals'
+)
+
+_flags = dict(
+    verbose=(
+        {"Topup": {'verbose': True}},
+        "activate verbose information output"
+    )
 )
 
 _description = """
@@ -40,6 +48,11 @@ class Topup(MagicMonkeyBaseApplication):
     description = _description
     configuration = Instance(TopupConfiguration).tag(config=True)
 
+    b0_volumes = required_file(
+        description="Input b0 volumes to feed to Topup, with "
+                    "reverse acquisitions inside the volume"
+    )
+
     bvals = required_arg(
         MultipleArguments, [],
         "B-values of the volumes used for Topup correction",
@@ -56,6 +69,10 @@ class Topup(MagicMonkeyBaseApplication):
 
     output_prefix = output_prefix_argument()
 
+    final_bvals = Unicode(
+        help="Bvalues of the final image on which Topup will be applied"
+    ).tag(config=True)
+
     extra_arguments = Unicode(
         u'',
         help="Extra arguments to pass to topup, "
@@ -70,35 +87,32 @@ class Topup(MagicMonkeyBaseApplication):
              "In any other cases, or if you don't know, use \"first\""
     )
 
+    verbose = Bool().tag(config=True)
+
     aliases = Dict(_aliases)
+    flags = Dict(_flags)
 
     def execute(self):
-        metadata = load_metadata(self.bvals[0])
-        for bvals in self.bvals[1:]:
-            metadata.extend(load_metadata(bvals))
-        for bvals in self.rev_bvals:
-            metadata.extend(load_metadata(bvals))
-
-        bvals = [np.loadtxt(bvs) for bvs in self.bvals]
-        rev_bvals = [np.loadtxt(bvs) for bvs in self.rev_bvals]
-
-        cts = [np.count_nonzero(np.isclose(bvs, 0.)) for bvs in bvals]
-        rev_cts = [np.count_nonzero(np.isclose(bvs, 0.)) for bvs in rev_bvals]
-        bvals = np.ravel(np.column_stack((bvals, rev_bvals)))
+        metadata = load_metadata(self.b0_volumes)
 
         acqp = prepare_acqp_file(
-            cts, rev_cts, metadata.dwell, np.array(metadata.directions)[np.isclose(bvals, 0.)]
+            metadata.dwell, metadata.directions
         )
 
         kwargs = dict(b0_comp=np.less) if self.configuration.strict else dict()
+
+        bvals = [np.loadtxt(bvs) for bvs in self.bvals]
+        rev_bvals = [np.loadtxt(bvs) for bvs in self.rev_bvals]
+        bvals = np.ravel(np.column_stack((bvals, rev_bvals)))
+        rev_bvals = np.ravel(np.column_stack(rev_bvals))
 
         indexes = prepare_topup_index(
             bvals, 1, strategy=self.indexing_strategy,
             ceil=self.configuration.ceil_value, **kwargs
         )
 
-        if indexes.max() > len(acqp):
-            if not len(acqp) == 2:
+        if indexes.max() > len(acqp.split("\n")):
+            if not len(acqp.split("\n")) == 2:
                 raise ConfigError(
                     "No matching configuration found for index "
                     "(maxing at {}) "
@@ -114,18 +128,24 @@ class Topup(MagicMonkeyBaseApplication):
 
         used_indexes = 0
         for i, bvals in enumerate(self.bvals + self.rev_bvals):
-            metadata = load_metadata(bvals)
-            metadata.topup_indexes = [int(indexes[used_indexes])]
+            mt = load_metadata(bvals)
+            mt.topup_indexes = [int(indexes[used_indexes])]
             save_metadata(
-                "{}_topup_indexes".format(bvals.split(".")[0]), metadata
+                "{}_topup_indexes".format(bvals.split(".")[0]), mt
             )
-            used_indexes += metadata.n
+            used_indexes += mt.n
 
         with open("{}_acqp.txt".format(self.output_prefix), 'w+') as f:
             f.write(acqp)
 
         with open("{}_config.cnf".format(self.output_prefix), 'w+') as f:
             f.write(self.configuration.serialize())
+
+        if self.verbose:
+            if self.extra_arguments:
+                self.extra_arguments += " --verbose"
+            else:
+                self.extra_arguments = "--verbose"
 
         with open("{}_script.sh".format(self.output_prefix), 'w+') as f:
             f.write("#!/usr/bin/env bash\n\n")

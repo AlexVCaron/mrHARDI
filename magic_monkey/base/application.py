@@ -36,7 +36,8 @@ from magic_monkey.base.encoding import MagicConfigEncoder
 
 base_aliases = {
     'config': 'MagicMonkeyBaseApplication.base_config_file',
-    'out-config': 'MagicMonkeyBaseApplication.output_config'
+    'out-config': 'MagicMonkeyBaseApplication.output_config',
+    'metadata': 'MagicMonkeyBaseApplication.metadata'
 }
 
 base_flags = dict(
@@ -74,6 +75,8 @@ class MagicMonkeyBaseApplication(Application):
         return [self.current_config]
 
     config_file_paths = List(Unicode, [])
+
+    metadata = Unicode("").tag(config=True)
 
     @observe('config')
     @observe_compat
@@ -688,7 +691,7 @@ class MagicMonkeyConfigurable(Configurable):
                         item.validate()
 
     @abstractmethod
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         pass
 
     def generate_config_file(self, filename):
@@ -713,7 +716,8 @@ class MagicMonkeyConfigurable(Configurable):
 
 
 class DictInstantiatingInstance(Instance):
-    def __init__(self, klass=None, allow_none=False, **kwargs):
+    def __init__(self, klass=None, allow_none=False, add_init=None, **kwargs):
+        self._add_init = add_init
         if "args" not in kwargs and not allow_none:
             kwargs["args"] = ()
         super().__init__(klass, **{**kwargs, **{"allow_none": allow_none}})
@@ -725,6 +729,8 @@ class DictInstantiatingInstance(Instance):
                 klass = klass.split(".")
                 module, klass = ".".join(klass[:-1]), klass[-1]
                 klass = getattr(import_module(module), klass)
+            if self._add_init:
+                value = {**self._add_init, **value}
             return klass(**value)
         elif value is None:
             if self.allow_none:

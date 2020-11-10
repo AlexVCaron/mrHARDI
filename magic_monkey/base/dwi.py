@@ -37,6 +37,13 @@ def metadata_filename_from(img_name):
     ) if dn else "{}_metadata.py".format(basename(img_name).split(".")[0])
 
 
+def load_metadata_file(metadata_file):
+    metadata = DwiMetadata()
+    ConfigurationLoader(metadata).load_configuration(metadata_file)
+
+    return metadata
+
+
 def load_metadata(img_name):
     metadata_file = metadata_filename_from(img_name)
 
@@ -44,10 +51,7 @@ def load_metadata(img_name):
         print("No metadata file found : {}".format(img_name))
         return None
 
-    metadata = DwiMetadata()
-    ConfigurationLoader(metadata).load_configuration(metadata_file)
-
-    return metadata
+    return load_metadata_file(metadata_file)
 
 
 def save_metadata(prefix, metadata):
@@ -57,7 +61,7 @@ def save_metadata(prefix, metadata):
 def non_zero_bvecs(prefix):
     bvecs = np.loadtxt("{}.bvecs".format(prefix))
     bvecs[:, np.linalg.norm(bvecs, axis=0) < 1E-6] += 1E-6
-    np.savetxt("{}.bvecs".format(prefix), bvecs, fmt="%.6f")
+    np.savetxt("{}_non_zero.bvecs".format(prefix), bvecs, fmt="%.6f")
 
 
 class DwiMetadata(MagicMonkeyConfigurable):
@@ -144,29 +148,20 @@ class DwiMetadata(MagicMonkeyConfigurable):
         d2 = oth.directions if oth.directions is not None else [[]]
         self.directions = np.concatenate((d1, d2)).tolist()
 
-        if self.is_tensor_valued:
-            self.acquisition_types = np.concatenate((
-                self.acquisition_types, oth.acquisition_types
-            ))
-            self.acquisition_slices = np.concatenate((
-                [
-                    [i[0], i[1] if i[1] else self.n + 1]
-                    for i in self.acquisition_slices
-                ],
-                [
-                    [self.n + i[0], self.n + i[1] if i[1] else i[1]]
-                    for i in oth.acquisition_slices
-                ]
-            ))
+        acqs = (
+            list(self.acquisition_slices_to_list()) +
+            list(oth.acquisition_slices_to_list())
+        )
+        self.update_acquisition_from_list(acqs)
+
+        self.n += oth.n
+
+        self.topup_indexes += oth.topup_indexes
 
         if self.is_multiband or oth.is_multiband:
             multiband = self.multiband if self.is_multiband else oth.multiband
             self.multiband = multiband
             self.is_multiband = True
-
-        self.n += oth.n
-        self.topup_indexes += oth.topup_indexes
-
 
     def copy(self):
         metadata = DwiMetadata()
@@ -190,5 +185,21 @@ class DwiMetadata(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         pass
+
+
+class DwiMismatchError(Exception):
+    def __init__(self, n_vols, n_bvals, n_bvecs, add_message=None):
+        self.shapes = [n_vols, n_bvals, n_bvecs]
+        self.message = (
+            "The dwi dataset supplied is invalid\n"
+            "  -> Number of volumes in image {}\n"
+            "  -> Number of b-values {}\n"
+            "  -> Number of b-vectors {}\n".format(n_vols, n_bvals, n_bvecs)
+        )
+
+        if add_message:
+            self.message = "{}\n{}".format(add_message, self.message)
+
+        super().__init__(self.message)
