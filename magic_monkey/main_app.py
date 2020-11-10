@@ -25,6 +25,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.B0Utils",
             'Basic processing on B0 slices of dwi volumes'
         ),
+        check=(
+            "magic_monkey.apps.AssertDwiDimensions",
+            'Basic checks on b-values/b-vectors conformity to an dwi 4D image'
+        ),
         concatenate=(
             "magic_monkey.apps.Concatenate", 'Concatenates images together'
         ),
@@ -56,12 +60,20 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.PftTracking",
             'Execute particle filtering tracking'
         ),
+        replicate=(
+            "magic_monkey.apps.ReplicateImage",
+            'Replicate an image to fit another one on the last axis'
+        ),
         response=(
             "magic_monkey.apps.FiberResponse",
             'Compute single fiber response (and gm and csf if msmt)'
         ),
         topup=("magic_monkey.apps.Topup", 'Execute topup correction'),
-        split=("magic_monkey.apps.SplitImage", 'Split an image given an axis')
+        split=("magic_monkey.apps.SplitImage", 'Split an image given an axis'),
+        eddy_viz=(
+            "magic_monkey.apps.VisualizeEddyParameters",
+            "Visualization of eddy's optimization train"
+        )
     )
 
 

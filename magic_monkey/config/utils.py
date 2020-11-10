@@ -28,7 +28,7 @@ class B0UtilsConfiguration(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         pass
 
     @default("app_aliases")
@@ -150,5 +150,5 @@ class DwiMetadataUtilsConfiguration(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         pass

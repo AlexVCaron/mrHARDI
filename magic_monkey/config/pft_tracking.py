@@ -7,7 +7,7 @@ class ParticleFilteringConfiguration(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         pass
 
     max_crossing = Integer(
