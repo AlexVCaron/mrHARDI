@@ -80,11 +80,7 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             'Compute single fiber response (and gm and csf if msmt)'
         ),
         topup=("magic_monkey.apps.Topup", 'Execute topup correction'),
-        split=("magic_monkey.apps.SplitImage", 'Split an image given an axis'),
-        eddy_viz=(
-            "magic_monkey.apps.VisualizeEddyParameters",
-            "Visualization of eddy's optimization train"
-        )
+        split=("magic_monkey.apps.SplitImage", 'Split an image given an axis')
     )
 
 

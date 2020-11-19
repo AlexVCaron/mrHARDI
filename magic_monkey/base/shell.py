@@ -1,41 +1,52 @@
 import time
+import sys
 import traceback
 from io import UnsupportedOperation
 from multiprocessing import Queue
 from queue import Empty, Full
-from subprocess import CalledProcessError, PIPE, Popen, SubprocessError
+from subprocess import CalledProcessError, PIPE, Popen
 from threading import Thread
 
 
 def _threaded_enqueue_pipe(process, pipe, queue):
     try:
         while process.poll() is None:
-            ln = pipe.readline()
-            queue.put(ln)
+            ln = pipe.read(100)
+            if ln:
+                queue.put(ln)
+            else:
+                time.sleep(1)
     except Full:
         time.sleep(1)
         _threaded_enqueue_pipe(process, pipe, queue)
 
 
-def _dequeue_pipe(log_file, queue, tag):
+def _dequeue_pipe(log_file, queue, tag, sys_stream, stream_end_eol=True):
     ln = None
     try:
         while not queue.empty():
-            ln = queue.get_nowait()
-            log_file.write("\n".join([
-                "[{}] {}".format(tag, log)
-                for log in ln.decode("ascii").strip().split("\n")
-            ]) + "\n")
-            log_file.flush()
+            ln = queue.get_nowait().decode("ascii").split("\n")
+            if ln:
+                wr = "\n".join(
+                    "[{}] {}".format(tag, l) if l else "" for l in ln
+                )
+                if not stream_end_eol:
+                    wr = wr[3 + len(tag):]
+                stream_end_eol = (ln[-1] == '')
+                sys_stream.write(wr)
+                sys_stream.flush()
+                log_file.write(wr)
+                log_file.flush()
     except Empty:
         time.sleep(1)
-        _dequeue_pipe(log_file, queue, tag)
+        _dequeue_pipe(log_file, queue, tag, sys_stream, stream_end_eol)
     except BlockingIOError:
         print("Cannot output log to file :\n{}".format(ln))
     except UnsupportedOperation:
         print("Unsupported operation on {}".format(log_file))
         print("Cannot output log to file :\n{}".format(ln))
 
+    return stream_end_eol
 
 def process_pipes_to_log_file(
     process, log_file_path, poll_timer=4, logging_callback=lambda a: None
@@ -57,16 +68,22 @@ def process_pipes_to_log_file(
     t2.daemon = True
     t2.start()
 
+    std_eol, err_eol = True, True
+
     with open(log_file_path, "a+") as log_file:
         while process.poll() is None:
-            _dequeue_pipe(log_file, stdout_queue, "STD")
-            _dequeue_pipe(log_file, stderr_queue, "ERR")
+            std_eol = _dequeue_pipe(
+                log_file, stdout_queue, "STD", sys.stdout, std_eol
+            )
+            err_eol = _dequeue_pipe(
+                log_file, stderr_queue, "ERR", sys.stderr, err_eol
+            )
 
             logging_callback(log_file_path)
             time.sleep(poll_timer)
 
-        _dequeue_pipe(log_file, stdout_queue, "STD")
-        _dequeue_pipe(log_file, stderr_queue, "ERR")
+        _dequeue_pipe(log_file, stdout_queue, "STD", sys.stdout, std_eol)
+        _dequeue_pipe(log_file, stderr_queue, "ERR", sys.stderr, err_eol)
 
         logging_callback(log_file_path)
 
@@ -130,9 +147,9 @@ def launch_shell_process(
         process.stdout.close()
         process.stderr.close()
 
-    except SubprocessError as e:
+    except CalledProcessError as e:
         with open(log_file_path, "a+") as log_file:
-            log_file.write("Error : {}\n".format(e))
+            log_file.write("Error : Code {}\n".format(e))
             log_file.flush()
 
         if process:

@@ -90,10 +90,11 @@ def extract_b0(
             print("Applying mean to whole b0 volume")
             b0_vol = np.mean(b0_vol, axis=-1)[..., None]
 
-            metadata.n = 1
-            metadata.acquisition_types = [metadata.acquisition_types[0]]
-            metadata.acquisition_slices = [[0, None]]
-            metadata.directions = [metadata.directions[0]]
+            if metadata:
+                metadata.n = 1
+                metadata.acquisition_types = [metadata.acquisition_types[0]]
+                metadata.acquisition_slices = [[0, None]]
+                metadata.directions = [metadata.directions[0]]
     return b0_vol
 
 

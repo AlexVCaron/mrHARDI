@@ -5,7 +5,6 @@ import nibabel as nib
 from numpy import (absolute,
                    array,
                    cbrt,
-                   count_nonzero,
                    einsum,
                    float32,
                    isclose,
@@ -21,8 +20,7 @@ from numpy.ma import array as masked
 
 from magic_monkey.traits.metrics.base import (BaseMetric,
                                               get_from_metric_cache,
-                                              load_from_cache,
-                                              eigs_with_strides)
+                                              load_from_cache)
 from magic_monkey.compute.math.linalg import (compute_ad,
                                               compute_fa,
                                               compute_md,

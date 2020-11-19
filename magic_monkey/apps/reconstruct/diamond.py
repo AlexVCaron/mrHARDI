@@ -6,7 +6,7 @@ from traitlets import Dict, Instance, Unicode
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            mask_arg,
                                            output_file_argument,
-                                           required_file)
+                                           required_file, nthreads_arg)
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.diamond import DiamondConfiguration
 
@@ -15,7 +15,8 @@ _aliases = {
     'out': 'Diamond.output',
     'mask': 'Diamond.mask',
     'ms': 'Diamond.model_selection',
-    'dti': 'Diamond.initial_dti'
+    'dti': 'Diamond.initial_dti',
+    'p': 'Diamond.n_threads'
 }
 
 _description = """
@@ -64,6 +65,8 @@ class Diamond(MagicMonkeyBaseApplication):
              "the stick model of the diamond algorithms"
     ).tag(config=True)
 
+    n_threads = nthreads_arg(ignore_write=True)
+
     aliases = Dict(_aliases)
 
     def _validate_required(self):
@@ -92,8 +95,10 @@ class Diamond(MagicMonkeyBaseApplication):
 
         optionals.append(self.configuration.serialize())
 
-        command = "crlDCIEstimate -i {} -o {} {}".format(
-            self.image, "{}.nii.gz".format(self.output), " ".join(optionals)
+        command = "crlDCIEstimate -p {} -i {} -o {} {}".format(
+            self.n_threads, self.image,
+            "{}.nii.gz".format(self.output),
+            " ".join(optionals)
         )
 
         launch_shell_process(command, join(current_path, "{}.log".format(

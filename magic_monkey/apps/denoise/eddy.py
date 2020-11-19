@@ -53,7 +53,7 @@ then
 fi
 
 base_args="--imain=$dwi --acqp=$acqp --index=$index"
-base_args="$base_args --bvecs=$bvecs --bvals=$bvals"
+base_args="$base_args --bvecs=$bvec --bvals=$bval"
 
 if [ -f $mask ]
 then
@@ -93,7 +93,7 @@ class Eddy(MagicMonkeyBaseApplication):
 
     rev_image = input_dwi_prefix(
         description="Input reverse acquisition image prefix "
-                    "(for image and bvals/bvecs/metadata if not b0)"
+                    "(for image and bval/bvec/metadata if not b0)"
     ).tag(config=True)
 
     eddy_on_rev = Bool().tag(config=True)
@@ -115,11 +115,11 @@ class Eddy(MagicMonkeyBaseApplication):
         super()._validate_required()
 
     def execute(self):
-        bvals = np.loadtxt("{}.bvals".format(self.image))
+        bvals = np.loadtxt("{}.bval".format(self.image))
         non_zero_bvecs(self.image)
         metadata = load_metadata(self.image)
         if self.rev_image:
-            rev_bvals = np.loadtxt("{}.bvals".format(self.rev_image))
+            rev_bvals = np.loadtxt("{}.bval".format(self.rev_image))
             non_zero_bvecs(self.rev_image)
             metadata.extend(load_metadata(self.rev_image))
         else:
@@ -127,8 +127,6 @@ class Eddy(MagicMonkeyBaseApplication):
 
         if not self.acquisition_file:
             acqp = prepare_acqp_file(
-                [[np.count_nonzero(bvals == 0)]],
-                [[np.count_nonzero(rev_bvals == 0)]],
                 metadata.dwell, metadata.directions
             )
 
@@ -207,14 +205,14 @@ class Eddy(MagicMonkeyBaseApplication):
                 debug_args = " ".join("--{}=True".format(d) for d in dargs)
 
             if self.eddy_on_rev:
-                bvals = np.loadtxt("{}.bvals".format(self.image))
-                rev_bvals = np.loadtxt("{}.bvals".format(self.rev_image))
+                bvals = np.loadtxt("{}.bval".format(self.image))
+                rev_bvals = np.loadtxt("{}.bval".format(self.rev_image))
                 if (
                     len(bvals) == len(rev_bvals) and
                     np.allclose(bvals, rev_bvals)
                 ):
-                    bvecs = np.loadtxt("{}.bvecs".format(self.image))
-                    rev_bvecs = np.loadtxt("{}.bvecs".format(self.rev_image))
+                    bvecs = np.loadtxt("{}.bvec".format(self.image))
+                    rev_bvecs = np.loadtxt("{}.bvec".format(self.rev_image))
                     if np.allclose(bvecs, rev_bvecs):
                         self.configuration.resampling = "lsquare"
 
@@ -233,7 +231,7 @@ class Eddy(MagicMonkeyBaseApplication):
                     debug_args=debug_args
                 ),
                 [
-                    "dwi", "bvals", "bvecs", "mask", "acqp",
+                    "dwi", "bval", "bvec", "mask", "acqp",
                     "index", "output"
                 ],
                 ["topup", "slspec", "scsfield", "scsmat"],

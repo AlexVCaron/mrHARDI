@@ -1,8 +1,6 @@
-import os
 import platform
 from distutils.log import INFO
 from os import chdir, getcwd
-from os.path import exists, isdir
 
 from setuptools import Command
 

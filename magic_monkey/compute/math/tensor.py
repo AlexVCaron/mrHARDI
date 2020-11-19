@@ -1,7 +1,14 @@
 from functools import partial
 
-from numpy import apply_along_axis, diag, eye, flip, isclose, trace, zeros, \
-    moveaxis, array, float64
+from numpy import (apply_along_axis,
+                   diag,
+                   eye,
+                   flip,
+                   isclose,
+                   trace,
+                   zeros,
+                   moveaxis)
+
 from numpy.linalg import eigh
 
 

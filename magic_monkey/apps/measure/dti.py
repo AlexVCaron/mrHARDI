@@ -2,15 +2,15 @@ from copy import copy
 from os.path import exists
 
 import nibabel as nib
-from numpy import loadtxt
-from traitlets.config import Bool, Dict, Enum
+
+from traitlets.config import Bool, Dict
 from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import (ChoiceEnum, ChoiceList,
                                            MagicMonkeyBaseApplication,
-                                           affine_file,
                                            output_prefix_argument,
                                            required_file)
+
 from magic_monkey.base.dwi import load_metadata
 
 _TENSOR_METRICS = ["fa", "md", "ad", "rd", "peaks"]

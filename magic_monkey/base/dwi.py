@@ -4,6 +4,7 @@ from os.path import join, dirname, basename, exists
 
 import numpy as np
 from traitlets import List, Bool, Integer, Float, Unicode
+from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import (MagicMonkeyConfigurable,
                                            Vector3D,
@@ -59,9 +60,9 @@ def save_metadata(prefix, metadata):
 
 
 def non_zero_bvecs(prefix):
-    bvecs = np.loadtxt("{}.bvecs".format(prefix))
+    bvecs = np.loadtxt("{}.bvec".format(prefix))
     bvecs[:, np.linalg.norm(bvecs, axis=0) < 1E-6] += 1E-6
-    np.savetxt("{}_non_zero.bvecs".format(prefix), bvecs, fmt="%.6f")
+    np.savetxt("{}_non_zero.bvec".format(prefix), bvecs, fmt="%.6f")
 
 
 class DwiMetadata(MagicMonkeyConfigurable):
@@ -181,6 +182,34 @@ class DwiMetadata(MagicMonkeyConfigurable):
         metadata.topup_indexes = deepcopy(self.topup_indexes)
 
         return metadata
+
+    def adapt_to_shape(self, n):
+        if self.n < n:
+            if n % self.n == 0:
+                reps = int(n / self.n)
+                acq = self.acquisition_slices_to_list()
+                self.update_acquisition_from_list(
+                    np.repeat(acq, reps).tolist()
+                )
+                self.directions = np.repeat(self.directions, reps).tolist()
+                if self.topup_indexes:
+                    self.topup_indexes = np.repeat(
+                        self.topup_indexes, reps
+                    ).tolist()
+                self.n = n
+            else:
+                raise ConfigError(
+                    "Could not adapt from {} to {} data points".format(
+                        self.n, n
+                    )
+                )
+        elif self.n > n:
+            acq = self.acquisition_slices_to_list()
+            self.update_acquisition_from_list(acq[:n])
+            self.directions = self.directions[:n]
+            if self.topup_indexes:
+                self.topup_indexes = self.topup_indexes[:n]
+            self.n = n
 
     def _validate(self):
         pass

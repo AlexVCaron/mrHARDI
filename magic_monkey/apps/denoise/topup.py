@@ -1,6 +1,5 @@
 from os import chmod
 
-import nibabel as nib
 import numpy as np
 from traitlets import Dict, Instance, Unicode, Enum, Bool
 from traitlets.config.loader import ConfigError

@@ -8,13 +8,16 @@ from traitlets import Unicode, Bool, Instance, Dict
 
 from magic_monkey.base.application import MagicMonkeyBaseApplication, \
     required_file, mask_arg, output_prefix_argument
-from magic_monkey.base.dwi import load_metadata, load_metadata_file
+from magic_monkey.base.dwi import (load_metadata,
+                                   load_metadata_file,
+                                   save_metadata)
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.n4bias import N4BiasCorrectionConfiguration
 
 
 _aliases = {
     "in": 'N4BiasCorrection.image',
+    "apply": 'N4BiasCorrection.apply_to',
     "mask": 'N4BiasCorrection.mask',
     "weights": 'N4BiasCorrection.weights',
     "out": 'N4BiasCorrection.output'
@@ -35,6 +38,11 @@ class N4BiasCorrection(MagicMonkeyBaseApplication):
     image = required_file(description="Input image to correct")
     output = output_prefix_argument()
 
+    apply_to = Unicode(
+        None, allow_none=True,
+        help="Apply the transformation to another image after correction"
+    ).tag(config=True)
+
     mask = mask_arg()
     weights = Unicode(
         help="Weight image to use during b-spline fitting"
@@ -53,9 +61,10 @@ class N4BiasCorrection(MagicMonkeyBaseApplication):
 
         input_image = nib.load(self.image)
 
-        output_fmt = "[{}.nii.gz".format(self.output)
-        if self.output_bias:
-            output_fmt += ",{}_bias_field.nii.gz]".format(self.output)
+        n4_output = self.output if not self.apply_to else "tmp_n4denoised"
+        output_fmt = "[{}.nii.gz".format(n4_output)
+        if self.output_bias or self.apply_to:
+            output_fmt += ",{}_bias_field.nii.gz]".format(n4_output)
         else:
             output_fmt += "]"
 
@@ -68,18 +77,19 @@ class N4BiasCorrection(MagicMonkeyBaseApplication):
         )
 
         if self.mask:
+            mask_name = self.mask
             msk = nib.load(self.mask)
-            if len(msk.shape) == 3:
+            img = nib.load(self.image)
+            if len(msk.shape) == 3 and (
+                len(msk.shape) != len(np.squeeze(img.shape))
+            ):
+                mask_name = "{}_4d_mask.nii.gz".format(self.output)
                 msk_data = np.repeat(
                     msk.get_fdata()[..., None], image.shape[-1], -1
-                )
-                nib.save(
-                    nib.Nifti1Image(msk_data, msk.affine),
-                    "{}_4d_mask.nii.gz".format(self.output)
-                )
-                self.mask = "{}_4d_mask.nii.gz".format(self.output)
+                ).astype(np.uint8)
+                nib.save(nib.Nifti1Image(msk_data, msk.affine), mask_name)
 
-            arguments += " --mask-image {}".format(self.mask)
+            arguments += " --mask-image {}".format(mask_name)
         if self.weights:
             arguments += " --weight-image {}".format(self.weights)
 
@@ -87,15 +97,42 @@ class N4BiasCorrection(MagicMonkeyBaseApplication):
         if metadata is None and self.metadata:
             metadata = load_metadata_file(self.metadata)
 
-        self.configuration.spacing = metadata.get_spacing()
+        if metadata is not None:
+            self.configuration.spacing = metadata.get_spacing()
 
         if len(self.configuration.spacing) < len(input_image.shape):
             if input_image.shape[-1] > 1:
                 self.configuration.spacing += [1.]
 
-        launch_shell_process(
+        command = [
             "N4BiasFieldCorrection {} {}".format(
                 arguments, self.configuration.serialize()
-            ),
-            join(current_path, "{}.log".format(basename(self.output)))
-        )
+            )
+        ]
+
+        if self.apply_to:
+            scil_cmd = (
+                "scil_apply_bias_field_on_dwi.py {} "
+                "{}_bias_field.nii.gz {}.nii.gz -f".format(
+                    self.apply_to, n4_output, self.output
+                )
+            )
+
+            if self.mask:
+                scil_cmd += " --mask {}".format(self.mask)
+
+            command.append(scil_cmd)
+
+        for i, cmd in enumerate(command):
+            launch_shell_process(
+                cmd,
+                join(current_path, "{}_cmd{}.log".format(
+                    basename(self.output), i
+                ))
+            )
+
+        if self.apply_to:
+            metadata = load_metadata(self.apply_to)
+
+        if metadata:
+            save_metadata(self.output, metadata)

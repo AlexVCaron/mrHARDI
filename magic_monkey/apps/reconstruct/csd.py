@@ -68,7 +68,7 @@ class CSD(MagicMonkeyBaseApplication):
     bvecs = required_file(description="Input b-vectors")
 
     responses = required_arg(
-        MultipleArguments,
+        MultipleArguments, default_value=None,
         description="Response filenames for the different tissues "
                     "(depending on the algorithm of choice), must be "
                     "in order [wm, gm, csf] (if using MSMT)",

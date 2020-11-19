@@ -16,15 +16,14 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            output_prefix_argument,
                                            required_arg,
                                            required_file, prefix_argument,
-                                           required_number,
-                                           output_suffix_argument,
-                                           input_dwi_prefix)
+                                           required_number)
 
 from magic_monkey.base.dwi import (Direction,
                                    DwiMetadata,
                                    AcquisitionType,
                                    load_metadata,
-                                   save_metadata, DwiMismatchError)
+                                   save_metadata, DwiMismatchError,
+                                   load_metadata_file)
 
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.compute.b0 import extract_b0, squash_b0
@@ -144,11 +143,11 @@ class B0Utils(MagicMonkeyBaseApplication):
 
         nib.save(img, "{}.nii.gz".format(self.output_prefix))
 
-        np.savetxt("{}.bvals".format(self.output_prefix), bvals, fmt="%d")
+        np.savetxt("{}.bval".format(self.output_prefix), bvals, fmt="%d")
 
         if self.bvecs:
             np.savetxt(
-                "{}.bvecs".format(self.output_prefix), bvecs, fmt="%.6f"
+                "{}.bvec".format(self.output_prefix), bvecs, fmt="%.6f"
             )
 
 
@@ -169,10 +168,10 @@ class ApplyMask(MagicMonkeyBaseApplication):
 
     fill_value = Integer(
         0, help="Value used to fill the image outside the mask"
-    ).tag(config=True, required=True)
+    ).tag(config=True)
     dtype = Enum(
-        [np.int, np.long, np.float], np.int, help="Output type"
-    ).tag(config=True, required=True)
+        [np.int, np.long, np.float, np.float64, None], None, help="Output type"
+    ).tag(config=True)
 
     output = output_file_argument()
 
@@ -182,7 +181,13 @@ class ApplyMask(MagicMonkeyBaseApplication):
         data = nib.load(self.image)
         mask = nib.load(self.mask).get_fdata().astype(bool)
 
-        out_data = apply_mask_on_data(data.get_fdata(), mask, self.dtype)
+        dtype = self.dtype
+        if dtype is None:
+            dtype = data.header.get_data_dtype()
+
+        out_data = apply_mask_on_data(
+            data.get_fdata(), mask, self.fill_value, dtype
+        )
 
         nib.save(nib.Nifti1Image(out_data, data.affine), self.output)
 
@@ -199,7 +204,7 @@ class Concatenate(MagicMonkeyBaseApplication):
     name = u"Concatenate"
     description = "Concatenates multiple images together"
     images = required_arg(
-        MultipleArguments, traits_args=(Unicode,),
+        MultipleArguments, traits_args=(Unicode,), default_value=None,
         description="Input images to concatenate"
     )
 
@@ -250,10 +255,10 @@ class Concatenate(MagicMonkeyBaseApplication):
         )
 
         if out_bvals is not None:
-            np.savetxt("{}.bvals".format(self.prefix), out_bvals, fmt="%d")
+            np.savetxt("{}.bval".format(self.prefix), out_bvals, fmt="%d")
 
         if out_bvecs is not None:
-            np.savetxt("{}.bvecs".format(self.prefix), out_bvecs.T, fmt="%.6f")
+            np.savetxt("{}.bvec".format(self.prefix), out_bvecs.T, fmt="%.6f")
 
 
 _apply_topup_aliases = dict(
@@ -280,7 +285,7 @@ class ApplyTopup(MagicMonkeyBaseApplication):
     )
 
     dwi = required_arg(
-        MultipleArguments, traits_args=(Unicode,),
+        MultipleArguments, traits_args=(Unicode,), default_value=None,
         description="Input image or list of images"
     )
 
@@ -356,6 +361,10 @@ _mb_flags = dict(
     update=(
         {"DwiMetadataUtils": {'update': True}},
         "Updates the already present metadata files"
+    ),
+    update_affine=(
+        {"DwiMetadataUtils": {'update_affine': True}},
+        "Only update affine file in metadata file"
     )
 )
 
@@ -390,9 +399,18 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
         help="Json configuration file replacing the arguments"
     ).tag(config=True)
 
+    metadata = Unicode(
+        help="Force an update on a specific metadata file. Will "
+             "output to a metadata file based on input image name."
+    ).tag(config=True)
+
     update = Bool(
         False, help="If true, will update metadata files "
                     "based on given new parameters"
+    ).tag(config=True)
+
+    update_affine = Bool(
+        False, help="If true, only update affine data"
     ).tag(config=True)
 
     overwrite = Bool(
@@ -403,6 +421,9 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
     flags = Dict(_mb_flags)
 
     def _validate_configuration(self):
+        if self.update_affine:
+            return
+
         if not self.update and self.configuration.acquisition is None:
             self.configuration.acquisition = AcquisitionType.Linear.name
 
@@ -542,8 +563,19 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             name
         )
 
+    def _only_update_affine(self, images):
+        base_meta = load_metadata_file(self.metadata) if self.metadata else None
+        for img in images:
+            mt = base_meta.copy() if base_meta else load_metadata(img["name"])
+            mt.affine = img["data"].affine.tolist()
+            save_metadata(img["name"].split(".")[0], mt)
+
     def execute(self):
         images = self.preload_images()
+
+        if self.update_affine:
+            self._only_update_affine(images)
+
         directions = self.get_phase_directions(images)
         multibands = None
 
@@ -562,9 +594,11 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
                 self.configuration.slice_direction, len(images)
             ).tolist()
 
-        for img, d, mb, sd in zip(images, directions, multibands, slice_dirs):
+        for name, img, d, mb, sd in zip(
+            self.dwis, images, directions, multibands, slice_dirs
+        ):
             shape = img["data"].shape
-            metadata = DwiMetadata()
+            metadata = load_metadata(name) if self.metadata else DwiMetadata()
             metadata.n = shape[-1] if len(shape) > 3 else 1
             metadata.n_excitations = int(shape[
                 np.argmax(np.absolute(Direction[sd].value))
@@ -755,7 +789,8 @@ _assert_aliases = {
     "in": "AssertDwiDimensions.dwi",
     "bvals": "AssertDwiDimensions.bvals",
     "bvecs": "AssertDwiDimensions.bvecs",
-    "strat": "AssertDwiDimensions.strategy"
+    "strat": "AssertDwiDimensions.strategy",
+    "out": "AssertDwiDimensions.output"
 }
 
 
@@ -773,6 +808,13 @@ class AssertDwiDimensions(MagicMonkeyBaseApplication):
         help="Strategy to employ when discrepancies are found, either "
              "output an error message or try to fix the problem"
     ).tag(config=True)
+
+    output = output_prefix_argument(
+        description="Output prefix for checked files. If supplied, will also "
+                    "copy the input dwi to the new name. If none supplied, "
+                    "will overwrite the input files.",
+        required=False
+    )
 
     aliases = Dict(_assert_aliases)
 
@@ -795,7 +837,7 @@ class AssertDwiDimensions(MagicMonkeyBaseApplication):
                         "Could not fix b-values of the supplied dataset"
                     )
 
-            if bvecs.shape[-1] > len(bvals):
+            if bvecs.shape[0] > len(bvals):
                 bvecs = bvecs[:, :len(bvals)]
             elif bvecs.shape[-1] != len(bvals):
                 if len(bvals) % bvecs.shape[-1] == 0:
@@ -814,5 +856,21 @@ class AssertDwiDimensions(MagicMonkeyBaseApplication):
                             "Could not fix b-vectors the supplied dataset"
                         )
 
-            np.savetxt(self.bvals, bvals)
-            np.savetxt(self.bvecs, bvecs)
+            np.savetxt(
+                self.bvals if self.output is None else
+                "{}.bval".format(self.output),
+                bvals
+            )
+            np.savetxt(
+                self.bvecs if self.output is None else
+                "{}.bvec".format(self.output),
+                bvecs
+            )
+
+            if self.output:
+                nib.save(img, "{}.nii.gz".format(self.output))
+
+                metadata = load_metadata(self.dwi)
+                if metadata:
+                    metadata.adapt_to_shape(len(bvals))
+                    save_metadata(self.output, metadata)
