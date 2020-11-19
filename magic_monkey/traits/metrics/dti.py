@@ -9,7 +9,6 @@ from magic_monkey.compute.math.linalg import (compute_ad,
                                               compute_md,
                                               compute_peaks,
                                               compute_rd)
-from magic_monkey.compute.math.tensor import compute_eigenvalues
 
 
 class DTIMetric(BaseMetric, metaclass=ABCMeta):

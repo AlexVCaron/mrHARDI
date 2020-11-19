@@ -3,7 +3,7 @@ from os import cpu_count
 from traitlets import Float, Integer
 from traitlets.config import Bool, Enum, default
 
-from magic_monkey.base.application import MagicMonkeyConfigurable, nthreads_arg
+from magic_monkey.base.application import MagicMonkeyConfigurable
 from magic_monkey.traits.diamond import BoundingBox, Stick
 
 _flags = {
@@ -44,7 +44,6 @@ _aliases = dict(
     noise="DiamondConfiguration.noise_model",
     f="DiamondConfiguration.fascicle",
     box="DiamondConfiguration.bounding_box",
-    p="DiamondConfiguration.processes",
     opt="DiamondConfiguration.optimizer"
 )
 
@@ -98,7 +97,6 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
 
     sum_fractions_to_1 = Bool(True).tag(config=True)
 
-    processes = nthreads_arg()
     splits = Integer(cpu_count()).tag(config=True)
 
     optimizer = Enum(
@@ -140,7 +138,7 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
 
         return " ".join([
             "-n {} -r {}".format(self.n_tensors, self.regularization),
-            "-s {} -p {}".format(self.splits, self.processes),
+            "-s {}".format(self.splits),
             "--estimb0 {}".format(int(self.estimate_b0)),
             "--noisemodel {}".format(self.noise_model),
             "--fascicle {}".format(self.fascicle),

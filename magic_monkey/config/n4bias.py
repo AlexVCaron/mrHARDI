@@ -58,5 +58,5 @@ class N4BiasCorrectionConfiguration(MagicMonkeyConfigurable):
             "--histogram-sharpening [{},{},{}]".format(
                 self.filter_width, self.noise, self.bins
             ),
-            "--verbose"
+            "--verbose 1"
         ]) + " ".join(optionals)

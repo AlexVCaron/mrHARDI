@@ -12,7 +12,6 @@ from traitlets.config.loader import ConfigError
 from magic_monkey.base.application import (ChoiceEnum,
                                            ChoiceList,
                                            MagicMonkeyBaseApplication,
-                                           affine_file,
                                            output_prefix_argument,
                                            required_file,
                                            required_number)
@@ -217,23 +216,23 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
                 self.output_prefix, self.cache, metadata.affine,
                 mask=mask.get_fdata().astype(bool), shape=mask.shape,
                 colors=self.output_colors, with_fw=self.free_water,
-                with_res=self.restricted, with_hind=self.hindered
+                with_res=self.restricted, with_hind=self.hindered,
             ).measure()
 
         if self.output_haeberlen:
-            self._output_haeberlen()
+            self._output_haeberlen(metadata.affine)
 
         if self.save_cache:
             self._save_cache()
 
-    def _output_haeberlen(self):
+    def _output_haeberlen(self, affine):
         from magic_monkey.traits.metrics.diamond import HaeberlenConvention
 
         mask = None
         if exists("{}_mask.nii.gz".format(self.input_prefix)):
             mask = nib.load("{}_mask.nii.gz".format(self.input_prefix))
 
-        affine = np.loadtxt(self.affine)
+        affine = np.loadtxt(affine)
 
         HaeberlenConvention(
             self.n_fascicles, self.input_prefix, self.output_prefix,

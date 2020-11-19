@@ -219,3 +219,157 @@ class AntsMotionCorrectionConfiguration(MagicMonkeyConfigurable):
             "--dimensionality {}".format(self.dimension),
             "--n-images {}".format(self.n_template_points),
         ]) + " ".join(optionals)
+
+
+class AntsMotionCorrectionConfiguration(MagicMonkeyConfigurable):
+    passes = List(
+        DictInstantiatingInstance(
+            klass=AntsPass, add_init=dict(
+                is_motion_correction=True,
+                name_dict={
+                    "smooth": "smoothingSigmas",
+                    "shrink": "shrinkFactors"
+                }
+            )
+        ),
+        [], allow_none=True,
+        help="List of registration passes (Rigid, Affine or SyN)"
+    ).tag(config=True)
+    dimension = Integer(
+        3, min=2, max=3, help="Number of dimensions of the input images"
+    ).tag(config=True)
+    scale_estimator = Bool(
+        False, help="Use scale estimator to control optimization"
+    ).tag(config=True)
+    register_to_prior = Bool(
+        True, help="Register to prior volume instead of registering "
+                   "all time points to template image"
+    ).tag(config=True)
+    n_template_points = Integer(
+        10, help="Number of time points to use to construct the moving template"
+    ).tag(config=True)
+    learn_once = Bool(
+        False, help="If true, the learning step size will only be "
+                    "evaluated at the beginning of each stage"
+    ).tag(config=True)
+    average = Bool(
+        False, help="If True, the timeseries is averaged before "
+                    "motion correction is applied"
+    ).tag(config=True)
+    to_field = Bool(
+        False, help="If True, writes the transform as a displacement "
+                    "field over the timeseries"
+    ).tag(config=True)
+
+    @default('app_flags')
+    def _app_flags_default(self):
+        return _flags
+
+    def _validate(self):
+        if not 2 <= self.dimension <= 3:
+            raise ConfigError(
+                "Dimension of input images must be between 2 and 4"
+            )
+
+    def serialize(self, *args, **kwargs):
+        optionals, init_i = [''], 0
+
+        for ants_pass in self.passes:
+            optionals.append(ants_pass.serialize())
+
+        if self.scale_estimator:
+            optionals.append("--useScalesEstimator")
+
+        if not self.register_to_prior:
+            optionals.append("--useFixedReferenceImage 1")
+
+        if self.learn_once:
+            optionals.append("--use-estimate-learning-rate-once")
+
+        if self.average:
+            optionals.append("--average-image")
+
+        if self.to_field:
+            optionals.append("--write-displacement")
+
+        return " ".join([
+            "--dimensionality {}".format(self.dimension),
+            "--n-images {}".format(self.n_template_points),
+        ]) + " ".join(optionals)
+
+
+class AntsMotionCorrectionConfiguration(MagicMonkeyConfigurable):
+    passes = List(
+        DictInstantiatingInstance(
+            klass=AntsPass, add_init=dict(
+                is_motion_correction=True,
+                name_dict={
+                    "smooth": "smoothingSigmas",
+                    "shrink": "shrinkFactors"
+                }
+            )
+        ),
+        [], allow_none=True,
+        help="List of registration passes (Rigid, Affine or SyN)"
+    ).tag(config=True)
+    dimension = Integer(
+        3, min=2, max=3, help="Number of dimensions of the input images"
+    ).tag(config=True)
+    scale_estimator = Bool(
+        False, help="Use scale estimator to control optimization"
+    ).tag(config=True)
+    register_to_prior = Bool(
+        True, help="Register to prior volume instead of registering "
+                   "all time points to template image"
+    ).tag(config=True)
+    n_template_points = Integer(
+        10, help="Number of time points to use to construct the moving template"
+    ).tag(config=True)
+    learn_once = Bool(
+        False, help="If true, the learning step size will only be "
+                    "evaluated at the beginning of each stage"
+    ).tag(config=True)
+    average = Bool(
+        False, help="If True, the timeseries is averaged before "
+                    "motion correction is applied"
+    ).tag(config=True)
+    to_field = Bool(
+        False, help="If True, writes the transform as a displacement "
+                    "field over the timeseries"
+    ).tag(config=True)
+
+    @default('app_flags')
+    def _app_flags_default(self):
+        return _flags
+
+    def _validate(self):
+        if not 2 <= self.dimension <= 3:
+            raise ConfigError(
+                "Dimension of input images must be between 2 and 4"
+            )
+
+    def serialize(self, *args, **kwargs):
+        optionals, init_i = [''], 0
+
+        for ants_pass in self.passes:
+            optionals.append(ants_pass.serialize())
+
+        if self.scale_estimator:
+            optionals.append("--useScalesEstimator")
+
+        if not self.register_to_prior:
+            optionals.append("--useFixedReferenceImage 1")
+
+        if self.learn_once:
+            optionals.append("--use-estimate-learning-rate-once")
+
+        if self.average:
+            optionals.append("--average-image")
+
+        if self.to_field:
+            optionals.append("--write-displacement")
+
+        return " ".join([
+            "--dimensionality {}".format(self.dimension),
+            "--n-images {}".format(self.n_template_points),
+        ]) + " ".join(optionals)

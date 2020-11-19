@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Generator
 
 import nibabel as nib
-from numpy import loadtxt, ones, ubyte, absolute, zeros, sign, array, diag
+from numpy import loadtxt, ones, ubyte, absolute, zeros, sign, array
 from numpy.linalg import eigh
 
 from magic_monkey.compute.math.tensor import compute_eigenvalues
@@ -83,15 +83,15 @@ class BaseMetric:
     def _get_bvecs(self, add_keys=()):
         return load_from_cache(
             self.cache,
-            add_keys + ("bvecs",),
-            lambda f: loadtxt("{}.bvecs".format(self.prefix))
+            add_keys + ("bvec",),
+            lambda f: loadtxt("{}.bvec".format(self.prefix))
         )
 
     def _get_bvals(self, add_keys=()):
         return load_from_cache(
             self.cache,
-            add_keys + ("bvals",),
-            lambda f: loadtxt("{}.bvals".format(self.prefix))
+            add_keys + ("bval",),
+            lambda f: loadtxt("{}.bval".format(self.prefix))
         )
 
     def _color(self, name, evecs, add_keys=()):

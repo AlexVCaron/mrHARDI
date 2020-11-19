@@ -1,12 +1,11 @@
 import json
 import sys
 from abc import abstractmethod
-from collections import MutableMapping
 from copy import copy
 from importlib import import_module
 from multiprocessing import cpu_count
 from os import getcwd, linesep
-from os.path import join, splitext
+from os.path import splitext
 
 import numpy as np
 from numpy import arange, split
@@ -16,7 +15,7 @@ from traitlets.config import (Application,
                               Configurable,
                               Dict,
                               Enum,
-                              HasTraits, Instance,
+                              Instance,
                               List,
                               TraitError,
                               Unicode,
@@ -904,7 +903,7 @@ _out_file_help_line = "Output filename (with extension, if absent, the file " \
                       "is obliteration of previous data in case of python " \
                       "script from Magic Monkey codebase."
 
-_dwi_pre_help_line = "Input DWI dataset prefix (for image/bvals/bvecs/metadata)"
+_dwi_pre_help_line = "Input DWI dataset prefix (for image/bval/bvec/metadata)"
 
 
 _nthreads_help_line = "Number of threads used by the application. The " \
@@ -967,7 +966,7 @@ def output_file_argument(
 
 
 def required_arg(
-    trait, default_value=None, description=None,
+    trait, default_value=Undefined, description=None,
     config=True, required=True, ignore_write=True,
     traits_args=(), traits_kwargs=None, **tags
 ):
@@ -983,9 +982,13 @@ def required_arg(
     ).tag(**tags)
 
 
-def nthreads_arg(description=_nthreads_help_line, config=True, **tags):
+def nthreads_arg(
+    description=_nthreads_help_line,
+    default_value=cpu_count(),
+    config=True, **tags
+):
     tags.update(dict(config=config))
-    return Integer(cpu_count(), help=description).tag(**tags)
+    return Integer(default_value, help=description).tag(**tags)
 
 
 def mask_arg(
