@@ -10,6 +10,9 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         return "magic_monkey command <args> <flags>"
 
     subcommands = dict(
+        ants_motion=(
+            "magic_monkey.apps.AntsMotionCorrection", '4D motion correction'
+        ),
         ants_registration=(
             "magic_monkey.apps.AntsRegistration", 'Register images via ants'
         ),
