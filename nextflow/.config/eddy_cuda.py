@@ -23,21 +23,21 @@ c.Eddy.base_config_file = ""
 
 c.EddyConfiguration.check_if_shelled = False
 
-c.EddyConfiguration.current_model = "quadratic"
+c.EddyConfiguration.current_model = "linear"
 
 c.EddyConfiguration.enable_cuda = True
 
-c.EddyConfiguration.field_model = "quadratic"
+c.EddyConfiguration.field_model = "cubic"
 
-c.EddyConfiguration.fill_empty = False
+c.EddyConfiguration.fill_empty = True
 
 c.EddyConfiguration.interpolation = "spline"
 
 c.EddyConfiguration.klass = "magic_monkey.config.eddy.EddyConfiguration"
 
-c.EddyConfiguration.n_iter = 8
+c.EddyConfiguration.n_iter = 5
 
-c.EddyConfiguration.n_voxels_hp = 2000
+c.EddyConfiguration.n_voxels_hp = 4000
 
 c.EddyConfiguration.outlier_model = {
     "n_std": 3,
@@ -57,12 +57,12 @@ c.EddyConfiguration.separate_subject_field = True
 
 c.EddyConfiguration.skip_end_alignment = False
 
-c.EddyConfiguration.slice_to_vol = {
-    "t_motion_fraction": 2,
-    "n_iter": 8,
-    "w_reg": 5,
-    "interpolation": "trilinear"
-}
+# c.EddyConfiguration.slice_to_vol = {
+#     "t_motion_fraction": 2,
+#     "n_iter": 8,
+#     "w_reg": 5,
+#     "interpolation": "trilinear"
+# }
 
 c.EddyConfiguration.use_b0_peas = False
 

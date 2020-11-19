@@ -69,8 +69,6 @@ c.DiamondConfiguration.noise_model = "gaussian"
 
 c.DiamondConfiguration.optimizer = "bobyqa"
 
-c.DiamondConfiguration.processes = 4
-
 c.DiamondConfiguration.regularization = 1.0
 
 c.DiamondConfiguration.restriction_tensor = False

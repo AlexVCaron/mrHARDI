@@ -12,17 +12,21 @@ params.gaussian_noise_correction = true
 params.intensity_normalization = true
 params.rev_is_b0 = true
 params.multiple_reps = false
+params.gibbs_ringing_correction = true
+params.resample_data = true
+params.register_t12b0_denoised = true
 
 params.config.workflow.preprocess.t12b0mask_registration = file("$projectDir/.config/.workflow/t12b0_mask_registration.py")
-params.config.workflow.preprocess.post_eddy_registration = file("$projectDir/.config/.workflow/post_eddy_ants_registration.py")
 params.config.workflow.preprocess.topup_b0 = file("$projectDir/.config/.workflow/topup_b0.py")
+params.config.workflow.preprocess.n4_denoise_t1 = file("$projectDir/.config/.workflow/n4_denoise_on_t1.py")
 
-include { group_subject_reps; join_optional; map_optional; opt_channel; replace_dwi_file; uniformize_naming; sort_as_with_name } from '../modules/functions.nf'
-include { extract_b0 as dwi_b0; extract_b0 as b0_topup; extract_b0 as b0_topup_rev; squash_b0 as squash_dwi; squash_b0 as squash_rev } from '../modules/preprocess.nf'
-include { n4_denoise; dwi_denoise; prepare_topup; topup; prepare_eddy; eddy } from '../modules/denoise.nf'
-include { ants_register; ants_transform } from '../modules/register.nf'
-include { cat_datasets as cat_topup; cat_datasets as cat_eddy; cat_datasets as cat_eddy_rev; cat_datasets as cat_eddy_on_rev; bet_mask; split_image; apply_topup; convert_datatype; replicate_image } from '../modules/utils.nf'
-
+include { map_optional; opt_channel; replace_dwi_file; uniformize_naming } from '../modules/functions.nf'
+include { extract_b0 as dwi_b0; extract_b0 as extract_b0_motion } from '../modules/processes/preprocess.nf'
+include { ants_correct_motion } from '../modules/processes/register.nf'
+include { convert_datatype; bet_mask; crop_image as crop_dwi; crop_image as crop_t1 } from '../modules/processes/utils.nf'
+include { gibbs_removal as dwi_gibbs_removal; gibbs_removal as rev_gibbs_removal; nlmeans_denoise; ants_gaussian_denoise } from '../modules/processes/denoise.nf'
+include { scilpy_resample as scilpy_resample_t1; scilpy_resample as scilpy_resample_dwi; scilpy_resample_on_ref as scilpy_resample_mask } from '../modules/processes/upsample.nf'
+include { dwi_denoise_wkf; dwi_denoise_wkf as rev_denoise_wkf; squash_wkf; registration_wkf as mask_registration_wkf; registration_wkf as t1_registration_wkf; topup_wkf; eddy_wkf; apply_topup_wkf; n4_denoise_wkf } from "../modules/workflows/preprocess.nf"
 
 workflow preprocess_wkf {
     take:
@@ -37,275 +41,164 @@ workflow preprocess_wkf {
         topup2eddy_channel = opt_channel()
         topup2eddy_b0_channel = opt_channel()
 
+        if ( params.gaussian_noise_correction ) {
+            dwi_denoise_wkf(dwi_channel.map{ it.subList(0, 2) }, mask_channel, meta_channel)
+            dwi_channel = replace_dwi_file(dwi_channel, dwi_denoise_wkf.out.image)
+            meta_channel = dwi_denoise_wkf.out.metadata
+
+            if ( !params.rev_is_b0 ) {
+                rev_denoise_wkf(rev_channel.map{ it.subList(0, 2) }, mask_channel, rev_meta_channel)
+                rev_channel = replace_dwi_file(rev_channel, rev_denoise_wkf.out.image)
+                rev_meta_channel = rev_denoise_wkf.out.metadata
+            }
+        }
+
+        if ( params.gibbs_ringing_correction ) {
+            dwi_gibbs_removal(dwi_channel.map{ it.subList(0, 2) }.join(meta_channel), "preprocess")
+            dwi_channel = replace_dwi_file(dwi_channel, dwi_gibbs_removal.out.image)
+            meta_channel = dwi_gibbs_removal.out.metadata
+
+            if ( !params.rev_is_b0 ) {
+                rev_gibbs_removal(rev_channel.map{ it.subList(0, 2) }.join(rev_meta_channel), "preprocess")
+                rev_channel = replace_dwi_file(rev_channel, rev_gibbs_removal.out.image)
+                rev_meta_channel = rev_gibbs_removal.out.metadata
+            }
+        }
+
         squash_wkf( dwi_channel, rev_channel, meta_channel.join(rev_meta_channel) )
+
         dwi_b0(dwi_channel.map{ it.subList(0, 3) }.join(meta_channel), "", "preprocess", "")
         b0_metadata = dwi_b0.out.metadata
 
-        if ( params.t1mask2dwi_registration || params.topup_correction ) {
-            if ( params.t1mask2dwi_registration ) {
-                img = registration_wkf(
-                    dwi_b0.out.b0.groupTuple(),
-                    t1_channel.map{ [it[0], it[1]] }.groupTuple(),
-                    t1_channel.map{ [it[0], it[2]] },
-                    b0_metadata.map{ it.subList(0, 2) + [""] },
-                    params.config.workflow.preprocess.t12b0mask_registration
-                ).image
-                convert_datatype(img, "int8", "preprocess")
-                mask_channel = convert_datatype.out.image
-            }
-            else if ( params.masked_t1 )
-                mask_channel = t1_channel.map{ [it[0], it[2]] }
+        if ( params.t1mask2dwi_registration )
+            mask_channel = t1_channel.map{ [it[0], it[2]] }
+        else
+            mask_channel = t1_channel.map{ [it[0], ""] }
 
-            if ( params.topup_correction ) {
-                topup_wkf(squash_wkf.out.dwi, squash_wkf.out.rev, squash_wkf.out.metadata)
+        mask_registration_wkf(
+            dwi_b0.out.b0.groupTuple(),
+            t1_channel.map{ [it[0], it[1]] }.groupTuple(),
+            t1_channel.map{ [it[0], it[2]] },
+            b0_metadata.map{ it.subList(0, 2) + [""] },
+            params.config.workflow.preprocess.t12b0mask_registration
+        )
 
-                topup2eddy_channel = topup_wkf.out.param.join(topup_wkf.out.prefix).join(topup_wkf.out.topup.map{ [it[0], it.subList(1, it.size())] })
-                topup2eddy_b0_channel = topup_wkf.out.b0
+        if ( params.t1mask2dwi_registration ) {
+            convert_datatype(mask_registration_wkf.out.image, "int8", "preprocess")
+            mask_channel = convert_datatype.out.image
+        }
+        else if ( params.masked_t1 )
+            mask_channel = t1_channel.map{ [it[0], it[2]] }
 
-                if ( !params.eddy_correction )
-                    meta_channel = topup_wkf.out.metadata.map{ [it[0], it[2]] }
-                else if ( params.eddy_pre_bet_mask ) {
-                    mask_channel = bet_mask(topup_wkf.out.b0, "preprocess")
-                }
+        if ( params.topup_correction ) {
+            topup_wkf(squash_wkf.out.dwi, squash_wkf.out.rev, squash_wkf.out.metadata)
+
+            topup2eddy_channel = topup_wkf.out.param.join(topup_wkf.out.prefix).join(topup_wkf.out.topup.map{ [it[0], it.subList(1, it.size())] })
+            topup2eddy_b0_channel = topup_wkf.out.b0
+
+            if ( !params.eddy_correction )
+                meta_channel = topup_wkf.out.metadata.map{ [it[0], it[2]] }
+            else if ( params.eddy_pre_bet_mask ) {
+                mask_channel = bet_mask(topup_wkf.out.b0, "preprocess")
             }
         }
 
         if ( params.eddy_correction ) {
             eddy_wkf(squash_wkf.out.dwi, mask_channel, topup2eddy_channel, topup2eddy_b0_channel, squash_wkf.out.rev, squash_wkf.out.metadata)
-            dwi_channel = replace_dwi_file(dwi_channel, eddy_wkf.out.dwi).map{ it.subList(0, 3) }.join(eddy_wkf.out.bvecs)
+
+            dwi_channel = eddy_wkf.out.dwi.join(eddy_wkf.out.bval).join(eddy_wkf.out.bvec)
             meta_channel = eddy_wkf.out.metadata
+
+            if ( params.post_eddy_registration ) {
+                extract_b0_motion(dwi_channel.map{ it.subList(0, 3) }.join(meta_channel), "_eddy", "preprocess", "")
+                ants_correct_motion(dwi_channel.map{ it.subList(0, 2) }.groupTuple().join(extract_b0_motion.out.b0.groupTuple()).join(meta_channel), "preprocess", "")
+                dwi_channel = replace_dwi_file(dwi_channel, ants_correct_motion.out.image)
+                meta_channel = ants_correct_motion.out.metadata
+            }
         }
         else if ( params.topup_correction ) {
             dwi_channel = uniformize_naming(squash_wkf.out.dwi, "dwi_to_topup", "false")
             rev_channel = uniformize_naming(squash_wkf.out.rev, "dwi_to_topup_rev", "false")
-            meta_channel = uniformize_naming(topup_wkf.out.in_metadata_w_topup.map{ [it[0], it[1][1]] }, "dwi_to_topup_metadata", "false")
-            rev_meta_channel = uniformize_naming(topup_wkf.out.in_metadata_w_topup.map{ [it[0], it[1][0]] }, "dwi_to_topup_rev_metadata", "false")
+            topup_wkf.out.in_metadata_w_topup.view()
+            meta_channel = uniformize_naming(topup_wkf.out.in_metadata_w_topup.map{ [it[0], it[1][0]] }, "dwi_to_topup_metadata", "false")
+            rev_meta_channel = uniformize_naming(topup_wkf.out.in_metadata_w_topup.map{ [it[0], it[1][1]] }, "dwi_to_topup_rev_metadata", "false")
             apply_topup_wkf(dwi_channel, rev_channel, topup2eddy_channel, meta_channel.join(rev_meta_channel).map{ [it[0], it.subList(1, it.size())] })
             dwi_channel = replace_dwi_file(dwi_channel, apply_topup_wkf.out.dwi)
             dwi_channel = uniformize_naming(dwi_channel, "topup_corrected", "false")
             meta_channel = uniformize_naming(apply_topup_wkf.out.metadata, "topup_corrected_metadata", "false")
         }
 
-        if ( params.gaussian_noise_correction && !( ( params.eddy_correction && params.eddy_pre_denoise ) ) ) {
-            dwi_denoise_wkf(dwi_channel.map{ it.subList(0, 2) }, mask_channel, meta_channel)
-            dwi_channel = replace_dwi_file(dwi_channel, dwi_denoise_wkf.out.image)
-            meta_channel = dwi_denoise_wkf.out.metadata
-        }
-
         if ( params.intensity_normalization ) {
-            n4_denoise_wkf(dwi_channel.map{ it.subList(0, 2) }, dwi_b0.out.b0, mask_channel, meta_channel)
+            n4_denoise_wkf(dwi_channel.map{ it.subList(0, 2) }, dwi_b0.out.b0, mask_channel, meta_channel, "")
             dwi_channel = replace_dwi_file(dwi_channel, n4_denoise_wkf.out.image)
             meta_channel = n4_denoise_wkf.out.metadata
         }
+
+        t1_preprocess_wkf(t1_channel.map{ it.subList(0, 2) }, t1_channel.map{ [it[0], it[2]] })
+        t1_channel = t1_preprocess_wkf.out.t1
+
+        if ( params.resample_data ) {
+            scilpy_resample_dwi(dwi_channel.map{ it.subList(0, 2) }.join(mask_channel).join(meta_channel), "preprocess", "lin")
+            dwi_channel = replace_dwi_file(dwi_channel, scilpy_resample_dwi.out.image)
+            meta_channel = scilpy_resample_dwi.out.metadata
+            scilpy_resample_mask(mask_channel.join(dwi_channel.map{ it.subList(0, 2) }).map{ it + ["", ""] }, "preprocess", "nn" )
+            mask_channel = scilpy_resample_mask.out.image
+        }
+
+        //if ( params.register_t12b0_denoised ) {
+        //    dwi_b0_for_t1_reg(dwi_channel.map{ it.subList(0, 3) }.join(meta_channel), "", "preprocess", params.config.workflow.preprocess.t12b0_extract_b0)
+        //    b0_metadata = dwi_b0.out.metadata
+        //    t1_registration_wkf(
+        //        dwi_b0.out.b0.groupTuple(),
+        //        t1_channel.map{ [it[0], it[1]] }.groupTuple(),
+        //        "",
+        //        b0_metadata.map{ it.subList(0, 2) + [""] },
+        //        params.config.workflow.preprocess.t12b0_registration
+        //    )
+        //    t1_channel = registration_wkf.out.image
+        //}
+
+        crop_dwi(dwi_channel.map{ it.subList(0, 2) }.join(mask_channel).map{ it + [""] }.join(meta_channel), "preprocess")
+        crop_t1(t1_channel.join(mask_channel).join(crop_dwi.out.bbox).map{ it + [""] }, "preprocess")
+        dwi_channel = replace_dwi_file(dwi_channel, crop_dwi.out.image)
+        t1_channel = crop_t1.out.image
+        mask_channel = crop_dwi.out.mask
 
         dwi_channel = uniformize_naming(dwi_channel.map{ it.subList(0, 4) }, "dwi_preprocessed", "false")
         meta_channel = uniformize_naming(meta_channel, "dwi_preprocessed_metadata", "false")
         mask_channel = uniformize_naming(mask_channel, "mask_preprocessed", "false")
     emit:
+        t1 = t1_channel
         dwi = dwi_channel
         mask = mask_channel
         metadata = meta_channel
 }
 
-workflow registration_wkf {
+workflow t1_preprocess_wkf {
     take:
-        target_channel
-        moving_channel
-        trans_channel
-        metadata_channel
-        parameters
+        t1_channel
+        mask_channel
     main:
-        reg_metadata = metadata_channel.map{ it.subList(0, it.size() - 1)}
-        trans_metadata =  metadata_channel.map{ [it[0], it[-1]] }
-        ants_register(moving_channel.join(target_channel).join(target_channel.map{ [it[0], it[1][0]] }).join(reg_metadata), "preprocess", parameters)
-        ants_reg = ants_register.out.affine.join(ants_register.out.syn, remainder: true).map{
-            it[-1] ? it.subList(0, it.size() - 2) + [it[-1]] : it.subList(0, it.size() - 2) + [[]]
-        }.map{
-            it[-1].empty ? it : it.subList(0, it.size() - 1) + [it[-1].findAll{
-                s -> !s.getName().contains("registration_inv_")
-            }]
-        }
-
-        if ( trans_channel ) {
-            ants_transform(trans_channel.join(ants_register.out.reference).join(ants_reg).join(trans_metadata), "preprocess")
-            img = ants_transform.out.image
-        }
-        else {
-            img = ants_register.out.image
-        }
-    emit:
-        image = img
-}
-
-// TODO : Here there is probably some metadatas from squashed process being tangled in i/o. The
-// i/o bridge should be removed and the squashed metadatas should be passed directly to
-// the delegated workflows/processes
-workflow topup_wkf {
-    take:
-        dwi_channel
-        rev_channel
-        metadata_channel
-    main:
-        acq_channel = dwi_channel.map{ [it[0], it[2]] }.groupTuple().join(rev_channel.map{ [it[0], it[2]] }.groupTuple())
-        meta_channel = metadata_channel.map{ it.subList(0, 2) }.groupTuple().join(
-            metadata_channel.map{ [it[0], it[2]] }.groupTuple()
-        ).map{ [it[0], it[1] + it[2]] }
-
-        b0_topup(dwi_channel.map{ it.subList(0, 3) }.join(meta_channel), "", "preprocess", params.config.workflow.preprocess.topup_b0)
-        b0_topup_rev(rev_channel.map{ it.subList(0, 3) }.join(meta_channel), "_rev", "preprocess", params.config.workflow.preprocess.topup_b0)
-
-        data_channel = b0_topup.out.b0.groupTuple().join(b0_topup_rev.out.b0.groupTuple())
-
-        cat_topup(data_channel.map { [it[0], it[1] + it[2], [], []] }.join(b0_topup.out.metadata.join(b0_topup_rev.out.metadata).map{ [it[0], it.subList(1, it.size())] }), "", "preprocess")
-
-        metadata_channel = cat_topup.out.metadata.join(meta_channel).map{ [it[0], [it[1]] + it[2]] }
-
-        prepare_topup(cat_topup.out.image.join(dwi_channel.map{ [it[0], it[2]] }).join(rev_channel.map{ [it[0], it[2]] }).join(metadata_channel))
-
-        data_channel = prepare_topup.out.config.map{ it.subList(0, 4) }.join(cat_topup.out.image)
-
-        topup(data_channel.join(prepare_topup.out.metadata), "preprocess")
-    emit:
-        b0 = topup.out.image
-        field = topup.out.field
-        movpar = topup.out.transfo.map{ [it[0], it[1]] }
-        coeff = topup.out.transfo.map{ [it[0], it[2]] }
-        param = prepare_topup.out.config.map{ [it[0], it[2]] }
-        prefix = prepare_topup.out.config.map{ [it[0], it[-1]] }
-        topup = topup.out.pkg
-        metadata = prepare_topup.out.metadata
-        in_metadata_w_topup = sort_as_with_name(prepare_topup.out.in_metadata_w_topup, acq_channel.map{ it.flatten() })
-}
-
-workflow apply_topup_wkf {
-    take:
-        dwi_channel
-        rev_channel
-        topup_channel
-        meta_channel
-    main:
-        data_channel = dwi_channel.map{ it.subList(0, 2) }.join(rev_channel.map{ it.subList(0, 2) })
-        apply_topup(data_channel.join(topup_channel).join(meta_channel), "preprocess")
-    emit:
-        dwi = apply_topup.out.image
-        metadata = apply_topup.out.metadata
-}
-
-// TODO : This workflow doesn't make sense, it is affected by decisions on eddy processing
-// about what to do on rev squashing (should be imported to upper workflow)
-workflow squash_wkf {
-    take:
-        dwi_channel
-        rev_channel
-        metadata_channel
-    main:
-        dwi_meta_channel = metadata_channel.map{ it.subList(0, 2) }
-        rev_meta_channel = metadata_channel.map{ [it[0], it[2]] }
-
-        if ( params.multiple_reps ) {
-            grouped_dwi = group_subject_reps(dwi_channel, dwi_meta_channel)
-            cat_eddy(grouped_dwi[0].join(grouped_dwi[1]), "", "preprocess")
-            dwi_channel = cat_eddy.out.image
-            dwi_meta_channel = cat_eddy.out.metadata
-
-            if ( rev_channel ) {
-                grouped_dwi = group_subject_reps(dwi_channel, dwi_meta_channel)
-                cat_eddy_rev(grouped_dwi[0].join(grouped_dwi[1]), "_rev", "preprocess")
-                rev_channel = cat_eddy_rev.out.image
-                rev_meta_channel = cat_eddy_rev.out.metadata
+        if ( params.denoise_t1 ) {
+            if ( params.nlmeans_t1 ) {
+                nlmeans_denoise(t1_channel, "preprocess")
+                t1_channel = nlmeans_denoise.out.image
+            }
+            else {
+                ants_gaussian_denoise(t1_channel, "preprocess")
+                t1_channel = ants_gaussian_denoise.out.image
             }
         }
 
-        squash_dwi(dwi_channel.join(dwi_meta_channel), "", "preprocess")
-        if ( params.eddy_on_rev ) {
-            squash_rev(rev_channel.join(rev_meta_channel), "_rev", "preprocess")
-            rev_channel = squash_rev.out.dwi
-            rev_meta_channel = squash_rev.out.metadata
-        }
-    emit:
-        dwi = squash_dwi.out.dwi
-        rev = rev_channel
-        metadata = squash_dwi.out.metadata.join(rev_meta_channel)
-}
-
-workflow eddy_wkf {
-    take:
-        dwi_channel
-        mask_channel
-        topup_channel
-        topup_b0_channel
-        rev_channel
-        metadata_channel
-    main:
-
-        bvals_channel = dwi_channel.map{ [it[0], "${it[2].getName()}".tokenize(".")[0]] }
-        bvals_channel = join_optional(bvals_channel, topup_channel.map{ [it[0], it[1]] })
-        bvals_channel = join_optional(bvals_channel, rev_channel.map{ [it[0], "${it[2].getName()}".tokenize(".")[0]] })
-
-        metadata_channel = metadata_channel.map{ [it[0], it.subList(1, it.size())] }
-
-        prepare_eddy(bvals_channel.join(dwi_channel.join(rev_channel).map{ [it[0], it.subList(1, it.size())] }).join(metadata_channel))
-
-        dwi_channel = dwi_channel.map{ it.subList(0, 3)}.join(prepare_eddy.out.bvecs.map{ [it[0], it[1].find{ f -> f.simpleName.indexOf("_rev") == -1 }] })
-        rev_channel = rev_channel.map{ it.subList(0, 3)}.join(prepare_eddy.out.bvecs.map{ [it[0], it[1].find{ f -> f.simpleName.indexOf("_rev") >= 0 }] })
-
-        dwi_channel.view()
-
-        if ( params.eddy_on_rev ) {
-            cat_eddy_on_rev(dwi_channel.concat(rev_channel).groupTuple().join(metadata_channel), "_whole", "preprocess")
-            dwi_channel = cat_eddy_on_rev.out.image.join( cat_eddy_on_rev.out.bvals).join(cat_eddy_on_rev.out.bvecs)
-            metadata_channel = cat_eddy_on_rev.out.metadata.map{ [it[0], it.subList(1, it.size())] }
+        if ( params.intensity_normalization ) {
+            n4_denoise_wkf(t1_channel, null, mask_channel, "", params.config.workflow.preprocess.n4_denoise_t1)
+            t1_channel = n4_denoise_wkf.out.image
         }
 
-        if ( params.eddy_pre_denoise ) {
-            dwi_denoise_wkf(dwi_channel.map{ it.subList(0, 2) }, null, metadata_channel)
-            dwi_channel = replace_dwi_file(dwi_channel, dwi_denoise_wkf.out.image)
-            metadata_channel = dwi_denoise_wkf.out.metadata.map{ [it[0], it.subList(1, it.size())] }
+        if ( params.resample_data ) {
+            scilpy_resample_t1(t1_channel.map{ it + ["", ""] }, "preprocess", "lin")
+            t1_channel = scilpy_resample_t1.out.image
         }
-
-        dwi_channel = join_optional(dwi_channel, mask_channel)
-        dwi_channel = join_optional(dwi_channel, topup_channel.map{ [it[0], it[2], it[3]] })
-
-        eddy_in = prepare_eddy.out.config
-        if ( params.use_cuda )
-            eddy_in = eddy_in.join(prepare_eddy.out.slspec)
-        else
-            eddy_in = eddy_in.map{ it + [""] }
-
-        dwi_channel = eddy_in.join(dwi_channel).join(metadata_channel)
-        dwi_channel.view()
-        eddy(dwi_channel, "preprocess")
-        dwi_output = eddy.out.dwi
-
     emit:
-        dwi = dwi_output
-        bvecs = eddy.out.bvecs
-        metadata = eddy.out.metadata
-}
-
-workflow dwi_denoise_wkf {
-    take:
-        dwi_channel
-        mask_channel
-        metadata_channel
-    main:
-        dwi_channel = join_optional(dwi_channel, mask_channel)
-        dwi_denoise(dwi_channel.join(metadata_channel), "preprocess")
-    emit:
-        image = dwi_denoise.out.image
-        metadata = dwi_denoise.out.metadata
-}
-
-workflow n4_denoise_wkf {
-    take:
-        dwi_channel
-        b0_channel
-        mask_channel
-        metadata_channel
-    main:
-        dwi_channel = join_optional(dwi_channel.join(b0_channel), mask_channel)
-        n4_denoise(dwi_channel.join(metadata_channel), "preprocess")
-    emit:
-        image = n4_denoise.out.image
-        metadata = n4_denoise.out.metadata
+        t1 = t1_channel
 }

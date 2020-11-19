@@ -8,12 +8,12 @@ params.masked_t1 = false
 params.rev_is_b0 = true
 
 include { key_from_filename } from "../modules/functions.nf"
-include { prepare_metadata as pmeta_dwi; prepare_metadata as pmeta_rev } from "../modules/io.nf"
+include { prepare_metadata as pmeta_dwi; prepare_metadata as pmeta_rev } from "../modules/processes/io.nf"
 
 workflow load_dataset {
     main:
         root = file(params.data_root)
-        dwi_channel = Channel.fromFilePairs("$root/**/*dwi.{nii.gz,bvals,bvecs}", size: 3, flat: true).map{ [it[0], it[3], it[1], it[2]] }
+        dwi_channel = Channel.fromFilePairs("$root/**/*dwi.{nii.gz,bval,bvec}", size: 3, flat: true).map{ [it[0], it[3], it[1], it[2]] }
         dwi_meta_channel = key_from_filename(Channel.fromPath("$root/**/*dwi.json"), "_").map{ [it[0].substring(0, it[0].lastIndexOf("_"))] + it.subList(1, it.size()) }
         affine_channel = key_from_filename(Channel.fromPath("$root/**/*.affine"), ".")
         anat_channel = key_from_filename(Channel.fromPath("$root/**/*t1.nii.gz"), "_")
@@ -23,7 +23,7 @@ workflow load_dataset {
         if ( params.rev_is_b0 )
             rev_channel = key_from_filename(Channel.fromPath("$root/**/*rev.nii.gz"), "_")
         else {
-            rev_channel = Channel.fromFilePairs("$root/**/*rev.{nii.gz,bvals,bvecs}", size: -1, flat: true).map{
+            rev_channel = Channel.fromFilePairs("$root/**/*rev.{nii.gz,bval,bvec}", size: -1, flat: true).map{
                 (0..3).collect{ i -> i >= it.size() ? null : it[i] }
             }.map{
                 [it[0], it[3], it[1], it[2]]

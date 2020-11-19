@@ -47,10 +47,10 @@ def expand_path( short_path ) {
 def get_size_in_gb( files ) {
     if ( files instanceof List ) {
         println "files was a list ${files}"
-        return files.sum{ f -> f.size() * 1E-9 }
+        return (files.sum{ f -> f.size() / 1073741824 }).GB
     }
     println "files was a simple file ${files}"
-    return files.size() * 1E-9
+    return (files.size() / 1073741824).GB
 }
 
 def prevent_sci_notation ( float_number ) {
@@ -64,7 +64,7 @@ def extract_extension ( f ) {
 def copy_and_rename ( fl, prefix, overwrite ) {
     def ext = extract_extension(fl)
     if ( !file("${file(fl).getParent()}/${prefix}.${ext}").exists() || overwrite == "true" )
-        file(fl).copyTo("${file(fl).getParent()}/${prefix}.${ext}")
+        file(fl).mklink("${file(fl).getParent()}/${prefix}.${ext}", overwrite: true)
     return file("${file(fl).getParent()}/${prefix}.${ext}")
 }
 
@@ -79,14 +79,14 @@ def uniformize_naming ( files_channel, prefix, overwrite ) {
 def replace_naming_to_underscore ( files_channel, prefix, overwrite ) {
     return files_channel.map{ it ->
         [it[0]] + it.subList(1, it.size()).collect{ i ->
-            def suffix = i.getSimpleName().tokenize("_")[-1]
+            def suffix = i.simpleName().tokenize("_")[-1]
             copy_and_rename(i, "${prefix}_${suffix}", overwrite)
         }
     }
 }
 
 def sort_by_name ( channel, reg_list ) {
-    return channel.map{ [it[0]] + it[1].sort{ f -> f_token = file("$f").getSimpleName(); reg_list.find{ pt -> f_token ==~ pt } } }
+    return channel.map{ [it[0]] + it[1].sort{ f -> f_token = file("$f").simpleName(); reg_list.find{ pt -> f_token ==~ pt } } }
 }
 
 def sort_by_extension ( channel, ext_list ) {
