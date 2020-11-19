@@ -6,50 +6,40 @@ params.recons_diamond = true
 params.recons_dti = true
 params.recons_csd = true
 
-include { diamond; dti; csd } from '../modules/reconstruct.nf'
+include { diamond_wkf; dti_wkf; csd_wkf } from '../modules/workflows/reconstruct.nf'
 
 workflow reconstruct_wkf {
     take:
         dwi_channel
         mask_channel
+        metadata_channel
     main:
-        out_channel = Channel.empty()
-        if ( params.recons_dti )
-            out_channel.join(dti_wkf(dwi_channel, mask_channel))
-        if ( params.recons_csd )
-            out_channel.join(csd_wkf(dwi_channel, mask_channel))
-        if ( params.recons_diamond )
-            out_channel.join(diamond_wkf(dwi_channel, mask_channel))
-    emit:
-        out_channel
-}
+        out_channels = []
 
-workflow csd_wkf {
-    take:
-        dwi_channel
-        mask_channel
-    main:
-        csd(dwi_channel.join(mask_channel))
-    emit:
-        csd.out
-}
+        if ( params.recons_dti  ) {
+            dti_wkf(dwi_channel, mask_channel)
+            out_channels += [dti_wkf.out.dti]
+        }
+        else
+            out_channels += [null]
 
-workflow dti_wkf {
-    take:
-        dwi_channel
-        mask_channel
-    main:
-        dti(dwi_channel.join(mask_channel))
-    emit:
-        dti.out
-}
+        if ( params.recons_csd  ) {
+            csd_wkf(dwi_channel, mask_channel)
+            out_channels += [csd_wkf.out.odfs]
+        }
+        else
+            out_channels += [null]
 
-workflow diamond_wkf {
-    take:
-        dwi_channel
-        mask_channel
-    main:
-        diamond(dwi_channel.collect{ it.subTuple(0, 2) }.join(mask_channel))
+        if ( params.recons_diamond  ) {
+            diamond_wkf(dwi_channel, mask_channel)
+            out_channels += [diamond_wkf.out.diamond]
+        }
+        else
+            out_channels += [null]
+
     emit:
-        diamond.out
+        dti = out_channels[0]
+        csd = out_channels[1]
+        diamond = out_channels[2]
+        all = out_channels.subList(1, out_channels.size()).inject(out_channels[0]){ c, n -> n ? c.join(n, remainder: true) : c }
 }

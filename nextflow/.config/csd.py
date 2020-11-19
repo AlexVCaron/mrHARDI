@@ -28,15 +28,15 @@ c.CSD.base_config_file = ""
 # -----------------------------------------------------------------------------
 
 
-c.SphericalDeconvConfiguration.klass = "magic_monkey.config.csd.SphericalDeconvConfiguration"
+c.CSDConfiguration.klass = "magic_monkey.config.csd.CSDConfiguration"
 
-c.SphericalDeconvConfiguration.lmax = 0
+c.CSDConfiguration.lmax = 0
 
-c.SphericalDeconvConfiguration.shells = []
+c.CSDConfiguration.shells = []
 
-c.SphericalDeconvConfiguration.strides = []
+c.CSDConfiguration.strides = []
 
-c.SphericalDeconvConfiguration.algorithm = {
+c.CSDConfiguration.algorithm = {
     "klass": "magic_monkey.traits.csd.CSDAlgorithm",
     "max_iter": 50,
     "non_neg_lambda": 1.0,
