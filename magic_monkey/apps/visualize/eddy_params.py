@@ -73,7 +73,7 @@ class VisualizeEddyParameters(MagicMonkeyBaseApplication):
 
         figure.show()
 
-    def _configure_plot(self, ncols=1, nrows=1, titles=[]):
+    def _configure_plot(self, ncols=1, nrows=1, titles=()):
         if np.any(np.array([ncols, nrows]) > 1):
             return make_subplots(nrows, ncols, subplot_titles=titles), \
                    product(range(1, nrows + 1), range(1, ncols + 1))

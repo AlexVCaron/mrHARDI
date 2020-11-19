@@ -48,6 +48,14 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         dti=("magic_monkey.apps.DTI", 'Perform dti reconstruction'),
         dti_metrics=("magic_monkey.apps.TensorMetrics", 'Compute DTI metrics'),
         eddy=("magic_monkey.apps.Eddy", 'Execute eddy correction'),
+        eddy_viz=(
+            "magic_monkey.apps.VisualizeEddyParameters",
+            "Visualization of eddy's optimization train"
+        ),
+        gif=(
+            "magic_monkey.apps.GifAnimator",
+            'Create at gif from a list of images'
+        ),
         metadata=(
             "magic_monkey.apps.DwiMetadataUtils",
             'Create metadata file(s) describing one or more dwi datasets'
