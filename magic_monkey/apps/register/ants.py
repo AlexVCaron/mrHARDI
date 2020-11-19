@@ -2,7 +2,7 @@ from os import getcwd
 from os.path import basename, join
 
 import numpy as np
-from traitlets import Dict, Enum, Instance, Unicode, Bool
+from traitlets import Dict, Instance, Unicode, Bool
 
 import nibabel as nib
 
@@ -50,14 +50,14 @@ class AntsRegistration(MagicMonkeyBaseApplication):
     configuration = Instance(AntsConfiguration).tag(config=True)
 
     target_images = required_arg(
-        MultipleArguments, traits_args=(Unicode,),
+        MultipleArguments, traits_args=(Unicode,), default_value=None,
         description="List of target images used in the passes of "
                     "registration. Those must equal the number of metric "
                     "evaluations of the resulting output command, including "
                     "the initial transform (if selected)"
     )
     moving_images = required_arg(
-        MultipleArguments, traits_args=(Unicode,),
+        MultipleArguments, traits_args=(Unicode,), default_value=None,
         description="List of moving images used in the passes of "
                     "registration. Those must equal the number of metric "
                     "evaluations of the resulting output command, including "
@@ -199,6 +199,19 @@ References :
 [3] https://stnava.github.io/fMRIANTs/
 """
 
+_mot_aliases = {
+    'target': 'AntsMotionCorrection.target_images',
+    'moving': 'AntsMotionCorrection.moving_images',
+    'out': 'AntsMotionCorrection.output_prefix'
+}
+
+_mot_flags = dict(
+    verbose=(
+        {"AntsMotionCorrection": {'verbose': True}},
+        "Enables verbose output"
+    )
+)
+
 
 class AntsMotionCorrection(MagicMonkeyBaseApplication):
     name = u"ANTs Motion Correction"
@@ -206,19 +219,73 @@ class AntsMotionCorrection(MagicMonkeyBaseApplication):
     configuration = Instance(AntsMotionCorrectionConfiguration).tag(config=True)
 
     target_images = required_arg(
-        MultipleArguments, traits_args=(Unicode,),
+        MultipleArguments, traits_args=(Unicode,), default_value=None,
         description="List of target images (2D or 3D) used in the passes of "
                     "registration. Those must equal the number of metric "
                     "evaluations of the resulting output command"
     )
 
     moving_images = required_arg(
-        MultipleArguments, traits_args=(Unicode,),
+        MultipleArguments, traits_args=(Unicode,), default_value=None,
         description="List of moving images (must be 3D or 4D timeseries) used "
                     "in the passes of registration. Those must equal the "
                     "number of metric evaluations of the resulting output "
                     "command"
     )
 
+    output_prefix = output_prefix_argument()
+
+    verbose = Bool(False).tag(config=True)
+
+    aliases = Dict(_mot_aliases)
+    flags = Dict(_mot_flags)
+
+    def _generate_config_file(self, filename):
+        self.configuration.passes = [
+            AntsRigid(
+                is_motion_correction=True,
+                name_dict={
+                    "smooth": "smoothingSigmas",
+                    "shrink": "shrinkFactors"
+                }
+            ),
+            AntsAffine(
+                is_motion_correction=True,
+                name_dict={
+                    "smooth": "smoothingSigmas",
+                    "shrink": "shrinkFactors"
+                }
+            )
+        ]
+        super()._generate_config_file(filename)
+
     def execute(self):
-        pass
+        current_path = getcwd()
+
+        ants_config_fmt, config_dict = self.configuration.serialize(), {}
+
+        for i, (target, moving) in enumerate(zip(
+                self.target_images, self.moving_images
+        )):
+            config_dict["t{}".format(i)] = target
+            config_dict["m{}".format(i)] = moving
+
+        ants_config_fmt = ants_config_fmt.format(**config_dict)
+
+        ants_config_fmt += " --output [{},{}]".format(
+            self.output_prefix, "{}_warped.nii.gz".format(self.output_prefix)
+        )
+
+        if self.verbose:
+            ants_config_fmt += " --verbose"
+
+        launch_shell_process(
+            "antsMotionCorr {}".format(ants_config_fmt),
+            join(current_path, "{}.log".format(
+                basename(self.output_prefix)
+            ))
+        )
+
+        metadata = load_metadata(self.moving_images[0])
+        if metadata:
+            save_metadata("{}_warped".format(self.output_prefix), metadata)

@@ -2,7 +2,7 @@ from abc import abstractmethod
 from copy import deepcopy
 
 import numpy as np
-from traitlets import Float, Integer, List, TraitType, Unicode, default, Bool
+from traitlets import Float, Integer, List, TraitType, Unicode, default
 from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.ListValuedDict import MagicDict
@@ -109,9 +109,15 @@ class AntsPass(MagicMonkeyConfigurable):
         self._is_motion_corr = is_motion_correction
         self._conv_fmt = self.ants_registration_conv_formatter
         if is_motion_correction:
-            del self.__class__.conv_eps
-            del self.__class__.conv_win
-            self.conv_fmt = self.ants_motion_corr_iter_formatter
+            classes = (self.__class__,) + self.__class__.__bases__
+            for klass in classes:
+                try:
+                    delattr(klass, "conv_eps")
+                    delattr(klass, "conv_win")
+                except AttributeError:
+                    pass
+
+            self._conv_fmt = self.ants_motion_corr_iter_formatter
 
     def _validate(self):
         if not (
@@ -151,7 +157,7 @@ class AntsPass(MagicMonkeyConfigurable):
 
     def ants_motion_corr_iter_formatter(self):
         return "--iterations {}".format(
-            self.conv_max_iter
+            "x".join(str(i) for i in self.conv_max_iter)
         )
 
     def serialize(self, with_convergence=True):
