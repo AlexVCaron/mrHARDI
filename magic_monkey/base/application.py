@@ -640,6 +640,22 @@ def convert_enum(enum, default_value=None, allow_none=False):
     )
 
 
+class Resolution(TraitType):
+    default_value = (1200, 1200)
+
+    def get(self, obj, cls=None):
+        return super().get(obj, cls)
+
+    def validate(self, obj, value):
+        if value is not None:
+            if isinstance(value, (list, tuple, np.array, np.ndarray)):
+                if len(value) == 2:
+                    return value
+
+        if value is not None:
+            self.error(obj, value)
+
+
 class BoundedInt(Integer):
     info_text = ""
 
@@ -781,6 +797,31 @@ class ChoiceEnum(Enum):
             value = super().validate(obj, value)
 
         return value
+
+
+class WorldBoundingBox(TraitType):
+    default_value = None
+
+    def get(self, obj, cls=None):
+        value = super().get(obj, cls)
+
+        if value is not None:
+            return ",".join(str(v) for v in value)
+
+        return value
+
+    def validate(self, obj, value):
+        if isinstance(value, tuple):
+            if len(value) == 6:
+                if all(isinstance(v, float) for v in value):
+                    return value
+
+        if isinstance(value, str):
+            if len(value.split(",")) == 6:
+                return value.split(",")
+
+        if value is not None:
+            self.error(obj, value)
 
 
 class ChoiceList(List):
