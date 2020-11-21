@@ -1,17 +1,33 @@
 BootStrap: library
-From: avcaron/magic_monkey:v1.0-heavy
+From: avcaron/default/magic_monkey_heavy:v1.0
 
+%environment
+        export PYTHON_27_BIN=/mms/dev/python2.7/bin
+        export PYTHON_37_BIN=/mms/dev/python3.7/bin
+        export FSL_BIN=/mms/dev/fsl/bin
+        export MRTRIX_BIN=/mms/dev/mrtrix/bin
+        export DIAMOND_BIN=/mms/dev/diamond/bin
+        export ANTS_BIN=/mms/dev/ants/bin
+
+        export PATH=$ANTS_BIN:$DIAMOND_BIN:$MRTRIX_BIN:$FSL_BIN:$PYTHON_37_BIN:$PYTHON_27_BIN:$PATH
+
+        export CUDA_HOME=/usr/local/cuda-9.1
+        export LD_LIBRARY_PATH=${CUDA_HOME}/lib64
 %setup
         SOURCES=$SINGULARITY_ROOTFS/mms/sources
         MMY_sources=$SOURCES/magic_monkey
+        cwd=$PWD
 
         mkdir -p $MMY_sources
+        mkdir -p /tmp/tempwheel
+        cd ..
 
         pip3 install --upgrade setuptools wheel
-        pip3 wheel --no-deps --wheel-dir=$MMY_sources .
+        python3 setup.py bdist_wheel -b /tmp/tempwheel -d $MMY_sources
         cp requirements.txt $MMY_sources/.
 
-        cp utils.sh $SOURCE/mmy_utils.sh
+        cd $cwd
+        cp utils.sh $SOURCES/mmy_utils.sh
 %post
         . ./mms/sources/mmy_utils.sh
 
@@ -55,6 +71,25 @@ From: avcaron/magic_monkey:v1.0-heavy
 
         if [ ! $scilpy_installed ] || [ ! $mmy_installed ]
         then
+            sed -i 's/main/main restricted universe/g' /etc/apt/sources.list
+            apt-get update && apt-get -y upgrade
+            apt-get -y install build-essential
+            apt-get -y install gfortran
+            apt-get -y install git
+            apt-get -y install libblas-dev
+            apt-get -y install liblapack-dev
+
+            if [ ! $mmy_installed ] || [ ! last_mmy_ver_installed ]
+            then
+                mmy_installer () {
+                    cd $MMY_sources
+                    pip3.7 install -r requirements.txt
+                    pip3.7 install magic_monkey-*-py3-none-any.whl
+                }
+
+                ERR_VAR=$(mmy_installer) && touch $INSTALL/magic_monkey_complete.flag || error_exit
+            fi
+
             if [ ! $scilpy_installed ]
             then
                 scilpy_installer () {
@@ -68,21 +103,18 @@ From: avcaron/magic_monkey:v1.0-heavy
                 ERR_VAR=$(scilpy_installer) && touch $INSTALL/scilpy_complete.flag || error_exit
             fi
 
-            if [ ! $mmy_installed ] || [ ! last_mmy_ver_installed ]
-            then
-                mmy_installer () {
-                    cd $MMY_sources
-                    ls $MMY_sources
-                    pip3.7 install -r requirements.txt
-                    pip3.7 install magic_monkey-*-py3-none-any.whl
-                }
+            update-alternatives --install /usr/bin/python3 python3 /mms/dev/python3.7/bin/python3.7 1
+            update-alternatives --config python3
+            update-alternatives --set python3 /mms/dev/python3.7/bin/python3.7
+            ln -s /usr/share/pyshared/lsb_release.py /mms/dev/python3.7/lib/python3.7/site-packages/lsb_release.py
 
-                ERR_VAR=$(mmy_installer) && touch $INSTALL/magic_monkey_complete.flag || error_exit
-            fi
+            apt-get -y remove build-essential
+            apt-get -y remove gfortran
+            apt-get -y remove git
+            apt-get -y remove g++
+            apt-get -y remove g++-5
+            apt-get -y remove gfortran-5
+            apt-get -y remove git-man
 
-            apt-get clean
-            apt autoremove -y
-
-            remove_if_exists $SOURCES
             exit 0
         fi
