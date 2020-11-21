@@ -95,7 +95,7 @@ def sort_by_extension ( channel, ext_list ) {
 
 def swap_configurations ( base_config, new_config ) {
     if ( new_config && !new_config.empty() )
-        return new_config
+        return new_config.name
     return base_config
 }
 

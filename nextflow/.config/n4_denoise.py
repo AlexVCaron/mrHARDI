@@ -35,8 +35,6 @@ c.N4BiasCorrectionConfiguration.rescale = True
 
 c.N4BiasCorrectionConfiguration.shrink = 1
 
-c.N4BiasCorrectionConfiguration.spline_order = 3
-
 c.N4BiasCorrectionConfiguration.threshold = 1E-6
 
 # Base traits configuration

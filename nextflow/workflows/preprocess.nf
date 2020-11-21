@@ -191,7 +191,7 @@ workflow t1_preprocess_wkf {
         }
 
         if ( params.intensity_normalization ) {
-            n4_denoise_wkf(t1_channel, null, mask_channel, "", params.config.workflow.preprocess.n4_denoise_t1)
+            n4_denoise_wkf(t1_channel, null, null, null, params.config.workflow.preprocess.n4_denoise_t1)
             t1_channel = n4_denoise_wkf.out.image
         }
 

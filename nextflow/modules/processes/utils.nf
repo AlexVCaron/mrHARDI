@@ -215,6 +215,9 @@ process crop_image {
     memory { 2f * get_size_in_gb([image, mask]) }
     errorStrategy "finish"
 
+    publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
+    publishDir "${params.output_root}/${sid}/$caller_name", saveAs: { f -> f.contains("cropped.nii.gz") ? f : null }, mode: params.publish_mode
+
     input:
         tuple val(sid), path(image), file(mask), file(bounding_box), file(metadata)
         val(caller_name)
