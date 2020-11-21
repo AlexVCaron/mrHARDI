@@ -22,7 +22,7 @@ class N4BiasCorrectionConfiguration(MagicMonkeyConfigurable):
         Integer, minlen=1, default_value=[50, 50, 50, 50]
     ).tag(config=True)
     threshold = Float(0.01).tag(config=True)
-    spline_order = BoundedInt(3, 2).tag(config=True)
+    spline_order = BoundedInt(None, 2, 3, allow_none=True).tag(config=True)
     spacing = List(Float).tag(config=True, required=True)
     filter_width = Float(0.15).tag(config=True)
     noise = Float(0.01).tag(config=True)
@@ -40,7 +40,7 @@ class N4BiasCorrectionConfiguration(MagicMonkeyConfigurable):
         pass
 
     def serialize(self, *args, **kwargs):
-        optionals = ['']
+        optionals = []
         if self.rescale:
             optionals.append('--rescale-intensities 1')
 
@@ -49,14 +49,18 @@ class N4BiasCorrectionConfiguration(MagicMonkeyConfigurable):
         else:
             spacing = "x".join(str(s * self.spline_order) for s in self.spacing)
 
+        if self.spline_order:
+            optionals.append(
+                "--bspline-fitting [{},{}]".format(spacing, self.spline_order)
+            )
+
         return " ".join([
             "--shrink-factor {}".format(self.shrink),
             "--convergence [{},{}]".format(
                 "x".join(str(it) for it in self.iterations), self.threshold
             ),
-            "--bspline-fitting [{},{}]".format(spacing, self.spline_order),
             "--histogram-sharpening [{},{},{}]".format(
                 self.filter_width, self.noise, self.bins
             ),
             "--verbose 1"
-        ]) + " ".join(optionals)
+        ] + optionals)

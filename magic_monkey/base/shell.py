@@ -11,7 +11,7 @@ from threading import Thread
 def _threaded_enqueue_pipe(process, pipe, queue):
     try:
         while process.poll() is None:
-            ln = pipe.read(100)
+            ln = pipe.read1()
             if ln:
                 queue.put(ln)
             else:
