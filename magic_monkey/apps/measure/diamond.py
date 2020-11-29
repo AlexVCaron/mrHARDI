@@ -127,17 +127,17 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
     name = u"Diamond Metrics"
     description = _description
     metrics = ChoiceList(
-        copy(_DIAMOND_METRICS), DiamondMetricsEnum, copy(_DIAMOND_METRICS),
+        copy(_DIAMOND_METRICS), DiamondMetricsEnum(), copy(_DIAMOND_METRICS),
         True, help="Basic diamond metrics to run on the outputs"
     ).tag(config=True)
     mmetrics = ChoiceList(
-        copy(_MAGIC_DIAMOND_METRICS), MagicDiamondMetricsEnum, [], True,
+        copy(_MAGIC_DIAMOND_METRICS), MagicDiamondMetricsEnum(), [], True,
         help="Magic diamond metrics to run on the outputs "
              "(Requires tensor valued input, check your input "
              "prefix to assure it respects convection)"
     ).tag(config=True)
     opt_metrics = ChoiceList(
-        copy(_OPTIONAL_METRICS), DiamondOptionalMetricsEnum, [], True,
+        copy(_OPTIONAL_METRICS), DiamondOptionalMetricsEnum(), [], True,
         help="Optional diamond metrics to run on the outputs"
     ).tag(config=True)
 
@@ -173,10 +173,10 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
         False, help="Save the final data cache of the metrics computing"
     ).tag(config=True)
 
-    cache = Dict({})
+    cache = Dict(default_value={})
 
-    aliases = Dict(_aliases)
-    flags = Dict(_flags)
+    aliases = Dict(default_value=_aliases)
+    flags = Dict(default_value=_flags)
 
     def _validate_required(self):
         super()._validate_required()

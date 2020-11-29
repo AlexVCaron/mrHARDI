@@ -21,7 +21,9 @@ def vec_to_tens(dt, convention=(0, 1, 2, 3, 4, 5)):
     ]
 
 
-def compute_eigenvalues(tensors, mask, convention=(0, 1, 2, 3, 4, 5)):
+def compute_eigenvalues(
+    tensors, mask, convention=(0, 1, 2, 3, 4, 5), reorder=True
+):
     vtt = partial(vec_to_tens, convention=convention)
     evals, evecs = zeros(mask.shape + (3,)), zeros(mask.shape + (3, 3))
     evals[mask], evecs[mask] = eigh(
@@ -31,7 +33,10 @@ def compute_eigenvalues(tensors, mask, convention=(0, 1, 2, 3, 4, 5)):
     neg_evals = evals < 0
     evals[neg_evals] = 0.
 
-    return flip(evals, -1), moveaxis(flip(evecs, -1), -2, -1)
+    if reorder:
+        evals, evecs = flip(evals, -1), moveaxis(flip(evecs, -1), -2, -1)
+
+    return evals, evecs
 
 
 def compute_haeberlen(tensors, mask):

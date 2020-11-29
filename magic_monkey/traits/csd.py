@@ -15,7 +15,7 @@ class SphericalDeconvAlgorithm(MagicMonkeyConfigurable):
         pass
 
     cli_name = Unicode()
-    responses = List(Unicode)
+    responses = List(Unicode())
     non_neg_lambda = Float(1.).tag(config=True)
     norm_lambda = Float(1.).tag(config=True)
 
@@ -29,7 +29,7 @@ class SphericalDeconvAlgorithm(MagicMonkeyConfigurable):
 class CSDAlgorithm(SphericalDeconvAlgorithm):
     threshold = Float(0.).tag(config=True)
     max_iter = Integer(50).tag(config=True)
-    responses = List(Unicode, ["wm"])
+    responses = List(Unicode(), ["wm"])
     multishell = False
 
     @default('cli_name')
@@ -46,7 +46,7 @@ class CSDAlgorithm(SphericalDeconvAlgorithm):
 
 class MSMTCSDAlgorithm(SphericalDeconvAlgorithm):
     predicted_signal = Bool(False).tag(config=True)
-    responses = List(Unicode, ["wm", "gm", "csf"])
+    responses = List(Unicode(), ["wm", "gm", "csf"])
     multishell = True
 
     @default('cli_name')
@@ -64,7 +64,7 @@ class MSMTCSDAlgorithm(SphericalDeconvAlgorithm):
 
 class ResponseAlgorithm(MagicMonkeyConfigurable):
     cli_name = Unicode()
-    responses = List(Unicode)
+    responses = List(Unicode())
     multishell = False
 
     def _validate(self):

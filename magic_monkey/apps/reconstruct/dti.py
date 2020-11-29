@@ -72,8 +72,8 @@ class DTI(MagicMonkeyBaseApplication):
         help="Outputs the kurtosis moment estimations"
     ).tag(config=True)
 
-    aliases = Dict(_aliases)
-    flags = Dict(_flags)
+    aliases = Dict(default_value=_aliases)
+    flags = Dict(default_value=_flags)
 
     def execute(self):
         current_path = getcwd()

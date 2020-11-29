@@ -48,7 +48,7 @@ class TensorMetrics(MagicMonkeyBaseApplication):
     name = u"DTI Metrics"
     description = _description
     metrics = ChoiceList(
-        copy(_TENSOR_METRICS), TensorMetricsEnum, copy(_TENSOR_METRICS),
+        copy(_TENSOR_METRICS), TensorMetricsEnum(), copy(_TENSOR_METRICS),
         True, help="Tensor metrics to run on the outputs"
     ).tag(config=True)
 
@@ -63,10 +63,10 @@ class TensorMetrics(MagicMonkeyBaseApplication):
         False, help="Output color metrics if available"
     ).tag(config=True)
 
-    cache = Dict({})
+    cache = Dict(default_value={})
 
-    aliases = Dict(_aliases)
-    flags = Dict(_flags)
+    aliases = Dict(default_value=_aliases)
+    flags = Dict(default_value=_flags)
 
     def execute(self):
         import magic_monkey.traits.metrics.dti as metrics_module

@@ -2,9 +2,10 @@ from abc import abstractmethod
 from typing import Generator
 
 import nibabel as nib
-from numpy import loadtxt, ones, ubyte, absolute, zeros, sign, array
+from numpy import loadtxt, ones, ubyte, sign, array
 from numpy.linalg import eigh
 
+from magic_monkey.compute.math.linalg import color
 from magic_monkey.compute.math.tensor import compute_eigenvalues
 
 
@@ -106,9 +107,8 @@ class BaseMetric:
 
         mask = self.get_mask()
         metric = self.load_from_cache(add_keys + (name,))
-        cmetric = zeros(self._get_shape() + (3,))
 
-        cmetric[mask] = absolute(metric[mask, None] * evecs[mask, 0, :])
+        cmetric = color(metric, evecs, mask)
         self.cache[cname] = cmetric
 
         nib.save(

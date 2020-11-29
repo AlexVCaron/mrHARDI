@@ -105,7 +105,7 @@ class DwiMetadataUtilsConfiguration(MagicMonkeyConfigurable):
         return _meta_flags
 
     direction = ChoiceList(
-        [d.name for d in Direction], Unicode,
+        [d.name for d in Direction], Unicode(),
         help="List of phase encoding directions of the input datasets. "
              "There can be N directions, with N either :\n"
              "   - 1 : the same direction will apply to all datasets\n"
@@ -113,7 +113,7 @@ class DwiMetadataUtilsConfiguration(MagicMonkeyConfigurable):
     ).tag(config=True, required=True)
 
     slice_direction = ChoiceList(
-        [d.name for d in Direction], Unicode,
+        [d.name for d in Direction], Unicode(),
         help="List of acquisition directions of the input datasets. There can "
              "be N directions, with N either :\n"
              "   - 1 : the same direction will apply to all datasets\n"

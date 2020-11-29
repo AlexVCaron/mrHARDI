@@ -17,9 +17,9 @@ class CSDConfiguration(MagicMonkeyConfigurable):
         klass=SphericalDeconvAlgorithm
     ).tag(config=True)
 
-    shells = List(Float).tag(config=True)
+    shells = List(Float()).tag(config=True)
     lmax = Integer().tag(config=True)
-    strides = List(Integer).tag(config=True)
+    strides = List(Integer()).tag(config=True)
 
     @default("app_aliases")
     def _app_aliases_default(self):
@@ -60,7 +60,7 @@ class FiberResponseConfiguration(MagicMonkeyConfigurable):
         klass=ResponseAlgorithm
     ).tag(config=True)
 
-    shells = List(Float).tag(config=True)
+    shells = List(Float()).tag(config=True)
     lmax = Integer().tag(config=True)
 
     @default("app_aliases")

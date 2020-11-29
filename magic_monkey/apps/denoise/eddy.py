@@ -108,8 +108,8 @@ class Eddy(MagicMonkeyBaseApplication):
 
     debug = Bool(False).tag(config=True)
 
-    aliases = Dict(_aliases)
-    flags = Dict(_flags)
+    aliases = Dict(default_value=_aliases)
+    flags = Dict(default_value=_flags)
 
     def _validate_required(self):
         super()._validate_required()

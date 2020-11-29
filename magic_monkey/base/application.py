@@ -1,6 +1,7 @@
 import json
 import sys
 from abc import abstractmethod
+from collections.abc import Iterable
 from copy import copy
 from importlib import import_module
 from multiprocessing import cpu_count
@@ -57,7 +58,7 @@ class MagicMonkeyBaseApplication(Application):
     aliases = Dict()
     flags = Dict()
 
-    config_files = List(Unicode, [])
+    config_files = List(Unicode(), [])
     configuration = Instance(Configurable, allow_none=True)
 
     output_config = Unicode(
@@ -73,7 +74,7 @@ class MagicMonkeyBaseApplication(Application):
     def _config_files_default(self):
         return [self.current_config]
 
-    config_file_paths = List(Unicode, [])
+    config_file_paths = List(Unicode(), [])
 
     metadata = Unicode("").tag(config=True)
 
@@ -531,7 +532,7 @@ class MagicMonkeyBaseApplication(Application):
         return trait, cls
 
     @classmethod
-    def class_get_trait_help(cls, trait, inst=None):
+    def class_get_trait_help(cls, trait, inst=None, helptext=None):
         """Get the help string for a single trait.
 
         If `inst` is given, it's current trait values will be used in place of
@@ -647,7 +648,7 @@ class Resolution(TraitType):
 
     def validate(self, obj, value):
         if value is not None:
-            if isinstance(value, (list, tuple, np.array, np.ndarray)):
+            if isinstance(value, (list, tuple, type(np.array), np.ndarray)):
                 if len(value) == 2:
                     return value
 
@@ -675,8 +676,8 @@ class BoundedInt(Integer):
 
 class MagicMonkeyConfigurable(Configurable):
     name = Unicode()
-    app_aliases = Dict({})
-    app_flags = Dict({})
+    app_aliases = Dict(default_value={})
+    app_flags = Dict(default_value={})
     klass = Unicode().tag(config=True)
 
     @default('klass')
@@ -713,7 +714,7 @@ class MagicMonkeyConfigurable(Configurable):
         ConfigurationWriter().write_configuration_file(filename, self)
 
     @classmethod
-    def class_config_section(cls):
+    def class_config_section(cls, classes=None):
         return ConfigurationWriter().class_config_section(cls)
 
     def _config_section(self):
@@ -772,13 +773,18 @@ class AnyInt(Integer):
 
 
 class MultipleArguments(List):
-    def __init__(self, trait, default_value=None, **kwargs):
+    def __init__(self, trait, default_value=Undefined, **kwargs):
         self.item_trait = trait
         super().__init__(trait=trait, default_value=default_value, **kwargs)
+
+    def _unpack_iter(self, value):
+        return [vv for v in value for vv in v.split(",")]
 
     def validate(self, obj, value):
         if isinstance(value, str):
             value = value.split(",")
+        elif isinstance(value, Iterable):
+            value = self._unpack_iter(value)
 
         return super().validate(obj, value)
 
@@ -798,26 +804,27 @@ class ChoiceEnum(Enum):
         return value
 
 
-class WorldBoundingBox(TraitType):
+class BoundingBox(TraitType):
     default_value = None
 
     def get(self, obj, cls=None):
         value = super().get(obj, cls)
 
         if value is not None:
-            return ",".join(str(v) for v in value)
+            if isinstance(value, str):
+                return value.split(",")
 
         return value
 
     def validate(self, obj, value):
-        if isinstance(value, tuple):
+        if isinstance(value, (tuple, list)):
             if len(value) == 6:
-                if all(isinstance(v, float) for v in value):
+                if all(isinstance(v, (float, int)) for v in value):
                     return value
 
         if isinstance(value, str):
             if len(value.split(",")) == 6:
-                return value.split(",")
+                return self._validate(obj, value.split(","))
 
         if value is not None:
             self.error(obj, value)
@@ -825,7 +832,7 @@ class WorldBoundingBox(TraitType):
 
 class ChoiceList(List):
     def __init__(
-        self, choices, trait=None, default_value=None,
+        self, choices, trait=None, default_value=Undefined,
         allow_all=False, minlen=0, maxlen=sys.maxsize, **kwargs
     ):
         self.choices = choices
@@ -888,7 +895,7 @@ class ChoiceList(List):
 
 class Vector3D(List):
     def __init__(self, **kwargs):
-        super().__init__(trait=Float, minlen=3, maxlen=3, **kwargs)
+        super().__init__(trait=Float(), minlen=3, maxlen=3, **kwargs)
 
 
 _out_pre_help_line = "Output directory and prefix for files. Directory "\

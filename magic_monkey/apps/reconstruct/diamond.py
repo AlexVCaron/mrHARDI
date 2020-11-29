@@ -67,7 +67,7 @@ class Diamond(MagicMonkeyBaseApplication):
 
     n_threads = nthreads_arg(ignore_write=True)
 
-    aliases = Dict(_aliases)
+    aliases = Dict(default_value=_aliases)
 
     def _validate_required(self):
         if self.model_selection:

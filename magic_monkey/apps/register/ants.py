@@ -50,14 +50,14 @@ class AntsRegistration(MagicMonkeyBaseApplication):
     configuration = Instance(AntsConfiguration).tag(config=True)
 
     target_images = required_arg(
-        MultipleArguments, traits_args=(Unicode,), default_value=None,
+        MultipleArguments, traits_args=(Unicode(),),
         description="List of target images used in the passes of "
                     "registration. Those must equal the number of metric "
                     "evaluations of the resulting output command, including "
                     "the initial transform (if selected)"
     )
     moving_images = required_arg(
-        MultipleArguments, traits_args=(Unicode,), default_value=None,
+        MultipleArguments, traits_args=(Unicode(),),
         description="List of moving images used in the passes of "
                     "registration. Those must equal the number of metric "
                     "evaluations of the resulting output command, including "
@@ -68,8 +68,8 @@ class AntsRegistration(MagicMonkeyBaseApplication):
 
     verbose = Bool(False).tag(config=True)
 
-    aliases = Dict(_reg_aliases)
-    flags = Dict(_reg_flags)
+    aliases = Dict(default_value=_reg_aliases)
+    flags = Dict(default_value=_reg_flags)
 
     def _generate_config_file(self, filename):
         self.configuration.passes = [
@@ -139,13 +139,13 @@ class AntsTransform(MagicMonkeyBaseApplication):
     ).tag(config=True, ignore_write=True)
 
     transformations = MultipleArguments(
-        Unicode, help="List of transformations to apply after initial "
+        Unicode(), help="List of transformations to apply after initial "
                       "rigid registration (and affine if supplied)"
     ).tag(config=True, ignore_write=True)
 
     output = output_file_argument()
 
-    aliases = Dict(_tr_aliases)
+    aliases = Dict(default_value=_tr_aliases)
 
     def execute(self):
         current_path = getcwd()
@@ -219,14 +219,14 @@ class AntsMotionCorrection(MagicMonkeyBaseApplication):
     configuration = Instance(AntsMotionCorrectionConfiguration).tag(config=True)
 
     target_images = required_arg(
-        MultipleArguments, traits_args=(Unicode,), default_value=None,
+        MultipleArguments, traits_args=(Unicode(),),
         description="List of target images (2D or 3D) used in the passes of "
                     "registration. Those must equal the number of metric "
                     "evaluations of the resulting output command"
     )
 
     moving_images = required_arg(
-        MultipleArguments, traits_args=(Unicode,), default_value=None,
+        MultipleArguments, traits_args=(Unicode(),),
         description="List of moving images (must be 3D or 4D timeseries) used "
                     "in the passes of registration. Those must equal the "
                     "number of metric evaluations of the resulting output "
@@ -237,8 +237,8 @@ class AntsMotionCorrection(MagicMonkeyBaseApplication):
 
     verbose = Bool(False).tag(config=True)
 
-    aliases = Dict(_mot_aliases)
-    flags = Dict(_mot_flags)
+    aliases = Dict(default_value=_mot_aliases)
+    flags = Dict(default_value=_mot_flags)
 
     def _generate_config_file(self, filename):
         self.configuration.passes = [
