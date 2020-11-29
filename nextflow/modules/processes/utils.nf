@@ -215,6 +215,9 @@ process crop_image {
     memory { 2f * get_size_in_gb([image, mask]) }
     errorStrategy "finish"
 
+    publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
+    publishDir "${params.output_root}/${sid}/$caller_name", saveAs: { f -> f.contains("cropped.nii.gz") ? f : null }, mode: params.publish_mode
+
     input:
         tuple val(sid), path(image), file(mask), file(bounding_box), file(metadata)
         val(caller_name)
@@ -224,30 +227,51 @@ process crop_image {
         tuple val(sid), path("${mask.simpleName}_cropped.nii.gz"), emit: mask, optional: true
     script:
         args = ""
-        after_script = ""
+        after_script = []
 
-        if ( !bounding_box.empty() )
+        if ( !bounding_box.empty() ) {
             args += "--input_bbox $bounding_box"
+            after_script += ["magic-monkey fit2box --in ${image.simpleName}_cropped.nii.gz --out ${image.simpleName}_cropped.nii.gz --pbox $bounding_box"]
+        }
         else
             args += "--output_bbox ${image.simpleName}_bbox.pkl"
 
         if ( !mask.empty() ) {
-            after_script = "scil_crop_volume.py $mask ${mask.simpleName}_cropped.nii.gz -f"
+            mask_script = "magic-monkey fit2box --in $mask --out ${mask.simpleName}_cropped.nii.gz"
             if ( !bounding_box.empty() )
-                after_script += " --input_bbox $bounding_box"
+                mask_script += " --pbox $bounding_box"
             else
-                after_script += " --input_bbox ${image.simpleName}_bbox.pkl"
-            after_script += "\nscil_image_math.py convert ${mask.simpleName}_cropped.nii.gz ${mask.simpleName}_cropped.nii.gz --data_type uint8 -f"
+                mask_script += " --pbox ${image.simpleName}_bbox.pkl"
+            after_script += [mask_script]
+            after_script += ["scil_image_math.py convert ${mask.simpleName}_cropped.nii.gz ${mask.simpleName}_cropped.nii.gz --data_type uint8 -f"]
         }
 
         if ( !metadata.empty() )
-            after_script += "\nmagic-monkey metadata --in ${image.getSimpleName()}_cropped.nii.gz --update_affine --metadata $metadata"
+            after_script += ["magic-monkey metadata --in ${image.getSimpleName()}_cropped.nii.gz --update_affine --metadata $metadata"]
 
         """
         export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
         export OMP_NUM_THREADS=1
         export OPENBLAS_NUM_THREADS=1
         scil_crop_volume.py $image ${image.simpleName}_cropped.nii.gz $args
-        $after_script
+        ${after_script.join('\n')}
         """
+}
+
+process fit_bounding_box {
+    memory { get_size_in_gb([image]) }
+    errorStrategy "finish"
+
+    publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
+    publishDir "${params.output_root}/${sid}/$caller_name", saveAs: { f -> f.contains("cropped.nii.gz") ? f : null }, mode: params.publish_mode
+
+    input:
+        tuple val(sid), file(image), file(bounding_box)
+        val(caller_name)
+    output:
+        tuple val(sid), path("${image.simpleName}_bbox.pkl"), emit: bbox, optional: true
+    script:
+    """
+    magic-monkey fitbox --in $image --pbox $bounding_box --out ${image.simpleName}_bbox
+    """
 }

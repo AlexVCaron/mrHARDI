@@ -2,9 +2,10 @@
 
 nextflow.enable.dsl=2
 
-params.recons_diamond = true
 params.recons_dti = true
 params.recons_csd = true
+params.recons_diamond = true
+
 
 include { diamond_wkf; dti_wkf; csd_wkf } from '../modules/workflows/reconstruct.nf'
 

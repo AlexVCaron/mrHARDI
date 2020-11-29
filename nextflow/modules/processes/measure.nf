@@ -2,10 +2,13 @@
 
 nextflow.enable.dsl=2
 
-include { get_size_in_gb; swap_configurations } from '../functions.nf'
+params.verbose_outputs = true
+
 
 params.config.measure.diamond = "$projectDir/.config/diamond_metrics.py"
 params.config.measure.dti = "$projectDir/.config/dti_metrics.py"
+
+include { get_size_in_gb; swap_configurations } from '../functions.nf'
 
 process dti_metrics {
     memory { 2f * get_size_in_gb([mask] + (data instanceof List ? data : [data])) }
@@ -66,7 +69,9 @@ process scil_dti_and_metrics {
         export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=${avail_threads + remainder_threads}
         export OMP_NUM_THREADS=$avail_threads
         export OPENBLAS_NUM_THREADS=1
-        scil_compute_dti_metrics.py $dwi $bval $bvec --mask $mask -f $args
+        mrconvert -strides 1,2,3,4 -export_grad_fsl dwi4scil.bvec dwi4scil.bval -fslgrad $bvec $bval $dwi dwi4scil.nii.gz
+        mrconvert -datatype uint8 -strides 1,2,3,4 $mask mask4scil.nii.gz
+        scil_compute_dti_metrics.py dwi4scil.nii.gz dwi4scil.bval dwi4scil.bvec --mask mask4scil.nii.gz -f $args
         """
 }
 

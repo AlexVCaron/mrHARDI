@@ -2,16 +2,11 @@
 
 nextflow.enable.dsl=2
 
-params.masked_t1 = true
-params.t1mask2dwi_registration = true
-params.topup_correction = true
-params.topup_mask = true
-params.eddy_correction = true
-params.post_eddy_registration = true
-params.gaussian_noise_correction = true
-params.intensity_normalization = true
-params.rev_is_b0 = true
 params.multiple_reps = false
+params.eddy_on_rev = true
+params.use_cuda = false
+// params.eddy_pre_denoise = true
+
 
 params.config.workflow.preprocess.t12b0mask_registration = file("$projectDir/.config/.workflow/t12b0_mask_registration.py")
 params.config.workflow.preprocess.post_eddy_registration = file("$projectDir/.config/.workflow/post_eddy_ants_registration.py")
@@ -187,9 +182,7 @@ workflow eddy_wkf {
         else
             eddy_in = eddy_in.map{ it + [""] }
 
-        dwi_channel = eddy_in.join(dwi_channel).join(metadata_channel)
-        dwi_channel.view()
-        eddy(dwi_channel, "preprocess")
+        eddy(eddy_in.join(dwi_channel).join(metadata_channel), "preprocess")
         check_dwi_conformity(eddy.out.dwi.join(eddy.out.bval).join(eddy.out.bvec).join(eddy.out.metadata), "fix")
     emit:
         dwi = check_dwi_conformity.out.dwi.map{ [it[0], it[1]] }

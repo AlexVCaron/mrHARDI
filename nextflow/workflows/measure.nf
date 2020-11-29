@@ -2,10 +2,11 @@
 
 nextflow.enable.dsl=2
 
-params.recons_diamond = true
+params.reconstruct_use_mrtrix = false
 params.recons_dti = true
 params.recons_csd = true
-params.reconstruct_use_mrtrix = false
+params.recons_diamond = true
+
 
 params.config.workflow.dti_for_odf_metrics = file("$projectDir/.config/.workflow/dti_for_odf_metrics.py")
 

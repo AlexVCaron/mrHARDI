@@ -21,7 +21,7 @@ process prepare_metadata {
     input:
         tuple val(sid), path(image), file(metadata), val(reverse)
     output:
-        tuple val(sid), path("${sid}*_metadata.py")
+        tuple val(sid), path("${image.simpleName}_metadata.py")
     script:
         args = ""
         if ( !metadata.empty() )

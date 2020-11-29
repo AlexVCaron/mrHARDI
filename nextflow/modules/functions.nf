@@ -63,6 +63,7 @@ def extract_extension ( f ) {
 
 def copy_and_rename ( fl, prefix, overwrite ) {
     def ext = extract_extension(fl)
+    println "I received $fl"
     if ( !file("${file(fl).getParent()}/${prefix}.${ext}").exists() || overwrite == "true" )
         file(fl).mklink("${file(fl).getParent()}/${prefix}.${ext}", overwrite: true)
     return file("${file(fl).getParent()}/${prefix}.${ext}")
@@ -95,7 +96,7 @@ def sort_by_extension ( channel, ext_list ) {
 
 def swap_configurations ( base_config, new_config ) {
     if ( new_config && !new_config.empty() )
-        return new_config
+        return new_config.name
     return base_config
 }
 
