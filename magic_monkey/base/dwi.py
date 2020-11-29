@@ -68,12 +68,12 @@ def non_zero_bvecs(prefix):
 class DwiMetadata(MagicMonkeyConfigurable):
     n = Integer().tag(config=True)
     n_excitations = Integer().tag(config=True)
-    directions = List(Vector3D, allow_none=True).tag(config=True)
+    directions = List(Vector3D(), allow_none=True).tag(config=True)
 
     is_tensor_valued = Bool(False, allow_none=True).tag(config=True)
 
     acquisition_types = ChoiceList(
-        [d.name for d in AcquisitionType], Unicode,
+        [d.name for d in AcquisitionType], Unicode(),
         help="List of acquisition types of the parts of the input dataset. "
              "A list can be supplied and a series of slices into the dataset "
              "to describe a multi-tensor-valued image."
@@ -83,16 +83,16 @@ class DwiMetadata(MagicMonkeyConfigurable):
     ).tag(config=True)
 
     is_multiband = Bool(False, allow_none=True).tag(config=True)
-    multiband = List(List(AnyInt), allow_none=True).tag(config=True)
+    multiband = List(List(AnyInt()), allow_none=True).tag(config=True)
     multiband_corrected = Bool(False, allow_none=True).tag(config=True)
 
     affine = List(
-        List(Float, minlen=4, maxlen=4), minlen=4, maxlen=4
+        List(Float(), minlen=4, maxlen=4), minlen=4, maxlen=4
     ).tag(config=True)
 
     dwell = Float().tag(config=True)
 
-    topup_indexes = List(Integer, allow_none=True).tag(config=True)
+    topup_indexes = List(Integer(), allow_none=True).tag(config=True)
 
     def get_spacing(self):
         return np.absolute(np.linalg.eigvalsh(np.array(self.affine)[:3, :3])).tolist()

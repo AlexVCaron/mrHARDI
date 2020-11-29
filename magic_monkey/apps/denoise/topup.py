@@ -1,4 +1,5 @@
-from os import chmod
+from os import chmod, getcwd
+from os.path import join, basename
 
 import numpy as np
 from traitlets import Dict, Instance, Unicode, Enum, Bool
@@ -10,6 +11,7 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            required_arg, required_file)
 from magic_monkey.base.fsl import prepare_acqp_file, prepare_topup_index
 from magic_monkey.base.dwi import load_metadata, save_metadata
+from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.topup import TopupConfiguration
 
 _aliases = dict(
@@ -55,11 +57,11 @@ class Topup(MagicMonkeyBaseApplication):
     bvals = required_arg(
         MultipleArguments, [],
         "B-values of the volumes used for Topup correction",
-        traits_args=(Unicode,)
+        traits_args=(Unicode(),)
     )
 
     rev_bvals = MultipleArguments(
-        Unicode, [],
+        Unicode(), [],
         help="B-values for the reverse acquisitions used for deformation "
              "correction, will be paired with same index b-values from the "
              "bvals argument. Acquisition direction will be determined "
@@ -88,8 +90,8 @@ class Topup(MagicMonkeyBaseApplication):
 
     verbose = Bool().tag(config=True)
 
-    aliases = Dict(_aliases)
-    flags = Dict(_flags)
+    aliases = Dict(default_value=_aliases)
+    flags = Dict(default_value=_flags)
 
     def execute(self):
         metadata = load_metadata(self.b0_volumes)
@@ -102,8 +104,9 @@ class Topup(MagicMonkeyBaseApplication):
 
         bvals = [np.loadtxt(bvs) for bvs in self.bvals]
         rev_bvals = [np.loadtxt(bvs) for bvs in self.rev_bvals]
-        bvals = np.ravel(np.column_stack((bvals, rev_bvals)))
-        rev_bvals = np.ravel(np.column_stack(rev_bvals))
+        if rev_bvals:
+            bvals = np.ravel(np.column_stack((bvals, rev_bvals)))
+            rev_bvals = np.ravel(np.column_stack(rev_bvals))
 
         indexes = prepare_topup_index(
             bvals, 1, strategy=self.indexing_strategy,
@@ -168,3 +171,89 @@ class Topup(MagicMonkeyBaseApplication):
         chmod("{}_script.sh".format(self.output_prefix), 0o0777)
 
         save_metadata(self.output_prefix, metadata)
+
+
+_apply_topup_aliases = dict(
+    dwi="ApplyTopup.dwi",
+    rev="ApplyTopup.rev",
+    acqp="ApplyTopup.acquisition_file",
+    topup="ApplyTopup.topup_prefix",
+    out="ApplyTopup.output_prefix"
+)
+
+
+class ApplyTopup(MagicMonkeyBaseApplication):
+    name = u"Apply Topup"
+    description = "Apply a Topup transformation to an image"
+
+    topup_prefix = required_file(
+        description="Path and file prefix of the files corresponding "
+                    "to the transformation calculated by Topup"
+    )
+
+    acquisition_file = required_file(
+        description="Acquisition file describing the "
+                    "orientation and dwell of the volumes"
+    )
+
+    dwi = required_arg(
+        MultipleArguments, traits_args=(Unicode(),),
+        description="Input image or list of images"
+    )
+
+    rev = MultipleArguments(
+        Unicode(), default_value=[],
+        help="Input reverse encoded image or list of images"
+    ).tag(config=True)
+
+    output_prefix = output_prefix_argument()
+
+    resampling = Enum(
+        ["jac", "lsr"], "jac", help="Resampling method"
+    ).tag(config=True)
+
+    interpolation = Enum(
+        ["trilinear", "spline"], "spline",
+        help="Interpolation method, only used with jacobian resampling (jac)"
+    ).tag(Config=True)
+
+    dtype = Enum(
+        ["char", "short", "int", "float", "double"], None, allow_none=True,
+        help="Force output type. If none supplied, "
+             "will be the same as the input type."
+    ).tag(config=True)
+
+    aliases = Dict(default_value=_apply_topup_aliases)
+
+    def execute(self):
+        working_dir = getcwd()
+
+        args = "--topup={} --out={} --method={} --interp={}".format(
+            self.topup_prefix, self.output_prefix,
+            self.resampling, self.interpolation
+        )
+
+        args = "--imain={} {}".format(",".join(self.dwi + self.rev), args)
+
+        indexes = np.concatenate(tuple(
+            load_metadata(img).topup_indexes for img in self.dwi + self.rev
+        ))
+        args += " --inindex={}".format(
+            ",".join(str(i) for i in indexes.tolist())
+        )
+        args += " --datain={}".format(self.acquisition_file)
+
+        if self.dtype:
+            args += " --datatype={}".format(self.dtype)
+
+        metadata = load_metadata(self.dwi[0])
+        for img in self.dwi[1:]:
+            metadata.extend(load_metadata(img))
+
+        save_metadata(self.output_prefix, metadata)
+
+        launch_shell_process(
+            'applytopup {}'.format(args), join(working_dir, "{}.log".format(
+                basename(self.output_prefix)
+            ))
+        )

@@ -140,9 +140,9 @@ class AntsPass(MagicMonkeyConfigurable):
     ).tag(config=True)
     conv_eps = Float(1E-6).tag(config=True)
     conv_win = Integer(10).tag(config=True)
-    conv_max_iter = List(Integer).tag(config=True)
-    shrinks = List(Integer, [8, 4, 2, 1]).tag(config=True)
-    smoothing = List(Integer, [3, 2, 1, 0]).tag(config=True)
+    conv_max_iter = List(Integer()).tag(config=True)
+    shrinks = List(Integer(), [8, 4, 2, 1]).tag(config=True)
+    smoothing = List(Integer(), [3, 2, 1, 0]).tag(config=True)
 
     @abstractmethod
     def get_time_restriction(self, ndim):
@@ -202,8 +202,8 @@ class AntsAffine(AntsPass):
         mat = np.ones((ndim, ndim), dtype=int)
         mat[:, ndim - 1] = 0
         mat[-1, :] = 0
-        trans = ["1" for _ in range(ndim - 1)] + ["0"]
-        return "x".join(mat.astype(str).flatten().tolist() + trans)
+        trans = list("1" for _ in range(ndim - 1)) + ["0"]
+        return "x".join(list(mat.astype(str).flatten().tolist()) + trans)
 
     @default("metrics")
     def _metrics_default(self):

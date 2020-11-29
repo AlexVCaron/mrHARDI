@@ -19,7 +19,7 @@ _aliases = {
 class VisualizeEddyParameters(MagicMonkeyBaseApplication):
     input_prefix = prefix_argument("Prefix of eddy outputs")
 
-    aliases = Dict(_aliases)
+    aliases = Dict(default_value=_aliases)
 
     def execute(self):
         dwi_parameters, dwi_mss = self._load_parameters("dwi")

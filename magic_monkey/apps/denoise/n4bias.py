@@ -52,8 +52,8 @@ class N4BiasCorrection(MagicMonkeyBaseApplication):
         False, help="If true, outputs the estimated bias field"
     ).tag(config=True)
 
-    aliases = Dict(_aliases)
-    flags = Dict(_flags)
+    aliases = Dict(default_value=_aliases)
+    flags = Dict(default_value=_flags)
 
     def execute(self):
         image = nib.load(self.image)

@@ -68,11 +68,11 @@ class CSD(MagicMonkeyBaseApplication):
     bvecs = required_file(description="Input b-vectors")
 
     responses = required_arg(
-        MultipleArguments, default_value=None,
+        MultipleArguments,
         description="Response filenames for the different tissues "
                     "(depending on the algorithm of choice), must be "
                     "in order [wm, gm, csf] (if using MSMT)",
-        traits_args=(Unicode,), traits_kwargs=dict(minlen=1, maxlen=3)
+        traits_args=(Unicode(),), traits_kwargs=dict(minlen=1, maxlen=3)
     )
 
     output_prefix = output_prefix_argument()
@@ -92,7 +92,7 @@ class CSD(MagicMonkeyBaseApplication):
 
     n_threads = nthreads_arg()
 
-    aliases = Dict(_csd_aliases)
+    aliases = Dict(default_value=_csd_aliases)
 
     def _validate_required(self):
         super()._validate_required()
@@ -247,7 +247,7 @@ class FiberResponse(MagicMonkeyBaseApplication):
     mask = mask_arg()
     n_threads = nthreads_arg()
 
-    aliases = Dict(_fr_aliases)
+    aliases = Dict(default_value=_fr_aliases)
 
     def _generate_config_file(self, filename):
         self.configuration.algorithm = TournierResponseAlgorithm()

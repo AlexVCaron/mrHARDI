@@ -1,5 +1,5 @@
 import json
-from collections import MutableMapping
+from collections.abc import MutableMapping
 from typing import Generator
 
 from magic_monkey.base.encoding import MagicConfigEncoder

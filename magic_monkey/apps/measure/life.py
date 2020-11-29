@@ -20,7 +20,7 @@ class Life(MagicMonkeyBaseApplication):
     bvecs = required_file(description="List of gradient b-vectors")
 
     response = List(
-        Float, [0.001, 0., 0.], 3, 3, help="Model signal response function"
+        Float(), [0.001, 0., 0.], 3, 3, help="Model signal response function"
     ).tag(config=True)
 
     cache_sphere = Bool(True)
@@ -38,5 +38,5 @@ class Life(MagicMonkeyBaseApplication):
         }
 
         model = FiberModel(gtab)
-        model.fit(data.get_fdata(), tracks, data.affine, **kwargs)
+        model.fit(data.get_fdata(), tracks.streamlines, data.affine, **kwargs)
 

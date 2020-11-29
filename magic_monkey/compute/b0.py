@@ -168,7 +168,7 @@ def squash_b0(
             (np.array(acquisition)[~mb_mask]).tolist()
         )
 
-        metadata.n = len(metadata.directions)
+        metadata.n = len(list(metadata.directions))
 
     output_shape = dwi_vol.shape[:-1] + (
         dwi_vol.shape[-1] + len(b0_clusters) - np.sum(b0_mask),

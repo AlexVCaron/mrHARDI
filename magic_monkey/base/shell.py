@@ -1,11 +1,16 @@
 import time
 import sys
 import traceback
+import codecs
 from io import UnsupportedOperation
 from multiprocessing import Queue
+from os import setsid
 from queue import Empty, Full
 from subprocess import CalledProcessError, PIPE, Popen
 from threading import Thread
+
+
+stdout_decoder = codecs.getdecoder(sys.stdout.encoding)
 
 
 def _threaded_enqueue_pipe(process, pipe, queue):
@@ -25,7 +30,8 @@ def _dequeue_pipe(log_file, queue, tag, sys_stream, stream_end_eol=True):
     ln = None
     try:
         while not queue.empty():
-            ln = queue.get_nowait().decode("ascii").split("\n")
+            ln, length = stdout_decoder(queue.get_nowait(), errors="ignore")
+            ln = ln.split("\n") if length > 0 else []
             if ln:
                 wr = "\n".join(
                     "[{}] {}".format(tag, l) if l else "" for l in ln
@@ -47,6 +53,7 @@ def _dequeue_pipe(log_file, queue, tag, sys_stream, stream_end_eol=True):
         print("Cannot output log to file :\n{}".format(ln))
 
     return stream_end_eol
+
 
 def process_pipes_to_log_file(
     process, log_file_path, poll_timer=4, logging_callback=lambda a: None
@@ -89,73 +96,102 @@ def process_pipes_to_log_file(
 
 
 def basic_error_manager(process):
+    rtc = process.returncode if process.returncode else 134
     raise CalledProcessError(
-        process.returncode, process.args, stderr=process.stderr
+        rtc, process.args, stderr=process.stderr
     )
 
 
 def launch_shell_process(
-    command, log_file_path, overwrite=False, sleep=4, logging_callback=None,
-    init_logger=None, error_manager=basic_error_manager, **_
+    command, log_file_path=None, overwrite=False, sleep=4,
+    logging_callback=None, init_logger=None,
+    error_manager=basic_error_manager, **_
 ):
-    with open(log_file_path, "w+" if overwrite else "a+") as log_file:
-        log_file.write("Running command {}\n".format(command))
-
     process = None
 
     try:
         try:
+            popen_kwargs = {
+                "preexec_fn": setsid
+            }
+            if log_file_path:
+                popen_kwargs["stdout"] = PIPE
+                popen_kwargs["stderr"] = PIPE
+
             process = Popen(
                 command.split(" "),
-                stdout=PIPE,
-                stderr=PIPE
+                **popen_kwargs
             )
         except FileNotFoundError as e:
             e.filename = command
             raise e
 
-        if init_logger:
-            init_logger(log_file_path)
+        if log_file_path:
+            with open(log_file_path, "w+" if overwrite else "a+") as log_file:
+                log_file.write("Running command {}\n".format(command))
 
-        logging_args = (process, log_file_path, sleep)
-        if logging_callback:
-            logging_args += (logging_callback,)
+            if init_logger:
+                init_logger(log_file_path)
 
-        log_thread = Thread(
-            target=process_pipes_to_log_file, args=logging_args
-        )
-        log_thread.daemon = True
-        log_thread.start()
-        log_thread.join()
+            logging_args = (process, log_file_path, sleep)
+            if logging_callback:
+                logging_args += (logging_callback,)
 
-        if process.returncode != 0:
-            with open(log_file_path, "a+") as log_file:
-                log_file.write(
-                    "[ERR] Process ended in error. Return code : {}\n".format(
-                        process.returncode
+            log_thread = Thread(
+                target=process_pipes_to_log_file, args=logging_args
+            )
+            log_thread.daemon = True
+            log_thread.start()
+            log_thread.join()
+
+            if process.returncode != 0:
+                with open(log_file_path, "a+") as log_file:
+                    log_file.write(
+                        "[ERR] Process ended in error. Return code : {}\n".format(
+                            process.returncode
+                        )
                     )
-                )
-                log_file.write("[ERR] Traceback :\n")
-                log_file.write("\n".join([
-                    "[ERR]    {}".format(t)
-                    for t in traceback.format_exc().split("\n")
-                ]))
-                log_file.flush()
+                    log_file.write("[ERR] Traceback :\n")
+                    log_file.write("\n".join([
+                        "[ERR]    {}".format(t)
+                        for t in traceback.format_exc().split("\n")
+                    ]))
+                    log_file.flush()
 
-            error_manager(process)
+                error_manager(process)
 
-        process.stdout.close()
-        process.stderr.close()
-
-    except CalledProcessError as e:
-        with open(log_file_path, "a+") as log_file:
-            log_file.write("Error : Code {}\n".format(e))
-            log_file.flush()
-
-        if process:
             process.stdout.close()
             process.stderr.close()
+        else:
+            process.wait()
 
+    except CalledProcessError as e:
+        if log_file_path:
+            with open(log_file_path, "a+") as log_file:
+                log_file.write("Error : Code {}\n".format(e))
+                log_file.flush()
+
+            if process:
+                process.stdout.close()
+                process.stderr.close()
+
+        raise e
+    except KeyboardInterrupt as e:
+        if log_file_path:
+            with open(log_file_path, "a+") as log_file:
+                log_file.write("Process interrupted !\n")
+                log_file.flush()
+
+        process.terminate()
+        raise e
+    except BaseException as e:
+        if log_file_path:
+            with open(log_file_path, "a+") as log_file:
+                print(type(e))
+                log_file.write("Caught unknow exception : {}\n".format(e if e else "No description"))
+                log_file.flush()
+
+        process.terminate()
         raise e
 
 

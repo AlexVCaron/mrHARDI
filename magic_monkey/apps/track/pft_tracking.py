@@ -47,7 +47,7 @@ class PftTracking(MagicMonkeyBaseApplication):
 
     seed_list = Unicode(
         None, allow_none=True,
-        description="List of seed points to start the tracking algorithm"
+        help="List of seed points to start the tracking algorithm"
     ).tag(config=True, exclusive_group="seed", group_index=0)
 
     pve_threshold = Float(
