@@ -2,14 +2,15 @@
 
 nextflow.enable.dsl=2
 
+params.eddy_on_rev = true
+params.use_cuda = false
+params.eddy_force_shelled = true
+
+
 params.config.denoise.topup = "$projectDir/.config/topup.py"
 params.config.denoise.eddy = "$projectDir/.config/eddy.py"
 params.config.denoise.eddy_cuda = "$projectDir/.config/eddy_cuda.py"
 params.config.denoise.n4 = "$projectDir/.config/n4_denoise.py"
-
-params.use_cuda = false
-params.topup_correction = true
-params.rev_is_b0 = true
 
 include { get_size_in_gb; swap_configurations } from '../functions.nf'
 
@@ -148,7 +149,7 @@ process prepare_topup {
         tuple val(sid), path("{${dwi_bval.simpleName},${rev_bval.simpleName}}_topup_indexes_metadata.*"), optional: true, emit : in_metadata_w_topup
     script:
         """
-        magic-monkey topup --b0s $b0s --bvals $dwi_bval --rev_bval $rev_bval --out ${b0s.simpleName}__topup --config config.py --verbose
+        magic-monkey topup --b0s $b0s --bvals $dwi_bval --rev_bvals $rev_bval --out ${b0s.simpleName}__topup --config config.py --verbose
         """
 }
 
@@ -184,7 +185,7 @@ process prepare_eddy {
     output:
         tuple val(sid), path("${prefix}__eddy_script.sh"), path("${prefix}__eddy_index.txt"), path("${prefix}__eddy_acqp.txt"), emit: config
         tuple val(sid), path("${prefix}__eddy_slspec.txt"), emit: slspec, optional: true
-        tuple val(sid), path("${prefix}__*non_zero.bvec"), emit: bvec, optional: true
+        tuple val(sid), path("${sid}*non_zero.bvec"), emit: bvec, optional: true
         tuple val(sid), path("${prefix}__eddy_metadata.*"), emit: metadata, optional: true
     script:
         args = "--in $prefix --debug"
