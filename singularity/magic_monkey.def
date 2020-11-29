@@ -2,17 +2,16 @@ BootStrap: library
 From: avcaron/default/magic_monkey_heavy:v1.0
 
 %environment
-        export PYTHON_27_BIN=/mms/dev/python2.7/bin
-        export PYTHON_37_BIN=/mms/dev/python3.7/bin
+        export LC_ALL=en_US.utf8
         export FSL_BIN=/mms/dev/fsl/bin
         export MRTRIX_BIN=/mms/dev/mrtrix/bin
         export DIAMOND_BIN=/mms/dev/diamond/bin
         export ANTS_BIN=/mms/dev/ants/bin
 
-        export PATH=$ANTS_BIN:$DIAMOND_BIN:$MRTRIX_BIN:$FSL_BIN:$PYTHON_37_BIN:$PYTHON_27_BIN:$PATH
+        export PATH=$ANTS_BIN:$DIAMOND_BIN:$MRTRIX_BIN:$FSL_BIN:$PATH
 
-        export CUDA_HOME=/usr/local/cuda-9.1
-        export LD_LIBRARY_PATH=${CUDA_HOME}/lib64
+        export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+        export CUDA_HOME=/usr/local/cuda
 %setup
         SOURCES=$SINGULARITY_ROOTFS/mms/sources
         MMY_sources=$SOURCES/magic_monkey
@@ -29,6 +28,12 @@ From: avcaron/default/magic_monkey_heavy:v1.0
         cd $cwd
         cp utils.sh $SOURCES/mmy_utils.sh
 %post
+        export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+        export CUDA_HOME=/usr/local/cuda
+
+        export LC_ALL=en_US.utf8
+        which python3
+        which python3.7
         . ./mms/sources/mmy_utils.sh
 
         # PATHS VARIABLES FOR SOURCES
@@ -39,18 +44,29 @@ From: avcaron/default/magic_monkey_heavy:v1.0
 
         # PATHS VARIABLES FOR INSTALLATION
         INSTALL=/mms/dev
-        PYTHON_27=$INSTALL/python2.7
-        PYTHON_37=$INSTALL/python3.7
         SCILPY=$INSTALL/scilpy
+        MMY=$INSTALL/magic-monkey
+
+        sed -i 's/main/main restricted universe/g' /etc/apt/sources.list
+        apt-get update && apt-get -y upgrade
+        apt-get -y install locales
+
+        locale-gen en_US.utf8
+        update-locale LANG=en_US.utf8
+
+        export LC_ALL=C
+        export LC_CTYPE="en_US.utf8"
+        export LC_ALL="en_US.utf8"
+        export LANG="en_US.utf8"
+        export LANGUAGE="en_US.utf8"
+        rm -rf /var/lib/apt/lists/*
+        rm -rf /var/cache/apt/*.bin
 
         mkdir -p $INSTALL
 
-        # SET ENVIRONMENT VARIABLES FOR LATER
-        export PATH=$PYTHON_27/bin:$PYTHON_37/bin:$PATH
-
         last_mmy_ver_installed () {
             cwd=$PWD
-            mmy_pip_descr="$(echo "$(pip3.7 list | grep magic-monkey)" || echo "NONE")"
+            mmy_pip_descr="$(echo "$(pip3 list | grep magic-monkey)" || echo "NONE")"
             curr_ver="NONE"
 
             if [ "$mmy_pip_descr" != "NONE" ]
@@ -79,12 +95,14 @@ From: avcaron/default/magic_monkey_heavy:v1.0
             apt-get -y install libblas-dev
             apt-get -y install liblapack-dev
 
+            python3 -m pip install Cython
+
             if [ ! $mmy_installed ] || [ ! last_mmy_ver_installed ]
             then
                 mmy_installer () {
                     cd $MMY_sources
-                    pip3.7 install -r requirements.txt
-                    pip3.7 install magic_monkey-*-py3-none-any.whl
+                    python3 -m pip install -r requirements.txt
+                    python3 -m pip install magic_monkey-*-py3-none-any.whl
                 }
 
                 ERR_VAR=$(mmy_installer) && touch $INSTALL/magic_monkey_complete.flag || error_exit
@@ -97,16 +115,11 @@ From: avcaron/default/magic_monkey_heavy:v1.0
                     git clone https://github.com/scilus/scilpy.git $SCILPY
 
                     cd $SCILPY
-                    pip3.7 install -e .
+                    python3 -m pip install -e .
                 }
 
                 ERR_VAR=$(scilpy_installer) && touch $INSTALL/scilpy_complete.flag || error_exit
             fi
-
-            update-alternatives --install /usr/bin/python3 python3 /mms/dev/python3.7/bin/python3.7 1
-            update-alternatives --config python3
-            update-alternatives --set python3 /mms/dev/python3.7/bin/python3.7
-            ln -s /usr/share/pyshared/lsb_release.py /mms/dev/python3.7/lib/python3.7/site-packages/lsb_release.py
 
             apt-get -y remove build-essential
             apt-get -y remove gfortran
