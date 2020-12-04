@@ -15,7 +15,8 @@ from numpy import (absolute,
                    sqrt,
                    sum,
                    ubyte,
-                   zeros)
+                   zeros,
+                   any as npany)
 from numpy.ma import array as masked
 
 from magic_monkey.traits.metrics.base import (BaseMetric,
@@ -38,7 +39,7 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
         super().__init__(
             in_prefix, out_prefix, cache, affine, mask, shape, colors
         )
-        self.n = n
+        self.n = min(self._max_n_from_model_selection(), n)
         self.fw = with_fw
         self.res = with_res
         self.hin = with_hind
@@ -119,6 +120,10 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
                 "{}_{}.nii.gz".format(self.output, metric)
             )
 
+    def _max_n_from_model_selection(self):
+        ms = self._get_model_selection()
+        return int(ms.max())
+
     def _get_model_selection(self, add_keys=()):
         return self.load_from_cache(
             add_keys + ("mosemap",),
@@ -137,7 +142,7 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
     def _get_fascicle_fractions(self, add_keys=()):
         fractions = self._get_fractions(add_keys)
 
-        return fractions[..., :-1] if self.fw else fractions
+        return fractions[..., :self.n]
 
     def _get_fractions(self, add_keys=()):
         fractions = self.load_from_cache(
@@ -543,7 +548,7 @@ def get_eigs(fascicles, mask, cache, alternative=None, add_keys=()):
         else:
             f_mask = mask
 
-        eigs = compute_eigenvalues(f, f_mask)
+        eigs = compute_eigenvalues(f, f_mask) if npany(f_mask) else None
         sub_cache = cache
         for key in add_keys:
             sub_cache = sub_cache[key]
