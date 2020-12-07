@@ -52,7 +52,12 @@ class B0Utils(MagicMonkeyBaseApplication):
             super().initialize(argv)
 
             config = deepcopy(self.config)
-            config['B0UtilsConfiguration'] = Config(current_util=command)
+            if 'B0UtilsConfiguration' in config:
+                config['B0UtilsConfiguration'].update(
+                    Config(current_util=command)
+                )
+            else:
+                config['B0UtilsConfiguration'] = Config(current_util=command)
             self.update_config(config)
         else:
             super().initialize(argv)
@@ -78,7 +83,7 @@ class B0Utils(MagicMonkeyBaseApplication):
         kwargs["metadata"] = metadata
 
         data = extract_b0(
-            in_dwi.get_fdata(), bvals,
+            in_dwi.get_fdata(dtype=in_dwi.get_data_dtype()), bvals,
             self.configuration.strides,
             self.configuration.get_mean_strategy_enum(),
             self.configuration.ceil_value,
@@ -88,11 +93,15 @@ class B0Utils(MagicMonkeyBaseApplication):
         if metadata:
             save_metadata(self.output_prefix, metadata)
 
+        out_dtype = in_dwi.get_data_dtype()
+        if self.configuration.dtype:
+            out_dtype = self.configuration.dtype
+
         img = nib.Nifti1Image(
-            data.astype(self.configuration.dtype),
+            data.astype(out_dtype),
             in_dwi.affine, in_dwi.header
         )
-        img.set_data_dtype(self.configuration.dtype)
+        img.set_data_dtype(out_dtype)
 
         nib.save(img, "{}.nii.gz".format(self.output_prefix))
 
@@ -106,7 +115,7 @@ class B0Utils(MagicMonkeyBaseApplication):
         bvecs = np.loadtxt(self.bvecs) if self.bvecs else None
 
         data, bvals, bvecs = squash_b0(
-            in_dwi.get_fdata(), bvals, bvecs,
+            in_dwi.get_fdata(dtype=in_dwi.get_data_dtype()), bvals, bvecs,
             self.configuration.get_mean_strategy_enum(),
             self.configuration.ceil_value,
             **kwargs
@@ -115,11 +124,15 @@ class B0Utils(MagicMonkeyBaseApplication):
         if metadata:
             save_metadata(self.output_prefix, metadata)
 
+        out_dtype = in_dwi.get_data_dtype()
+        if self.configuration.dtype:
+            out_dtype = self.configuration.dtype
+
         img = nib.Nifti1Image(
-            data.astype(self.configuration.dtype),
+            data.astype(out_dtype),
             in_dwi.affine, in_dwi.header
         )
-        img.set_data_dtype(self.configuration.dtype)
+        img.set_data_dtype(out_dtype)
 
         nib.save(img, "{}.nii.gz".format(self.output_prefix))
 

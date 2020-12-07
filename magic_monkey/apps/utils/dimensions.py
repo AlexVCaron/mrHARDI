@@ -4,8 +4,8 @@ import sys
 import nibabel as nib
 import numpy as np
 from dipy.segment.mask import crop
-from numpy import r_ as row
-from scilpy.utils.util import voxel_to_world
+from scilpy.utils.util import voxel_to_world, world_to_voxel
+from scipy.linalg import qr, lu
 from traitlets import Unicode, Any, Dict
 
 from magic_monkey.base.application import MagicMonkeyBaseApplication, \
@@ -27,19 +27,6 @@ class WorldBoundingBox(object):
         self.voxel_size = voxel_size
 
 
-def world_to_voxel(coord, affine):
-    """Takes a n dimensional world coordinate and returns its 3 first
-    coordinates transformed to voxel space from a given voxel to world affine
-    transformation."""
-
-    normalized_coord = row[coord[0:3], 1.0].astype(float)
-    iaffine = np.linalg.inv(affine)
-    vox_coord = np.dot(iaffine, normalized_coord)
-    print(vox_coord)
-    vox_coord = np.floor(vox_coord).astype(int)
-    return vox_coord[0:3]
-
-
 def crop_nifti(img, wbbox):
     """Applies cropping from a world space defined bounding box and fixes the
     affine to keep data aligned."""
@@ -52,20 +39,16 @@ def crop_nifti(img, wbbox):
     # Prevent from trying to crop outside data boundaries by clipping bbox
     extent = list(data.shape[:3])
     for i in range(3):
-        voxel_bb_mins[i] = max(0, voxel_bb_mins[i])
-        voxel_bb_maxs[i] = min(extent[i], voxel_bb_maxs[i])
+        voxel_bb_mins[i] = min(extent[i], max(0, voxel_bb_mins[i]))
+        voxel_bb_maxs[i] = min(extent[i], max(0, voxel_bb_maxs[i]))
     translation = voxel_to_world(voxel_bb_mins, affine)
-
-    print("Inside crop")
-    print(voxel_bb_mins)
-    print(voxel_bb_maxs)
 
     data_crop = np.copy(crop(data, voxel_bb_mins, voxel_bb_maxs))
 
     new_affine = np.copy(affine)
     new_affine[0:3, 3] = translation[0:3]
 
-    return nib.Nifti1Image(data_crop, new_affine)
+    return nib.Nifti1Image(data_crop.astype(img.get_data_dtype()), new_affine)
 
 
 class FitToBox(MagicMonkeyBaseApplication):
@@ -105,10 +88,6 @@ class FitToBox(MagicMonkeyBaseApplication):
         voxel_mins = world_to_voxel(bbox.minimums, image.affine)
         voxel_maxs = world_to_voxel(bbox.maximums, image.affine)
 
-        print("First boundaries")
-        print(voxel_mins)
-        print(voxel_maxs)
-
         if np.any(voxel_mins > 0) or np.any(
             np.less(voxel_maxs, image.shape[:3])
         ):
@@ -132,7 +111,7 @@ class FitToBox(MagicMonkeyBaseApplication):
             )[voxel_maxs > image.shape[:3]]
 
             data = np.pad(
-                image.get_fdata().astype(image.get_data_dtype()),
+                image.get_fdata(dtype=image.get_data_dtype()),
                 pads.T.astype(int), 'constant', constant_values=self.fill_value
             )
 
@@ -140,19 +119,20 @@ class FitToBox(MagicMonkeyBaseApplication):
             affine[:3, -1] = voxel_to_world(voxel_mins, image.affine)
             image = nib.Nifti1Image(data, affine, image.header)
 
-        print(image.shape)
         nib.save(image, self.output)
 
 
 _fit_aliases = {
     "in": "FitBox.image",
+    "ref": "FitBox.reference",
     "out": "FitBox.output",
     "pbox": "FitBox.pkl_box"
 }
 
 
 class FitBox(MagicMonkeyBaseApplication):
-    image = required_file(description="Input image to fit to the box")
+    image = required_file(description="Input image to fit the box to")
+    reference = required_file(description="Reference image for the box")
     output = output_file_argument()
 
     pkl_box = Unicode(
@@ -161,20 +141,34 @@ class FitBox(MagicMonkeyBaseApplication):
 
     aliases = Dict(default_value=_fit_aliases)
 
+    def _change_world(self, coords, ref_affine, to_affine):
+        p, l, u = lu(ref_affine[:3, :3])
+        q, r = qr(l @ u)
+        t = ref_affine[:3, -1]
+
+        tmp = ((p @ np.diag(np.sign(np.diag(r)))) @ q).T @ (coords - t)
+
+        p, l, u = lu(to_affine[:3, :3])
+        q, r = qr(l @ u)
+        t = to_affine[:3, -1]
+
+        return p @ np.diag(np.sign(np.diag(r))) @ q @ tmp + t
+
     def execute(self):
         image = nib.load(self.image)
+        ref_affine = nib.load(self.reference).affine
 
         setattr(sys.modules['__main__'], 'WorldBoundingBox', WorldBoundingBox)
         with open(self.pkl_box, 'rb') as pklf:
             bbox = pickle.load(pklf)
 
-        voxel_mins = np.clip(
-            world_to_voxel(bbox.minimums, image.affine),
-            [0, 0, 0], np.array(image.shape) - 1
+        voxel_mins = world_to_voxel(
+            self._change_world(bbox.minimums, ref_affine, image.affine),
+            image.affine
         )
-        voxel_maxs = np.clip(
-            world_to_voxel(bbox.maximums, image.affine),
-            [0, 0, 0], np.array(image.shape) - 1
+        voxel_maxs = world_to_voxel(
+            self._change_world(bbox.maximums, ref_affine, image.affine),
+            image.affine
         )
 
         ref_bbox = WorldBoundingBox(

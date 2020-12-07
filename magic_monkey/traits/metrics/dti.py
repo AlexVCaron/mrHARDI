@@ -16,9 +16,9 @@ class DTIMetric(BaseMetric, metaclass=ABCMeta):
         return self.load_from_cache(
             "eigs", lambda _: eigs_with_strides(
                 self.strides,
-                nib.load(
+                self._load_image(
                     "{}_dti.nii.gz".format(self.prefix)
-                ).get_fdata().squeeze(),
+                ).squeeze(),
                 self.get_mask(),
                 (0, 3, 1, 4, 5, 2)
             )

@@ -23,6 +23,7 @@ from magic_monkey.traits.ants import AntsAffine, AntsRigid, AntsSyN
 _reg_aliases = {
     'target': 'AntsRegistration.target_images',
     'moving': 'AntsRegistration.moving_images',
+    'mask': 'AntsRegistration.mask',
     'out': 'AntsRegistration.output_prefix'
 }
 
@@ -64,6 +65,13 @@ class AntsRegistration(MagicMonkeyBaseApplication):
                     "the initial transform (if selected)"
     )
 
+    mask = MultipleArguments(
+        Unicode(),
+        help="Mask for the fixed and target images. If two masks are "
+             "provided, they will be used independently, the first for "
+             "the target, the second for the moving."
+    ).tag(config=True)
+
     output_prefix = output_prefix_argument()
 
     verbose = Bool(False).tag(config=True)
@@ -82,10 +90,10 @@ class AntsRegistration(MagicMonkeyBaseApplication):
 
         ants_config_fmt, config_dict = self.configuration.serialize(), {}
 
-        for i, (target, moving) in enumerate(zip(
-            self.target_images, self.moving_images
-        )):
+        for i, target in enumerate(self.target_images):
             config_dict["t{}".format(i)] = target
+
+        for i, moving in enumerate(self.moving_images):
             config_dict["m{}".format(i)] = moving
 
         ants_config_fmt = ants_config_fmt.format(**config_dict)
@@ -93,6 +101,12 @@ class AntsRegistration(MagicMonkeyBaseApplication):
         ants_config_fmt += " --output [{},{}]".format(
             self.output_prefix, "{}_warped.nii.gz".format(self.output_prefix)
         )
+
+        if self.mask:
+            mask = self.mask
+            if len(mask) == 1:
+                mask += self.mask
+            ants_config_fmt += " --masks [{}]".format(",".join(mask))
 
         if self.verbose:
             ants_config_fmt += " --verbose"

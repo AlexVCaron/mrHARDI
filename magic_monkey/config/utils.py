@@ -60,8 +60,7 @@ class B0UtilsConfiguration(MagicMonkeyConfigurable):
         [
             np.dtype(t).name
             for t in [np.int16, np.int32, np.float32, np.float64]
-        ],
-        np.dtype(np.int32).name
+        ], allow_none=True
     ).tag(config=True)
 
     strides = Integer(None, allow_none=True).tag(config=True)
