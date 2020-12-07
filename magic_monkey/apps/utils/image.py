@@ -30,7 +30,7 @@ class ApplyMask(MagicMonkeyBaseApplication):
         0, help="Value used to fill the image outside the mask"
     ).tag(config=True)
     dtype = Enum(
-        [np.int, np.long, np.float, np.float64, None], None, help="Output type"
+        [np.int, np.long, np.float, np.float64, None], help="Output type"
     ).tag(config=True)
 
     output = output_file_argument()
@@ -39,14 +39,14 @@ class ApplyMask(MagicMonkeyBaseApplication):
 
     def execute(self):
         data = nib.load(self.image)
-        mask = nib.load(self.mask).get_fdata().astype(bool)
+        mask = nib.load(self.mask).get_fdata(dtype=bool)
 
         dtype = self.dtype
         if dtype is None:
-            dtype = data.header.get_data_dtype()
+            dtype = data.get_data_dtype()
 
         out_data = apply_mask_on_data(
-            data.get_fdata(), mask, self.fill_value, dtype
+            data.get_fdata(dtype=dtype), mask, self.fill_value, dtype
         )
 
         nib.save(nib.Nifti1Image(out_data, data.affine), self.output)
@@ -91,7 +91,7 @@ class Concatenate(MagicMonkeyBaseApplication):
         reference_affine = dwi_list[0].affine
 
         out_dwi, out_bvals, out_bvecs = concatenate_dwi(
-            [dwi.get_fdata() for dwi in dwi_list],
+            [dwi.get_fdata(dtype=dwi.get_data_dtype()) for dwi in dwi_list],
             bvals_list,
             bvecs_list
         )
@@ -176,15 +176,18 @@ class SplitImage(MagicMonkeyBaseApplication):
         )
 
     def _load_split(self, i):
-        return nib.load(
+        img = nib.load(
             "{}_ax{}_{}.nii.gz".format(self.prefix, self.axis, i)
-        ).get_fdata()
+        )
+        return img.get_fdata(dtype=img.get_data_dtype())
 
     def _img_to_split(self):
         img = nib.load(self.image)
         metadata = load_metadata(self.image)
         self._affine = img.affine
-        for i, sub in enumerate(np.moveaxis(img.get_fdata(), self.axis, 0)):
+        for i, sub in enumerate(
+            np.moveaxis(img.get_fdata(dtype=img.get_data_dtype()), self.axis, 0)
+        ):
             mt = metadata.copy()
             try:
                 mt.topup_indexes = [metadata.topup_indexes[i]]
@@ -231,7 +234,7 @@ class ConvertImage(MagicMonkeyBaseApplication):
 
     def execute(self):
         img = nib.load(self.image)
-        arr = img.get_fdata()
+        arr = img.get_fdata(dtype=img.get_data_dtype())
         arr[~np.isclose(arr, 0)] = 1.
         nib.save(
             nib.Nifti1Image(
@@ -271,7 +274,7 @@ class ReplicateImage(MagicMonkeyBaseApplication):
         img = nib.load(self.image)
         ref = nib.load(self.reference)
 
-        data = img.get_fdata()
+        data = img.get_fdata(dtype=img.get_data_dtype())
         if self.index is not None:
             data = data[..., self.index]
 

@@ -136,10 +136,41 @@ From: nvidia/cuda:9.1-devel-ubuntu16.04
                     wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py
                     python fslinstaller.py -d $FSL -D
 
+                    echo "Cleaning $FSL"
                     cd $FSL
-                    find . -maxdepth 1 -not \( -name . -or -name .. -or -name bin -or -name lib -or -name include -or -name etc -or -name config -or -name extras -or -name data \) -exec rm -rf "{}" \;
-                    cd extras
-                    find . -maxdepth 1 -not \( -name . -or -name .. -or -name bin -or -name lib -or -name include -or -name share \) -exec rm -rf "{}" \;
+                    find . -maxdepth 1 -not \( \
+                        -name . -or \
+                        -name .. -or \
+                        -name bin -or \
+                        -name lib -or \
+                        -name include -or \
+                        -name etc -or \
+                        -name config -or \
+                        -name extras -or \
+                        -name data \
+                    \) -exec rm -rf "{}" \;
+                    echo "Cleaning $FSL/bin"
+                    cd $FSL/bin
+                    find . -maxdepth 1 -not \( \
+                        -name . -or \
+                        -name .. -or \
+                        -name 'eddy*' -or \
+                        -name topup -or \
+                        -name bet -or \
+                        -name bet2 -or \
+                        -name applytopup -or \
+                        -name fslmaths \
+                    \) -exec rm -rf "{}" \;
+                    echo "Cleaning $FSL/extras"
+                    cd $FSL/extras
+                    find . -maxdepth 1 -not \( \
+                        -name . -or \
+                        -name .. -or \
+                        -name bin -or \
+                        -name lib -or \
+                        -name include -or \
+                        -name share \
+                    \) -exec rm -rf "{}" \;
                 }
 
                 ERR_VAR=$(fsl_installer) && touch $INSTALL/fsl_complete.flag || error_exit
@@ -160,7 +191,13 @@ From: nvidia/cuda:9.1-devel-ubuntu16.04
                     ./configure -nogui -openmp
                     ./build
 
-                    find . -not \( -wholename './bin' -or -wholename './bin/*' -or -wholename './lib' -or -wholename './lib/*' -or -wholename './share' -or -wholename './share/*' \) -delete
+                    echo "Cleaning up $MRTRIX"
+                    find . -maxdepth 1 -not \( \
+                        -wholename './bin' -or \
+                        -wholename './bin/*' -or \
+                        -wholename './lib' -or \
+                        -wholename './lib/libmrtrix*' \
+                    \) -exec rm -rf "{}" \;
 
                     pip uninstall -y numpy
                 }
@@ -179,7 +216,11 @@ From: nvidia/cuda:9.1-devel-ubuntu16.04
                     chmod 111 $DIAMOND/bin/crlDCIEstimate
 
                     cd $DIAMOND
-                    find . -maxdepth 1 -not \( -name . -or -name .. -or -name bin \) -exec rm -rf "{}" \;
+                    find . -maxdepth 1 -not \( \
+                        -name . -or \
+                        -name .. -or \
+                        -name bin \
+                    \) -exec rm -rf "{}" \;
                 }
 
                 ERR_VAR=$(diamond_installer) && touch $INSTALL/diamond_complete.flag || error_exit
@@ -199,6 +240,20 @@ From: nvidia/cuda:9.1-devel-ubuntu16.04
                     rm -rf ANTs/ build/ LICENSE README.md installANTs.sh
                     mv install/* .
                     rm -rf install
+
+                    cd $ANTS/bin
+                    find . -maxdepth 1 -not \( \
+                        -name . -or \
+                        -name .. -or \
+                        -name antsRegistration -or \
+                        -name 'antsRegistrationSyN*' -or \
+                        -name N4BiasFieldCorrection -or \
+                        -name antsApplyTransforms -or \
+                        -name antsMotionCorr -or \
+                        -name antsMotionCorrDiffusionDirection -or \
+                        -name DenoiseImage \
+                    \) -exec rm -rf "{}" \;
+
                 }
 
                 ERR_VAR=$(ants_installer) && touch $INSTALL/ants_complete.flag || error_exit

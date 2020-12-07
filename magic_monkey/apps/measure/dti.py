@@ -88,7 +88,7 @@ class TensorMetrics(MagicMonkeyBaseApplication):
 
             klass(
                 self.input_prefix, self.output_prefix, self.cache,
-                metadata.affine, mask=mask.get_fdata().astype(bool),
+                metadata.affine, mask=mask.get_fdata(dtype=bool),
                 shape=mask.shape, colors=self.output_colors
             ).measure()
 

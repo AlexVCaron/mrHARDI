@@ -56,9 +56,9 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
             ["t{}".format(i) for i in range(self.n)],
             [self._get_fascicle_mask(i, add_keys) for i in range(self.n)],
             self.cache,
-            lambda f: nib.load(
+            lambda f: self._load_image(
                 "{}_{}.nii.gz".format(self.prefix, f)
-            ).get_fdata().squeeze(),
+            ).squeeze(),
             add_keys
         )
 
@@ -66,9 +66,9 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
         return [load_from_cache(
             self.cache,
             add_keys + ("t{}".format(i),),
-            lambda f: nib.load(
+            lambda f: self._load_image(
                 "{}_{}.nii.gz".format(self.prefix, f)
-            ).get_fdata().squeeze()
+            ).squeeze()
         ) for i in range(self.n)]
 
     def _weighted(self, volumes, alt_w=None, add_keys=(), mask=None, axis=0):
@@ -127,9 +127,7 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
     def _get_model_selection(self, add_keys=()):
         return self.load_from_cache(
             add_keys + ("mosemap",),
-            lambda _: nib.load(
-                "{}_mosemap.nii.gz".format(self.prefix)
-            ).get_fdata()
+            lambda _: self._load_image("{}_mosemap.nii.gz".format(self.prefix))
         )
 
     def _get_fascicle_mask(self, i, add_keys=()):
@@ -146,9 +144,9 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
 
     def _get_fractions(self, add_keys=()):
         fractions = self.load_from_cache(
-            add_keys + ("fractions",), lambda _: nib.load(
+            add_keys + ("fractions",), lambda _: self._load_image(
                 "{}_fractions.nii.gz".format(self.prefix)
-            ).get_fdata().squeeze()
+            ).squeeze()
         )
         return fractions
 
@@ -249,9 +247,11 @@ class FfMetric(DiamondMetric):
                 "{}_t{}_fraction.nii.gz".format(self.output, i)
             )
 
-        img = nib.load("{}_fractions.nii.gz".format(self.prefix))
         nib.save(
-            nib.Nifti1Image(img.get_fdata(), self.affine),
+            nib.Nifti1Image(
+                self._load_image("{}_fractions.nii.gz".format(self.prefix)),
+                self.affine
+            ),
             "{}_fractions.nii.gz".format(self.output)
         )
 
@@ -260,9 +260,9 @@ class RfMetric(DiamondMetric):
     def measure(self):
         if self.res:
             fraction = self.load_from_cache(
-                "rf", lambda _: nib.load(
+                "rf", lambda _: self._load_image(
                     "{}_isotropic2Fraction.nii.gz".format(self.prefix)
-                ).get_fdata()
+                )
             )
 
             nib.save(
@@ -277,10 +277,10 @@ class HfMetric(DiamondMetric):
             if any(
                 "t{}_hf".format(i) not in self.cache for i in range(self.n)
             ):
-                fractions = nib.load("{}_icvf.nii.gz".format(self.prefix))
-                for i, fraction in enumerate(
-                    moveaxis(fractions.get_fdata(), -1, 0)
-                ):
+                fractions = self._load_image(
+                    "{}_icvf.nii.gz".format(self.prefix)
+                )
+                for i, fraction in enumerate(moveaxis(fractions, -1, 0)):
                     self.cache["t{}_hf".format(i)] = fraction.squeeze()
                     nib.save(
                         nib.Nifti1Image(fraction.squeeze(), self.affine),
