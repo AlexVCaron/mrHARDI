@@ -17,7 +17,7 @@ include { get_size_in_gb; uniformize_naming } from '../functions.nf'
 
 process diamond {
     memory { 2f * get_size_in_gb([input_dwi, mask] + (data instanceof List ? data : [data])) }
-    label "res_full_node"
+    label params.on_hcp ? "res_full_node_override" : "res_max_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -39,7 +39,7 @@ process diamond {
 
 process mrtrix_dti {
     memory { 2f * get_size_in_gb([dwi, mask]) }
-    label "res_full_node"
+    label "res_max_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -62,7 +62,7 @@ process mrtrix_dti {
 
 process response {
     memory { 2f * get_size_in_gb([dwi, mask]) }
-    cpus 1
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -85,7 +85,7 @@ process response {
 
 process csd {
     memory { 2.5 * get_size_in_gb([dwi, mask]) }
-    label "res_full_node"
+    label "res_max_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -108,6 +108,7 @@ process csd {
 
 process scilpy_response {
     memory { 2f * get_size_in_gb([dwi, mask]) }
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -123,15 +124,14 @@ process scilpy_response {
         export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
         export OMP_NUM_THREADS=1
         export OPENBLAS_NUM_THREADS=1
-        mrconvert -strides 1,2,3,4 -export_grad_fsl dwi4scil.bvec dwi4scil.bval -fslgrad $bvec $bval $dwi dwi4scil.nii.gz
-        mrconvert -datatype uint8 -strides 1,2,3,4 $mask mask4scil.nii.gz
-        scil_compute_ssst_frf.py dwi4scil.nii.gz dwi4scil.bval dwi4scil.bvec ${sid}__response.txt --mask mask4scil.nii.gz --fa $params.frf_fa --min_fa $params.frf_min_fa --min_nvox $params.frf_min_nvox --roi_radii $params.frf_roi_radius
+        mrconvert -datatype uint8 $mask mask4scil.nii.gz
+        scil_compute_ssst_frf.py $dwi $bval $bvec ${sid}__response.txt --mask mask4scil.nii.gz --fa $params.frf_fa --min_fa $params.frf_min_fa --min_nvox $params.frf_min_nvox --roi_radii $params.frf_roi_radius
         """
 }
 
 process scilpy_csd {
     memory { 2.5 * get_size_in_gb([dwi, mask]) }
-    label "res_full_node"
+    label "res_max_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -147,8 +147,7 @@ process scilpy_csd {
         export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
         export OMP_NUM_THREADS=1
         export OPENBLAS_NUM_THREADS=1
-        mrconvert -strides 1,2,3,4 -export_grad_fsl dwi4scil.bvec dwi4scil.bval -fslgrad $bvec $bval $dwi dwi4scil.nii.gz
-        mrconvert -datatype uint8 -strides 1,2,3,4 $mask mask4scil.nii.gz
-        scil_compute_ssst_fodf.py dwi4scil.nii.gz dwi4scil.bval dwi4scil.bvec $response ${sid}__fodf.nii.gz --mask mask4scil.nii.gz --force_b0_threshold --processes $task.cpus
+        mrconvert -datatype uint8 $mask mask4scil.nii.gz
+        scil_compute_ssst_fodf.py $dwi $bval $bvec $response ${sid}__fodf.nii.gz --mask mask4scil.nii.gz --force_b0_threshold --processes $task.cpus
         """
 }

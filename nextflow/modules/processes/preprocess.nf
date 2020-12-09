@@ -2,14 +2,14 @@
 
 nextflow.enable.dsl=2
 
-params.config.preprocess.extract_b0 = "$projectDir/.config/extract_b0.py"
+params.config.preprocess.extract_b0 = "$projectDir/.config/extract_b0_mean.py"
 params.config.preprocess.squash_b0 = "$projectDir/.config/squash_b0.py"
 
 include { get_size_in_gb; swap_configurations } from '../functions.nf'
 
 process extract_b0 {
     memory { 2f * get_size_in_gb(dwi) }
-    cpus 1
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -34,7 +34,7 @@ process extract_b0 {
 
 process squash_b0 {
     memory { 2f * get_size_in_gb(dwi) }
-    cpus 1
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
