@@ -299,8 +299,8 @@ class GifAnimator(MagicMonkeyBaseApplication):
 
     def execute(self):
         back_img = nib.load(self.images[0])
-        back_data = back_img.get_fdata(
-            dtype=back_img.get_data_dtype()
+        back_data = back_img.get_fdata().astype(
+            back_img.get_data_dtype()
         ).squeeze()
         back_stride = np.sign(np.diag(back_img.affine))[:3]
 
@@ -311,7 +311,7 @@ class GifAnimator(MagicMonkeyBaseApplication):
 
         snapshots = []
 
-        mask = nib.load(self.mask).get_fdata(dtype=bool) \
+        mask = nib.load(self.mask).get_fdata().astype(bool) \
             if self.mask else np.ones_like(back_data, dtype=bool)
 
         if self.bdo_box:

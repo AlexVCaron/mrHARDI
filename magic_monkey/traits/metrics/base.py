@@ -36,7 +36,7 @@ def get_from_metric_cache(keys, metric):
 
 def _load_mask(path, shape):
     try:
-        return nib.load(path).get_fdata(dtype=bool)
+        return nib.load(path).get_fdata().astype(bool)
     except FileNotFoundError:
         return ones(shape)
 
@@ -97,7 +97,7 @@ class BaseMetric:
 
     def _load_image(self, name):
         img = nib.load(name)
-        return img.get_fdata(dtype=img.get_data_dtype())
+        return img.get_fdata().astype(img.get_data_dtype())
 
     def _color(self, name, evecs, add_keys=()):
         if self.colors:

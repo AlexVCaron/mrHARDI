@@ -111,7 +111,7 @@ class FitToBox(MagicMonkeyBaseApplication):
             )[voxel_maxs > image.shape[:3]]
 
             data = np.pad(
-                image.get_fdata(dtype=image.get_data_dtype()),
+                image.get_fdata().astype(image.get_data_dtype()),
                 pads.T.astype(int), 'constant', constant_values=self.fill_value
             )
 
