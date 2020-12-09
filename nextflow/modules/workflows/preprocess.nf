@@ -10,7 +10,7 @@ params.use_cuda = false
 
 params.config.workflow.preprocess.t12b0mask_registration = file("$projectDir/.config/.workflow/t12b0_mask_registration.py")
 params.config.workflow.preprocess.post_eddy_registration = file("$projectDir/.config/.workflow/post_eddy_ants_registration.py")
-params.config.workflow.preprocess.topup_b0 = file("$projectDir/.config/.workflow/topup_b0.py")
+params.config.workflow.preprocess.topup_b0 = file("$projectDir/.config/extract_b0_mean.py")
 
 include { group_subject_reps; join_optional; map_optional; opt_channel; replace_dwi_file; uniformize_naming; sort_as_with_name } from '../functions.nf'
 include { extract_b0 as dwi_b0; extract_b0 as b0_topup; extract_b0 as b0_topup_rev; squash_b0 as squash_dwi; squash_b0 as squash_rev } from '../processes/preprocess.nf'
@@ -23,12 +23,15 @@ workflow registration_wkf {
         target_channel
         moving_channel
         trans_channel
+        mask_channel
         metadata_channel
         parameters
     main:
         reg_metadata = metadata_channel.map{ it.subList(0, it.size() - 1)}
         trans_metadata =  metadata_channel.map{ [it[0], it[-1]] }
-        ants_register(moving_channel.join(target_channel).join(target_channel.map{ [it[0], it[1][0]] }).join(reg_metadata), "preprocess", parameters)
+        into_register = moving_channel.join(target_channel).join(target_channel.map{ [it[0], it[1][0]] })
+        into_register = join_optional(into_register, mask_channel)
+        ants_register(into_register.join(reg_metadata), "preprocess", parameters)
         ants_reg = ants_register.out.affine.join(ants_register.out.syn, remainder: true).map{
             it[-1] ? it.subList(0, it.size() - 2) + [it[-1]] : it.subList(0, it.size() - 2) + [[]]
         }.map{
@@ -47,6 +50,7 @@ workflow registration_wkf {
     emit:
         image = img
         registration = ants_register.out.image
+        transform = ants_register.out.reference.join(ants_reg)
 }
 
 // TODO : Here there is probably some metadatas from squashed process being tangled in i/o. The

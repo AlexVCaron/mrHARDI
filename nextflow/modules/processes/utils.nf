@@ -9,6 +9,7 @@ include { get_size_in_gb } from '../functions.nf'
 
 process apply_mask {
     memory { 2f * get_size_in_gb([img, mask]) }
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -29,6 +30,7 @@ process apply_mask {
 
 process bet_mask {
     memory { get_size_in_gb(img) }
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -48,7 +50,7 @@ process bet_mask {
 
 process cat_datasets {
     memory { 2f * get_size_in_gb(imgs) }
-    cpus 1
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -79,7 +81,7 @@ process cat_datasets {
 
 process split_image {
     memory { get_size_in_gb(img) }
-    cpus 1
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -100,7 +102,7 @@ process split_image {
 
 process join_images {
     memory { 2f * get_size_in_gb(imgs) }
-    cpus 1
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -121,7 +123,7 @@ process join_images {
 
 process apply_topup {
     memory { 2f * (get_size_in_gb(dwis) + get_size_in_gb(revs)) }
-    cpus 1
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -141,7 +143,7 @@ process apply_topup {
 
 process tournier2descoteaux_odf {
     memory { 2f * get_size_in_gb(odfs) }
-    label params.conservative_resources ? "res_conservative" : "res_full_node"
+    label params.conservative_resources ? "res_conservative" : "res_max_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -160,7 +162,7 @@ process tournier2descoteaux_odf {
 
 process convert_datatype {
     memory { 2f * get_size_in_gb(image) }
-    cpus 1
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -180,6 +182,7 @@ process convert_datatype {
 
 process replicate_image {
     memory { 2f * get_size_in_gb([img, ref_img]) }
+    label "res_single_cpu"
     errorStrategy "finish"
 
     input:
@@ -197,6 +200,7 @@ process replicate_image {
 }
 
 process check_dwi_conformity {
+    label "res_single_cpu"
     errorStrategy "finish"
 
     input:
@@ -213,6 +217,7 @@ process check_dwi_conformity {
 
 process crop_image {
     memory { 2f * get_size_in_gb([image, mask]) }
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -254,24 +259,29 @@ process crop_image {
         export OMP_NUM_THREADS=1
         export OPENBLAS_NUM_THREADS=1
         scil_crop_volume.py $image ${image.simpleName}_cropped.nii.gz $args
+        if [ "\$(mrinfo -datatype $image)" != "\$(mrinfo -datatype ${image.simpleName}_cropped.nii.gz)" ]
+        then
+            mrconvert -force -datatype "\$(mrinfo -datatype $image)" ${image.simpleName}_cropped.nii.gz ${image.simpleName}_cropped.nii.gz
+        fi
         ${after_script.join('\n')}
         """
 }
 
 process fit_bounding_box {
     memory { get_size_in_gb([image]) }
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
     publishDir "${params.output_root}/${sid}/$caller_name", saveAs: { f -> f.contains("cropped.nii.gz") ? f : null }, mode: params.publish_mode
 
     input:
-        tuple val(sid), file(image), file(bounding_box)
+        tuple val(sid), file(image), file(reference), file(bounding_box)
         val(caller_name)
     output:
         tuple val(sid), path("${image.simpleName}_bbox.pkl"), emit: bbox, optional: true
     script:
     """
-    magic-monkey fitbox --in $image --pbox $bounding_box --out ${image.simpleName}_bbox
+    magic-monkey fitbox --in $image --ref $reference --pbox $bounding_box --out ${image.simpleName}_bbox
     """
 }
