@@ -12,7 +12,7 @@ include { get_size_in_gb; swap_configurations } from '../functions.nf'
 
 process ants_register {
     memory { get_size_in_gb(moving) + get_size_in_gb(target) }
-    label params.conservative_resources ? "res_conservative" : "res_full_node"
+    label params.conservative_resources ? "res_conservative_cpu" : "res_max_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
@@ -20,37 +20,44 @@ process ants_register {
 
     beforeScript "cp $params.config.register.ants_registration config.py"
     input:
-        tuple val(sid), file(moving), file(target), val(reference), path(metadata)
+        tuple val(sid), path(moving), file(target), val(reference), file(mask), path(metadata)
         val(caller_name)
         file(config_overwrite)
     output:
-        tuple val(sid), path("${sid}__registration_affine.mat"), path("${sid}__registration_rigid.nii.gz"), emit: affine
-        tuple val(sid), path("${sid}__registration_ref.nii.gz"), emit: reference
-        tuple val(sid), path("${sid}__registration_warped.nii.gz"), emit: image
-        tuple val(sid), path("${sid}__registration*syn.nii.gz"), optional: true, emit: syn
-        tuple val(sid), path("${sid}__registration_warped_metadata.*"), optional: true, emit: metadata
+        tuple val(sid), path("${moving[0].simpleName}__registration_affine.mat"), path("${moving[0].simpleName}__registration_rigid.nii.gz"), optional: true, emit: affine
+        tuple val(sid), path("${moving[0].simpleName}__registration_ref.nii.gz"), emit: reference
+        tuple val(sid), path("${moving[0].simpleName}__registration_warped.nii.gz"), optional: true, emit: image
+        tuple val(sid), path("${moving[0].simpleName}__registration*syn.nii.gz"), optional: true, emit: syn
+        tuple val(sid), path("${moving[0].simpleName}__registration_warped_metadata.*"), optional: true, emit: metadata
     script:
         config = swap_configurations("config.py", config_overwrite)
+        def mask_arg = ""
+        if ( !mask.iterator().inject(false) { c, i -> c || i.empty() } ) {
+            mask_arg = "--mask ${mask.iterator().collect{ it.name }.join(',')}"
+        }
 
         """
         export OMP_NUM_THREADS=$task.cpus
         export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=$task.cpus
         export OPENBLAS_NUM_THREADS=1
-        magic-monkey ants_registration --moving ${moving.join(",")} --target ${target.join(",")} --out ${sid}__registration --config $config
-        cp $reference ${sid}__registration_ref.nii.gz
-        cp ${sid}__registration_warped.nii.gz ${sid}__registration_rigid.nii.gz
-        mv ${sid}__registration0GenericAffine.mat ${sid}__registration_affine.mat
-        if [ -f "${sid}__registration1Warp.nii.gz" ]
+        magic-monkey ants_registration --moving ${moving.join(",")} --target ${target.join(",")} --out ${moving[0].simpleName}__registration $mask_arg --config $config
+        cp $reference ${moving[0].simpleName}__registration_ref.nii.gz
+        cp ${moving[0].simpleName}__registration_warped.nii.gz ${moving[0].simpleName}__registration_rigid.nii.gz
+        if [ -f ${moving[0].simpleName}__registration0GenericAffine.mat ]
         then
-            mv ${sid}__registration1Warp.nii.gz ${sid}__registration_syn.nii.gz
-            mv ${sid}__registration1InverseWarp.nii.gz ${sid}__registration_inv_syn.nii.gz
+            mv ${moving[0].simpleName}__registration0GenericAffine.mat ${moving[0].simpleName}__registration_affine.mat
+        fi
+        if [ -f "${moving[0].simpleName}__registration1Warp.nii.gz" ]
+        then
+            mv ${moving[0].simpleName}__registration1Warp.nii.gz ${moving[0].simpleName}__registration_syn.nii.gz
+            mv ${moving[0].simpleName}__registration1InverseWarp.nii.gz ${moving[0].simpleName}__registration_inv_syn.nii.gz
         fi
         """
 }
 
 process ants_correct_motion {
     memory { get_size_in_gb(moving) + get_size_in_gb(target) }
-    label params.conservative_resources ? "res_conservative" : "res_full_node"
+    label params.conservative_resources ? "res_conservative_cpu" : "res_max_cpu"
 
     publishDir "${params.output_root}/all/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
     publishDir "${params.output_root}/${sid}/$caller_name", saveAs: { f -> f.contains("metadata") ? null : f }, mode: params.publish_mode
@@ -76,6 +83,7 @@ process ants_correct_motion {
 
 process ants_transform {
     memory { 2f * get_size_in_gb([img, ref]) }
+    label "res_single_cpu"
     errorStrategy "finish"
 
     publishDir "${params.output_root}/${sid}/$caller_name/${task.process}_${task.index}", mode: params.publish_mode, enabled: params.publish_all
