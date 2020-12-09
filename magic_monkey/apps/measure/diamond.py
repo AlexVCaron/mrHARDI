@@ -214,7 +214,7 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
             klass(
                 self.n_fascicles, self.input_prefix,
                 self.output_prefix, self.cache, metadata.affine,
-                mask=mask.get_fdata(dtype=bool), shape=mask.shape,
+                mask=mask.get_fdata().astype(bool), shape=mask.shape,
                 colors=self.output_colors, with_fw=self.free_water,
                 with_res=self.restricted, with_hind=self.hindered,
             ).measure()
@@ -236,7 +236,7 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
 
         HaeberlenConvention(
             self.n_fascicles, self.input_prefix, self.output_prefix,
-            self.cache, affine, mask.get_fdata(dtype=bool), mask.shape,
+            self.cache, affine, mask.get_fdata().astype(bool), mask.shape,
             self.output_colors, self.free_water, self.restricted, self.hindered
         ).measure()
 

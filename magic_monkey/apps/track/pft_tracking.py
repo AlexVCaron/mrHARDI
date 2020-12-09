@@ -123,7 +123,7 @@ class PftTracking(MagicMonkeyBaseApplication):
 
     def _get_mask(self, none_shape=None):
         if self.mask:
-            return nib.load(self.mask).get_fdata(dtype=bool)
+            return nib.load(self.mask).get_fdata().astype(bool)
         elif none_shape is not None:
             return np.ones(none_shape)
 
