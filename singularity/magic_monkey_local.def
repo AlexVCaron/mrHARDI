@@ -96,6 +96,7 @@ From: magic_monkey_heavy.sif
             apt-get -y install liblapack-dev
 
             python3 -m pip install Cython
+            python3 -m pip install numpy
 
             if [ ! $mmy_installed ] || [ ! last_mmy_ver_installed ]
             then
