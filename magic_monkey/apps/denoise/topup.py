@@ -105,16 +105,15 @@ class Topup(MagicMonkeyBaseApplication):
         bvals = [np.loadtxt(bvs) for bvs in self.bvals]
         rev_bvals = [np.loadtxt(bvs) for bvs in self.rev_bvals]
         if rev_bvals:
-            bvals = np.ravel(np.column_stack((bvals, rev_bvals)))
-            rev_bvals = np.ravel(np.column_stack(rev_bvals))
+            bvals = [b for bv, rv in zip(bvals, rev_bvals) for b in [bv, rv]]
 
         indexes = prepare_topup_index(
-            bvals, 1, strategy=self.indexing_strategy,
+            np.concatenate(bvals), 1, strategy=self.indexing_strategy,
             ceil=self.configuration.ceil_value, **kwargs
         )
 
         if indexes.max() > len(acqp.split("\n")):
-            if not len(acqp.split("\n")) == 2:
+            if not len(acqp.split("\n")) == len(bvals):
                 raise ConfigError(
                     "No matching configuration found for index "
                     "(maxing at {}) "
@@ -123,8 +122,11 @@ class Topup(MagicMonkeyBaseApplication):
                     )
                 )
 
-            indexes[-len(rev_bvals):] = 2
-            indexes[:len(indexes) - len(rev_bvals)] = 1
+            indexes[:len(bvals[0])] = 1
+            used_indexes = len(bvals[0])
+            for i, bv in enumerate(bvals[1:]):
+                indexes[used_indexes:used_indexes + len(bv)] = i + 2
+                used_indexes += len(bv)
 
         metadata.topup_indexes = np.unique(indexes).tolist()
 

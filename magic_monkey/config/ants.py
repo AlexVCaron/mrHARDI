@@ -123,8 +123,6 @@ _aliases = {
 
 
 class AntsTransformConfiguration(MagicMonkeyConfigurable):
-    input_type = Integer(0).tag(config=True)
-    dimension = Integer(3).tag(config=True)
     interpolation = Enum(
         ["Linear", "NearestNeighbor", "Gaussian", "BSpline"], "Linear"
     ).tag(config=True)
@@ -138,8 +136,7 @@ class AntsTransformConfiguration(MagicMonkeyConfigurable):
         pass
 
     def serialize(self, *args, **kwargs):
-        return "-e {} -d {} -n {} -f {}".format(
-            self.input_type, self.dimension,
+        return "-n {} -f {}".format(
             self.interpolation, self.fill_value
         )
 

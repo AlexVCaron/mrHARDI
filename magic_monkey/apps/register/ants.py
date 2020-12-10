@@ -169,12 +169,7 @@ class AntsTransform(MagicMonkeyBaseApplication):
         dtype = image.get_data_dtype()
 
         is_3d_data = not (len(shape) == 4 and shape[-1] > 1)
-        img_type = (
-            0 if is_3d_data else
-            1 if shape[-1] == 3 and np.issubtype(dtype, np.number.inexact) else
-            2 if shape[-1] == 6 and np.issubtype(dtype, np.number.inexact) else
-            3
-        )
+        img_type = 0 if is_3d_data else 3
 
         args = "-i {} -e {} -r {} -o {}".format(
             self.image, img_type, self.transformation_ref, self.output
