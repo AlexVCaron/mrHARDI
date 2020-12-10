@@ -115,7 +115,7 @@ class B0Utils(MagicMonkeyBaseApplication):
         bvecs = np.loadtxt(self.bvecs) if self.bvecs else None
 
         data, bvals, bvecs = squash_b0(
-            in_dwi.get_fdata().atype(in_dwi.get_data_dtype()), bvals, bvecs,
+            in_dwi.get_fdata().astype(in_dwi.get_data_dtype()), bvals, bvecs,
             self.configuration.get_mean_strategy_enum(),
             self.configuration.ceil_value,
             **kwargs
