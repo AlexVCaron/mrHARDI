@@ -1,5 +1,5 @@
 BootStrap: library
-From: avcaron/default/magic_monkey:v1.0-heavy
+From: magic-monkey/default/mmy:v1.0-heavy
 
 %environment
         export LC_ALL=en_US.utf8
