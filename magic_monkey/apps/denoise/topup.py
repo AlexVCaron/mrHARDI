@@ -1,5 +1,6 @@
 from os import chmod, getcwd
 from os.path import join, basename
+from shutil import copyfile
 
 import numpy as np
 import nibabel as nib
@@ -267,16 +268,19 @@ class ApplyTopup(MagicMonkeyBaseApplication):
             new_group = True
             rev_vol = self._inspect_for_rev_at(i, bvalvec.shape[0])
             for gp in dwi_groups:
-                if np.allclose(gp["bvalvec"], bvalvec):
-                    new_group = False
-                    gp["dwi"].append(dwi)
-                    gp["rev"].append(rev_vol)
-                    break
+                if gp["bvalvec"].shape[0] == bvalvec.shape[0]:
+                    if np.allclose(gp["bvalvec"], bvalvec):
+                        new_group = False
+                        gp["dwi"].append(dwi)
+                        gp["rev"].append(rev_vol)
+                        break
 
             if new_group:
-                dwi_groups.append(
-                    {"dwi": [dwi], "rev": [rev_vol], "bvalvec": bvalvec}
-                )
+                dwi_groups.append({
+                    "dwi": [dwi], "rev": [rev_vol],
+                    "bval": bval, "bvec": bvec,
+                    "bvalvec": bvalvec
+                })
 
         for i, group in enumerate(dwi_groups):
             imain = "--imain={}".format(",".join(
@@ -300,6 +304,12 @@ class ApplyTopup(MagicMonkeyBaseApplication):
                 metadata.extend(load_metadata(img))
 
             save_metadata("{}_group{}".format(self.output_prefix, i), metadata)
+            copyfile(
+                group["bval"], "{}_group{}.bval".format(self.output_prefix, i)
+            )
+            copyfile(
+                group["bvec"], "{}_group{}.bvec".format(self.output_prefix, i)
+            )
 
             launch_shell_process(
                 'applytopup {} {}'.format(base_args, imain),
