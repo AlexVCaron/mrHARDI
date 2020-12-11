@@ -59,6 +59,13 @@ _cat_aliases = {
     'bvecs': 'Concatenate.bvecs'
 }
 
+_cat_flags = dict(
+    ts=(
+        {"Concatenate": {'time_series': True}},
+        "Concatenate the images along a new axis in last "
+        "dimension, to form a time-series of images"
+    )
+)
 
 class Concatenate(MagicMonkeyBaseApplication):
     name = u"Concatenate"
@@ -77,7 +84,10 @@ class Concatenate(MagicMonkeyBaseApplication):
 
     prefix = output_prefix_argument()
 
+    time_series = Bool(False).tag(config=True)
+
     aliases = Dict(default_value=_cat_aliases)
+    flags = Dict(default_value=_cat_flags)
 
     def execute(self):
         dwi_list = [nib.load(dwi) for dwi in self.images]
@@ -89,12 +99,15 @@ class Concatenate(MagicMonkeyBaseApplication):
         ] if self.bvecs else None
 
         reference_affine = dwi_list[0].affine
+        reference_header = dwi_list[0].header
+
+        data = [
+            dwi.get_fdata().astype(dtype=dwi.get_data_dtype())
+            for dwi in dwi_list
+        ]
 
         out_dwi, out_bvals, out_bvecs = concatenate_dwi(
-            [
-                dwi.get_fdata().astype(dtype=dwi.get_data_dtype())
-                for dwi in dwi_list
-            ],
+            [d[..., None] for d in data] if self.time_series else data,
             bvals_list,
             bvecs_list
         )
@@ -113,7 +126,7 @@ class Concatenate(MagicMonkeyBaseApplication):
             save_metadata(self.prefix, metadatas[0])
 
         nib.save(
-            nib.Nifti1Image(out_dwi, reference_affine),
+            nib.Nifti1Image(out_dwi, reference_affine, reference_header),
             "{}.nii.gz".format(self.prefix)
         )
 
