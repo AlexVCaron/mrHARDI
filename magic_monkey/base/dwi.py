@@ -93,6 +93,7 @@ class DwiMetadata(MagicMonkeyConfigurable):
     dwell = Float().tag(config=True)
 
     topup_indexes = List(Integer(), allow_none=True).tag(config=True)
+    dataset_indexes = List(Integer(), default_value=[0]).tag(config=True)
 
     def get_spacing(self):
         return np.absolute(np.linalg.eigvalsh(np.array(self.affine)[:3, :3])).tolist()
@@ -141,6 +142,7 @@ class DwiMetadata(MagicMonkeyConfigurable):
         self.affine = oth.affine
         self.dwell = oth.dwell
         self.topup_indexes = oth.topup_indexes
+        self.dataset_indexes = oth.dataset_indexes
 
     def extend(self, oth):
         assert np.all(np.isclose(self.affine, oth.affine))
@@ -155,6 +157,7 @@ class DwiMetadata(MagicMonkeyConfigurable):
         )
         self.update_acquisition_from_list(acqs)
 
+        self.dataset_indexes += [self.n + idx for idx in oth.dataset_indexes]
         self.n += oth.n
 
         self.topup_indexes += oth.topup_indexes
@@ -180,6 +183,7 @@ class DwiMetadata(MagicMonkeyConfigurable):
         metadata.acquisition_types = deepcopy(self.acquisition_types)
         metadata.acquisition_slices = deepcopy(self.acquisition_slices)
         metadata.topup_indexes = deepcopy(self.topup_indexes)
+        metadata.dataset_indexes = deepcopy(self.dataset_indexes)
 
         return metadata
 

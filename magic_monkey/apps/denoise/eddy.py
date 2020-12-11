@@ -148,7 +148,8 @@ class Eddy(MagicMonkeyBaseApplication):
         )
 
         if indexes.max() > len(acqp):
-            if not len(acqp) == 2:
+            dataset_indexes = metadata.dataset_indexes[1:] + [len(bvals)]
+            if not len(acqp) == len(dataset_indexes):
                 raise ConfigError(
                     "No matching configuration found for index "
                     "(maxing at {}) "
@@ -157,8 +158,9 @@ class Eddy(MagicMonkeyBaseApplication):
                     )
                 )
 
-            indexes[-len(rev_bvals):] = 2
-            indexes[:len(indexes) - len(rev_bvals)] = 1
+            indexes[:dataset_indexes[0]] = 1
+            for i, idx in enumerate(dataset_indexes[1:]):
+                indexes[dataset_indexes[i]:idx] = i + 2
 
         with open(
             "{}_index.txt".format(self.output_prefix), "w+"
