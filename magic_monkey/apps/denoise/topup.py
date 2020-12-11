@@ -2,6 +2,7 @@ from os import chmod, getcwd
 from os.path import join, basename
 
 import numpy as np
+import nibabel as nib
 from traitlets import Dict, Instance, Unicode, Enum, Bool
 from traitlets.config.loader import ConfigError
 
@@ -105,7 +106,7 @@ class Topup(MagicMonkeyBaseApplication):
         bvals = [np.loadtxt(bvs) for bvs in self.bvals]
         rev_bvals = [np.loadtxt(bvs) for bvs in self.rev_bvals]
         if rev_bvals:
-            bvals = [b for bv, rv in zip(bvals, rev_bvals) for b in [bv, rv]]
+            bvals = [bv for bv in bvals + rev_bvals]
 
         indexes = prepare_topup_index(
             np.concatenate(bvals), 1, strategy=self.indexing_strategy,
@@ -177,6 +178,8 @@ class Topup(MagicMonkeyBaseApplication):
 
 _apply_topup_aliases = dict(
     dwi="ApplyTopup.dwi",
+    bvals="ApplyTopup.bvals",
+    bvecs="ApplyTopup.bvecs",
     rev="ApplyTopup.rev",
     acqp="ApplyTopup.acquisition_file",
     topup="ApplyTopup.topup_prefix",
@@ -203,6 +206,16 @@ class ApplyTopup(MagicMonkeyBaseApplication):
         description="Input image or list of images"
     )
 
+    bvals = required_arg(
+        MultipleArguments, traits_args=(Unicode(),),
+        description="Input b-values for the input dwis"
+    )
+
+    bvecs = required_arg(
+        MultipleArguments, traits_args=(Unicode(),),
+        description="Input b-vectors for the input dwis"
+    )
+
     rev = MultipleArguments(
         Unicode(), default_value=[],
         help="Input reverse encoded image or list of images"
@@ -227,35 +240,70 @@ class ApplyTopup(MagicMonkeyBaseApplication):
 
     aliases = Dict(default_value=_apply_topup_aliases)
 
+    def _inspect_for_rev_at(self, i, n_volumes):
+        rev = nib.load(self.rev[i]) if i < len(self.rev) else None
+        if rev and len(rev.shape) > 3 and rev.shape[-1] == n_volumes:
+            return self.rev[i]
+        return None
+
     def execute(self):
         working_dir = getcwd()
 
-        args = "--topup={} --out={} --method={} --interp={}".format(
-            self.topup_prefix, self.output_prefix,
-            self.resampling, self.interpolation
+        base_args = "--topup={} --method={} --interp={}".format(
+            self.topup_prefix, self.resampling, self.interpolation
         )
 
-        args = "--imain={} {}".format(",".join(self.dwi + self.rev), args)
-
-        indexes = np.concatenate(tuple(
-            load_metadata(img).topup_indexes for img in self.dwi + self.rev
-        ))
-        args += " --inindex={}".format(
-            ",".join(str(i) for i in indexes.tolist())
-        )
-        args += " --datain={}".format(self.acquisition_file)
+        base_args += " --datain={}".format(self.acquisition_file)
 
         if self.dtype:
-            args += " --datatype={}".format(self.dtype)
+            base_args += " --datatype={}".format(self.dtype)
 
-        metadata = load_metadata(self.dwi[0])
-        for img in self.dwi[1:]:
-            metadata.extend(load_metadata(img))
+        dwi_groups = []
 
-        save_metadata(self.output_prefix, metadata)
+        for i, (dwi, bval, bvec) in enumerate(
+            zip(self.dwi, self.bvals, self.bvecs)
+        ):
+            bvalvec = np.loadtxt(bval)[:, None] * np.loadtxt(bvec).T
+            new_group = True
+            rev_vol = self._inspect_for_rev_at(i, bvalvec.shape[0])
+            for gp in dwi_groups:
+                if np.allclose(gp["bvalvec"], bvalvec):
+                    new_group = False
+                    gp["dwi"].append(dwi)
+                    gp["rev"].append(rev_vol)
+                    break
 
-        launch_shell_process(
-            'applytopup {}'.format(args), join(working_dir, "{}.log".format(
-                basename(self.output_prefix)
+            if new_group:
+                dwi_groups.append(
+                    {"dwi": [dwi], "rev": [rev_vol], "bvalvec": bvalvec}
+                )
+
+        for i, group in enumerate(dwi_groups):
+            imain = "--imain={}".format(",".join(
+                ",".join([dwi, rev]) if rev else dwi
+                for dwi, rev in zip(group["dwi"], group["rev"])
             ))
-        )
+            indexes = np.concatenate([
+                np.concatenate([
+                    load_metadata(dwi).topup_indexes,
+                    load_metadata(rev).topup_indexes
+                ]) if rev else load_metadata(dwi).topup_indexes
+                for dwi, rev in zip(group["dwi"], group["rev"])
+            ])
+            imain += " --inindex={}".format(
+                ",".join(str(i) for i in indexes.tolist())
+            )
+            imain += " --out={}_group{}".format(self.output_prefix, i)
+
+            metadata = load_metadata(group["dwi"][0])
+            for img in group["dwi"][1:]:
+                metadata.extend(load_metadata(img))
+
+            save_metadata("{}_group{}".format(self.output_prefix, i), metadata)
+
+            launch_shell_process(
+                'applytopup {} {}'.format(base_args, imain),
+                join(working_dir, "{}_group{}.log".format(
+                    basename(self.output_prefix), i
+                ))
+            )
