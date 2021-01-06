@@ -839,7 +839,7 @@ class BoundingBox(TraitType):
             self.error(obj, value)
 
 
-class ChoiceList(List):
+class ChoiceList(MultipleArguments):
     def __init__(
         self, choices, trait=None, default_value=Undefined,
         allow_all=False, minlen=0, maxlen=sys.maxsize, **kwargs
@@ -861,7 +861,7 @@ class ChoiceList(List):
             else:
                 self.item_trait = trait
         else:
-            self.item_trait = Unicode
+            self.item_trait = Unicode()
 
         super().__init__(
             trait=trait,
@@ -869,16 +869,6 @@ class ChoiceList(List):
             minlen=minlen, maxlen=maxlen,
             **kwargs
         )
-
-    def validate(self, obj, value):
-        trait = self._trait if self._trait is type else type(self._trait)
-        if isinstance(value, trait) \
-           or isinstance(value, type(trait.default_value)) or (
-                isinstance(value, str) and isinstance(self._trait, Enum)
-        ):
-            return super().validate(obj, self.klass(value.split(",")))
-
-        return super().validate(obj, value)
 
     def validate_elements(self, obj, value):
         bad_choices = list(

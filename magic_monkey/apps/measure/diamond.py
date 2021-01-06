@@ -127,7 +127,7 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
     name = u"Diamond Metrics"
     description = _description
     metrics = ChoiceList(
-        copy(_DIAMOND_METRICS), DiamondMetricsEnum(), copy(_DIAMOND_METRICS),
+        copy(_DIAMOND_METRICS), DiamondMetricsEnum(), [],
         True, help="Basic diamond metrics to run on the outputs"
     ).tag(config=True)
     mmetrics = ChoiceList(
