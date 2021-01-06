@@ -7,6 +7,7 @@ from numpy import (absolute,
                    cbrt,
                    einsum,
                    float32,
+                   indices,
                    isclose,
                    moveaxis,
                    prod,
@@ -17,6 +18,7 @@ from numpy import (absolute,
                    ubyte,
                    zeros,
                    any as npany)
+
 from numpy.ma import array as masked
 
 from magic_monkey.traits.metrics.base import (BaseMetric,
@@ -236,6 +238,21 @@ class FfaMetric(DiamondMetric):
         self._weight_over_tensors("fa")
         self._color("fa")
 
+        ffa = array([self.cache["t{}_fa".format(i)] for i in range(self.n)])
+        maxidxs = ffa.argmax(0)
+        X, Y, Z = indices(ffa.shape[1:])
+        ffa = ffa[maxidxs, X, Y, Z]
+        evecs = array([e[1] for e in self._get_eigs()])
+        nib.save(
+            nib.Nifti1Image(ffa, self.affine),
+            "{}_max_ffa.nii.gz".format(self.output)
+        )
+        self.cache["max_ffa"] = ffa
+        if self.colors:
+            BaseMetric._color_metric(
+                self, "max_ffa", evecs[maxidxs, X, Y, Z, ...]
+            )
+
 
 class FfMetric(DiamondMetric):
     def measure(self):
@@ -306,17 +323,25 @@ class PeaksMetric(DiamondMetric):
         if "peaks" in self.cache:
             peaks = self.cache["peaks"]
         else:
-            eigs = array([e[1] for e in self._get_eigs()])
+            evecs = array([e[1] for e in self._get_eigs()])
+            evals = array([e[0] for e in self._get_eigs()])
 
             n = self.n if self.n <= 5 else 5
 
             peaks = zeros((5,) + self._get_shape() + (3,))
             f_mask = self._get_fascicles_mask()
 
-            peaks[:n][f_mask] = eigs[f_mask[:n], 0, :]
+            # evals = evals[..., 0]
+            # max_eval = evals.max(0)
+            # mask = ~isclose(max_eval, 0)
+            # evals[:, mask] = evals[:, mask] / max_eval[None, mask]
+            #
+            # evecs[f_mask] *= evals[f_mask, None, None]
+            #
+            peaks[:n][f_mask] = evecs[f_mask[:n], 0, :]
 
-            weights = self._get_fascicle_fractions()
-            peaks[:n] = moveaxis(weights, -1, 0)[..., None] * peaks[:n]
+            # weights = self._get_fascicle_fractions()
+            # peaks[:n] = moveaxis(weights, -1, 0)[..., None] * peaks[:n]
 
             peaks = moveaxis(peaks, 0, -2).reshape(
                 self._get_shape() + (-1,)

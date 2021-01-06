@@ -86,10 +86,17 @@ class TensorMetrics(MagicMonkeyBaseApplication):
                 metrics_module, "{}Metric".format(metric.capitalize())
             )
 
+            dti_image = nib.load("{}_dti.nii.gz".format(self.input_prefix))
+            kwargs = {
+                "shape": dti_image.shape[:-1],
+                "colors": self.output_colors
+            }
+            if mask:
+                kwargs["mask"] = mask.get_fdata().astype(bool)
+
             klass(
                 self.input_prefix, self.output_prefix, self.cache,
-                metadata.affine, mask=mask.get_fdata().astype(bool),
-                shape=mask.shape, colors=self.output_colors
+                metadata.affine, **kwargs
             ).measure()
 
         if self.save_eigs:

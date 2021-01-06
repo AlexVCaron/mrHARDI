@@ -265,21 +265,26 @@ class ApplyTopup(MagicMonkeyBaseApplication):
             zip(self.dwi, self.bvals, self.bvecs)
         ):
             bvalvec = np.loadtxt(bval)[:, None] * np.loadtxt(bvec).T
+            metadata = load_metadata(dwi)
+            acq_types = metadata.acquisition_slices_to_list()
             new_group = True
             rev_vol = self._inspect_for_rev_at(i, bvalvec.shape[0])
             for gp in dwi_groups:
                 if gp["bvalvec"].shape[0] == bvalvec.shape[0]:
                     if np.allclose(gp["bvalvec"], bvalvec):
-                        new_group = False
-                        gp["dwi"].append(dwi)
-                        gp["rev"].append(rev_vol)
-                        break
+                        if len(gp["acq_types"]) == len(acq_types):
+                            if gp["acq_types"] == acq_types:
+                                new_group = False
+                                gp["dwi"].append(dwi)
+                                gp["rev"].append(rev_vol)
+                                break
 
             if new_group:
                 dwi_groups.append({
                     "dwi": [dwi], "rev": [rev_vol],
                     "bval": bval, "bvec": bvec,
-                    "bvalvec": bvalvec
+                    "bvalvec": bvalvec,
+                    "acq_types": acq_types
                 })
 
         for i, group in enumerate(dwi_groups):
@@ -300,10 +305,8 @@ class ApplyTopup(MagicMonkeyBaseApplication):
             imain += " --out={}_group{}".format(self.output_prefix, i)
 
             metadata = load_metadata(group["dwi"][0])
-            for img in group["dwi"][1:]:
-                metadata.extend(load_metadata(img))
-
             save_metadata("{}_group{}".format(self.output_prefix, i), metadata)
+
             copyfile(
                 group["bval"], "{}_group{}.bval".format(self.output_prefix, i)
             )

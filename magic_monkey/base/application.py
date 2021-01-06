@@ -778,7 +778,16 @@ class MultipleArguments(List):
         super().__init__(trait=trait, default_value=default_value, **kwargs)
 
     def _unpack_iter(self, value):
-        return [vv for v in value for vv in v.split(",")]
+        try:
+            return [
+                self.item_trait.from_string(vv)
+                for v in value for vv in v.split(",")
+            ]
+        except AttributeError:
+            return [
+                self.item_trait.from_string(v) if isinstance(v, str) else v
+                for v in value
+            ]
 
     def validate(self, obj, value):
         if isinstance(value, str):

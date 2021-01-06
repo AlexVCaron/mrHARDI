@@ -2,7 +2,8 @@ from os.path import exists, basename, join, dirname
 
 import nibabel as nib
 import numpy as np
-from traitlets import Instance, Unicode, Bool, Dict, TraitError, Enum
+from traitlets import Instance, Unicode, Bool, Dict, TraitError, Enum, Float
+from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import MagicMonkeyBaseApplication, \
     required_arg, MultipleArguments, output_prefix_argument
@@ -46,7 +47,7 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
     dwis = required_arg(
         MultipleArguments, [],
         "Dwi volumes for which to create metadata files",
-        traits_args=(Unicode,)
+        traits_args=(Unicode(),)
     )
 
     suffix = Unicode(
@@ -323,7 +324,7 @@ class AssertDwiDimensions(MagicMonkeyBaseApplication):
         bvals, bvecs = np.loadtxt(self.bvals), np.loadtxt(self.bvecs).T
 
         if self.strategy is "error":
-            if img.shape[-1] != len(bvals) != bvecs.shape[-1]:
+            if img.shape[-1] != len(bvals) != len(bvecs):
                 raise DwiMismatchError(img.shape[-1], len(bvals), len(bvecs))
         else:
             if len(bvals) > img.shape[-1]:
@@ -338,17 +339,20 @@ class AssertDwiDimensions(MagicMonkeyBaseApplication):
                     )
 
             if bvecs.shape[0] > len(bvals):
-                bvecs = bvecs[:, :len(bvals)]
-            elif bvecs.shape[-1] != len(bvals):
-                if len(bvals) % bvecs.shape[-1] == 0:
+                bvecs = bvecs[:len(bvals), :]
+            elif bvecs.shape[0] != len(bvals):
+                if len(bvals) % bvecs.shape[0] == 0:
                     bvecs = np.repeat(
-                        bvecs, int(len(bvals) / bvecs.shape[-1]), axis=1
+                        bvecs, int(len(bvals) / bvecs.shape[0]), axis=0
                     )
                 else:
                     b0_mask = np.isclose(bvals, 0)
-                    if np.sum(b0_mask) == (len(bvals) - bvecs.shape[-1]):
-                        new_bvecs = np.zeros((3, len(bvals)))
-                        new_bvecs[~b0_mask] = bvecs
+                    zero_bvecs = np.isclose(np.linalg.norm(bvecs, axis=1), 0)
+                    if np.sum(b0_mask) == (
+                        len(bvals) - bvecs.shape[0] + np.sum(zero_bvecs)
+                    ):
+                        new_bvecs = np.zeros((len(bvals), 3))
+                        new_bvecs[~b0_mask] = bvecs[~zero_bvecs]
                         bvecs = new_bvecs
                     else:
                         raise DwiMismatchError(
@@ -359,12 +363,12 @@ class AssertDwiDimensions(MagicMonkeyBaseApplication):
             np.savetxt(
                 self.bvals if self.output is None else
                 "{}.bval".format(self.output),
-                bvals
+                bvals[None, :], fmt='%.2f'
             )
             np.savetxt(
                 self.bvecs if self.output is None else
                 "{}.bvec".format(self.output),
-                bvecs
+                bvecs.T, fmt='%.8f'
             )
 
             if self.output:

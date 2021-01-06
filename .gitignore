@@ -152,3 +152,6 @@ venv*/
 # Singularity
 *.sif
 *.simg
+
+# Remove the dev-scripts from the repo for now
+dev_scripts/
