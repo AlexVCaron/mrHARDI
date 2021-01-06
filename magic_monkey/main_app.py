@@ -105,6 +105,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.utils.DwiMetadataUtils",
             'Create metadata file(s) describing one or more dwi datasets'
         ),
+        mosaic=(
+            "magic_monkey.apps.visualize.Mosaic",
+            'Generate a mosaic for a 3D measure or image'
+        ),
         n4=(
             "magic_monkey.apps.denoise.N4BiasCorrection",
             'Denoise rician and chi squared noise artifacts from dwi datasets'
