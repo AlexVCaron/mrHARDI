@@ -12,6 +12,8 @@ From: magic_monkey_heavy.sif
 
         export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
         export CUDA_HOME=/usr/local/cuda
+
+        export MATPLOTLIBRC="/usr/local/lib/python3.7/dist-packages/matplotlib/mpl-data/"
 %setup
         SOURCES=$SINGULARITY_ROOTFS/mms/sources
         MMY_sources=$SOURCES/magic_monkey
@@ -54,6 +56,8 @@ From: magic_monkey_heavy.sif
         locale-gen en_US.utf8
         update-locale LANG=en_US.utf8
 
+        export MATPLOTLIBRC="/usr/local/lib/python3.7/dist-packages/matplotlib/mpl-data/"
+
         export LC_ALL=C
         export LC_CTYPE="en_US.utf8"
         export LC_ALL="en_US.utf8"
@@ -94,13 +98,16 @@ From: magic_monkey_heavy.sif
             apt-get -y install git
             apt-get -y install libblas-dev
             apt-get -y install liblapack-dev
+            apt-get -y install bc
 
             python3 -m pip install Cython
+            python3 -m pip install numpy
 
             if [ ! $mmy_installed ] || [ ! last_mmy_ver_installed ]
             then
                 mmy_installer () {
                     cd $MMY_sources
+                    export MATPLOTLIBRC="/usr/local/lib/python3.7/dist-packages/matplotlib/mpl-data/"
                     python3 -m pip install -r requirements.txt
                     python3 -m pip install magic_monkey-*-py3-none-any.whl
                 }
@@ -115,11 +122,14 @@ From: magic_monkey_heavy.sif
                     git clone https://github.com/scilus/scilpy.git $SCILPY
 
                     cd $SCILPY
+                    export MATPLOTLIBRC="/usr/local/lib/python3.7/dist-packages/matplotlib/mpl-data/"
                     python3 -m pip install -e .
                 }
 
                 ERR_VAR=$(scilpy_installer) && touch $INSTALL/scilpy_complete.flag || error_exit
             fi
+
+            sed -i '41s/.*/backend : Agg/' /usr/local/lib/python3.7/dist-packages/matplotlib/mpl-data/matplotlibrc
 
             apt-get -y remove build-essential
             apt-get -y remove gfortran
