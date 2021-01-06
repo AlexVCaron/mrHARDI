@@ -78,6 +78,7 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
 
     estimate_water = Bool(True).tag(config=True)
     water_tensor = Bool(False).tag(config=True)
+    water_diff = Float(3E-3).tag(config=True)
     estimate_restriction = Bool(False).tag(config=True)
     restriction_tensor = Bool(False).tag(config=True)
 
@@ -94,6 +95,7 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
     initial_stick = Stick(allow_none=True).tag(config=True)
     md_higher_bound = Float(1E-4).tag(config=True)
     fa_lower_bound = Float(0.7).tag(config=True)
+    fw_md_higher_bound = Float(3E-3).tag(config=True)
 
     sum_fractions_to_1 = Bool(True).tag(config=True)
 
@@ -144,12 +146,14 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
             "--fascicle {}".format(self.fascicle),
             "--waterfraction {}".format(int(self.estimate_water)),
             "--waterDiamond {}".format(int(self.water_tensor)),
+            "--waterDiff {}".format(self.water_diff),
             "--isorfraction {}".format(int(self.estimate_restriction)),
             "--isorDiamond {}".format(int(self.restriction_tensor)),
             "--maxevals {}".format(self.max_evals),
             "--maxpasses {}".format(self.max_passes),
             "--initMD {}".format(self.md_higher_bound),
             "--initFA {}".format(self.fa_lower_bound),
+            "--freediffbound {}".format(self.fw_md_higher_bound),
             "--fractions_sumto1 {}".format(int(self.sum_fractions_to_1)),
             "--estimateDisoIfNoFascicle {}".format(int(self.iso_no_fascicle)),
             "-a {}".format(self.optimizer)

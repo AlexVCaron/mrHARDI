@@ -1,6 +1,7 @@
 from os import chmod
 
 import numpy as np
+from GPUtil import GPUtil
 from traitlets import Dict, Instance, Unicode, Bool, Enum
 from traitlets.config.loader import ConfigError
 
@@ -30,6 +31,10 @@ _flags = dict(
         {"Eddy": {"debug": True}},
         "Enables output of debugging messages "
         "and of additional eddy outputs"
+    ),
+    dont_gpu=(
+        {"Eddy": {"select_gpu": False}},
+        "Disable GPU pre-selection for eddy cuda"
     )
 )
 
@@ -107,6 +112,7 @@ class Eddy(MagicMonkeyBaseApplication):
     )
 
     debug = Bool(False).tag(config=True)
+    select_gpu = Bool(True).tag(config=True)
 
     aliases = Dict(default_value=_aliases)
     flags = Dict(default_value=_flags)
@@ -181,6 +187,17 @@ class Eddy(MagicMonkeyBaseApplication):
         ) as f:
             eddy_exec = "eddy"
             if self.configuration.enable_cuda:
+                if self.select_gpu:
+                    mem_usage = [gpu.memoryUtil for gpu in GPUtil.getGPUs()]
+                    if np.allclose(mem_usage, mem_usage[0], atol=1E-2):
+                        gpu = GPUtil.getAvailable(order="random")[0]
+                    else:
+                        gpu = GPUtil.getAvailable(order="memory")[0]
+
+                    eddy_exec = "CUDA_VISIBLE_DEVICES={} {}".format(
+                        gpu, eddy_exec
+                    )
+
                 eddy_exec += "_cuda"
             else:
                 eddy_exec += "_openmp"

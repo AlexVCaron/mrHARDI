@@ -106,11 +106,18 @@ class Concatenate(MagicMonkeyBaseApplication):
             for dwi in dwi_list
         ]
 
-        out_dwi, out_bvals, out_bvecs = concatenate_dwi(
-            [d[..., None] for d in data] if self.time_series else data,
-            bvals_list,
-            bvecs_list
-        )
+        if len(data) == 1:
+            out_dwi, out_bvals, out_bvecs = (
+                data[0],
+                bvals_list[0][None, :] if bvals_list else None,
+                bvecs_list[0].T if bvecs_list else None
+            )
+        else:
+            out_dwi, out_bvals, out_bvecs = concatenate_dwi(
+                [d[..., None] for d in data] if self.time_series else data,
+                bvals_list,
+                bvecs_list
+            )
 
         metadatas = list(load_metadata(img) for img in self.images)
         all_meta = all(m is not None for m in metadatas)
