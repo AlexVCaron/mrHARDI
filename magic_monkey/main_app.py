@@ -52,6 +52,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.utils.B0Utils",
             'Basic processing on B0 slices of dwi volumes'
         ),
+        shells=(
+            "magic_monkey.apps.utils.ExtractShells",
+            'Extract a subset of shells from a dwi dataset'
+        ),
         check=(
             "magic_monkey.apps.utils.AssertDwiDimensions",
             'Basic checks on b-values/b-vectors conformity to an dwi 4D image'

@@ -3,7 +3,6 @@ from os.path import exists, basename, join, dirname
 import nibabel as nib
 import numpy as np
 from traitlets import Instance, Unicode, Bool, Dict, TraitError, Enum, Float
-from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import MagicMonkeyBaseApplication, \
     required_arg, MultipleArguments, output_prefix_argument
@@ -378,3 +377,98 @@ class AssertDwiDimensions(MagicMonkeyBaseApplication):
                 if metadata:
                     metadata.adapt_to_shape(len(bvals))
                     save_metadata(self.output, metadata)
+
+
+_shells_aliases = {
+    "in": "ExtractShells.dwi",
+    "bvals": "ExtractShells.bvals",
+    "bvecs": "ExtractShells.bvecs",
+    "shells": "ExtractShells.shells",
+    "keep": "ExtractShells.keep",
+    "out": "ExtractShells.output"
+}
+
+_shells_flags = dict(
+    with_b0=(
+        {"ExtractShells": {"keep_b0": True}},
+        'Keeps b0 volumes in the output'
+    )
+)
+
+
+class ExtractShells(MagicMonkeyBaseApplication):
+    dwi = required_arg(
+        Unicode,
+        description="Dwi file to extract shells from"
+    )
+
+    bvals = required_arg(Unicode, description="Input b-values file")
+    bvecs = required_arg(Unicode, description="Input b-vectors file")
+
+    shells = MultipleArguments(
+        Float(), help="Shells group of threshold to work from. If None, "
+                      "will execute on all shells, excepts b0 volumes."
+    ).tag(config=True)
+
+    keep = Enum(
+        ["all", "geq", "leq", "bigset", "smallset"], "all",
+        help="Selection strategy to subset the initial group of shells."
+    ).tag(config=True)
+
+    keep_b0 = Bool(
+        False, help="When True, removes the b0 volumes from the output volume"
+    ).tag(config=True)
+
+    output = output_prefix_argument()
+
+    aliases = Dict(default_value=_shells_aliases)
+    flags = Dict(default_value=_shells_flags)
+
+    def execute(self):
+        bvals = np.loadtxt(self.bvals)
+        bvecs = np.loadtxt(self.bvecs)
+        dwi = nib.load(self.dwi)
+
+        if not self.shells:
+            shells = np.unique(bvals[~np.isclose(bvals, 0.)])
+        else:
+            shells = np.unique(np.array(self.shells))
+
+        mask = np.zeros_like(bvals, bool)
+        if self.keep == "leq":
+            mask |= bvals <= shells.max()
+        elif self.keep == "geq":
+            mask |= bvals >= shells.min()
+        elif self.keep == "bigset":
+            counts = np.array([(bvals == s).sum() for s in shells])
+            mask |= bvals == shells[counts.argmax()]
+        elif self.keep == "smallset":
+            counts = np.array([(bvals == s).sum() for s in shells])
+            mask |= bvals == shells[counts.argmin()]
+        elif self.keep == "all":
+            for shell in shells:
+                mask |= bvals == shell
+
+        if self.keep_b0:
+            mask |= np.isclose(bvals, 0.)
+        else:
+            mask &= ~np.isclose(bvals, 0.)
+
+        np.savetxt("{}.bval".format(self.output), bvals[mask][None, :])
+        np.savetxt("{}.bvec".format(self.output), bvecs[:, mask])
+        nib.save(
+            nib.Nifti1Image(
+                dwi.get_fdata().astype(dwi.get_data_dtype())[..., mask],
+                dwi.affine, dwi.header
+            ),
+            "{}.nii.gz".format(self.output)
+        )
+
+        metadata = load_metadata(self.dwi)
+        if metadata:
+            acq_types = np.array(metadata.acquisition_slices_to_list())[mask]
+            directions = np.array(metadata.directions)[mask, :]
+            metadata.update_acquisition_from_list(acq_types.tolist())
+            metadata.directions = directions.tolist()
+            metadata.n = int(mask.sum())
+            save_metadata(self.output, metadata)
