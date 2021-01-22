@@ -115,8 +115,7 @@ class AntsConfiguration(MagicMonkeyConfigurable):
 
 
 _aliases = {
-    "type": "AntsTransformConfiguration.input_type",
-    "dim": "AntsTransformConfiguration.dimension",
+    "dim": "AntsTransformConfiguration.dimensionality",
     "interp": "AntsTransformConfiguration.interpolation",
     "fill": "AntsTransformConfiguration.fill_value"
 }
@@ -127,6 +126,7 @@ class AntsTransformConfiguration(MagicMonkeyConfigurable):
         ["Linear", "NearestNeighbor", "Gaussian", "BSpline"], "Linear"
     ).tag(config=True)
     fill_value = Integer(0).tag(config=True)
+    dimensionality = Integer(None, allow_none=True).tag(config=True)
 
     @default('app_aliases')
     def _app_aliases_default(self):
@@ -136,9 +136,12 @@ class AntsTransformConfiguration(MagicMonkeyConfigurable):
         pass
 
     def serialize(self, *args, **kwargs):
-        return "-n {} -f {}".format(
+        serialization = "-n {} -f {}".format(
             self.interpolation, self.fill_value
         )
+        if self.dimensionality:
+            serialization += " -d {}".format(self.dimensionality)
+        return serialization
 
 
 class AntsMotionCorrectionConfiguration(MagicMonkeyConfigurable):
