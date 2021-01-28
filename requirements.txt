@@ -12,7 +12,7 @@ decorator==4.4.2
 dipy==1.2.*
 docopt==0.6.2
 et-xmlfile==1.0.1
-fury==0.2.*
+fury==0.6.*
 future==0.17.*
 googledrivedownloader==0.*
 gputil==1.4.0
