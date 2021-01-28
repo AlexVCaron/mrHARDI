@@ -65,6 +65,31 @@ def non_zero_bvecs(prefix):
     np.savetxt("{}_non_zero.bvec".format(prefix), bvecs, fmt="%.6f")
 
 
+class CUSPGradientsReader:
+    @classmethod
+    def read(cls, filename, b_nominal):
+        with open(filename) as cusp_file:
+            line = cusp_file.readline()
+            while line[0] == "#":
+                line = cusp_file.readline()
+
+            for _ in range(2):
+                cusp_file.readline()
+
+            bvecs = []
+            for grad_line in cusp_file:
+                grad_line = grad_line.split("=")[1].strip()
+                grad_line = grad_line.lstrip("(").rstrip(")").split(",")
+                bvecs.append([float(g.strip()) for g in grad_line])
+
+            bvecs = np.array(bvecs)
+            norms = np.linalg.norm(bvecs, axis=1)
+            bvals = b_nominal * (norms ** 2.)
+            bvecs[~np.isclose(norms, 0)] /= norms[~np.isclose(norms, 0), None]
+
+            return bvals, bvecs.T
+
+
 class DwiMetadata(MagicMonkeyConfigurable):
     n = Integer().tag(config=True)
     n_excitations = Integer().tag(config=True)

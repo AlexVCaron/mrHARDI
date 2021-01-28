@@ -9,9 +9,14 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            MultipleArguments,
                                            output_prefix_argument,
                                            required_file)
-from magic_monkey.base.dwi import AcquisitionType, Direction, \
-    load_metadata_file, load_metadata, save_metadata, DwiMetadata, \
-    DwiMismatchError
+from magic_monkey.base.dwi import (AcquisitionType,
+                                   CUSPGradientsReader,
+                                   Direction,
+                                   load_metadata_file,
+                                   load_metadata,
+                                   save_metadata,
+                                   DwiMetadata,
+                                   DwiMismatchError)
 from magic_monkey.config.utils import DwiMetadataUtilsConfiguration
 
 _mb_aliases = {
@@ -497,3 +502,27 @@ class FlipGradientsOnReference(MagicMonkeyBaseApplication):
         bvecs[flips, :] *= -1.
 
         np.savetxt("{}.bvec".format(self.output), bvecs)
+
+
+_cusp_aliases = {
+    "in": "ConvertCUSP.cusp",
+    "b": "ConvertCUSP.b_nominal",
+    "out": "ConvertCUSP.output"
+}
+
+
+class ConvertCUSP(MagicMonkeyBaseApplication):
+    cusp = required_file(description="Input CUSP scheme file to convert")
+    b_nominal = Float(help="Nominal b-value of the CUSP gradient scheme").tag(
+        config=True, required=True
+    )
+
+    output = output_prefix_argument()
+
+    aliases = Dict(default_value=_cusp_aliases)
+
+    def execute(self):
+        bvals, bvecs = CUSPGradientsReader.read(self.cusp, self.b_nominal)
+
+        np.savetxt("{}.bval".format(self.output), bvals[None, :], fmt="%.2f")
+        np.savetxt("{}.bvec".format(self.output), bvecs, fmt="%.8f")

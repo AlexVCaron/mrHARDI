@@ -43,7 +43,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.register.AntsTransform",
             'Apply a registration transform'
         ),
-        apply_mask=("magic_monkey.apps.utils.ApplyMask", 'Apply mask to image'),
+        apply_mask=(
+            "magic_monkey.apps.utils.ApplyMask",
+            'Apply mask to image'
+        ),
         apply_topup=(
             "magic_monkey.apps.denoise.ApplyTopup",
             'Apply Topup correction to a set of images'
@@ -51,10 +54,6 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         b0=(
             "magic_monkey.apps.utils.B0Utils",
             'Basic processing on B0 slices of dwi volumes'
-        ),
-        shells=(
-            "magic_monkey.apps.utils.ExtractShells",
-            'Extract a subset of shells from a dwi dataset'
         ),
         check=(
             "magic_monkey.apps.utils.AssertDwiDimensions",
@@ -72,6 +71,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.reconstruct.CSD",
             'Perform constrained spherical deconvolution'
         ),
+        cusp=(
+            "magic_monkey.apps.utils.ConvertCUSP",
+            'Convert a CUSP scheme file to bval/bvec'
+        ),
         diamond=(
             "magic_monkey.apps.reconstruct.Diamond",
             'Perform diamond reconstruction'
@@ -79,7 +82,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         diamond_metrics=(
             "magic_monkey.apps.measure.DiamondMetrics", 'Compute DTI metrics'
         ),
-        dti=("magic_monkey.apps.reconstruct.DTI", 'Perform dti reconstruction'),
+        dti=(
+            "magic_monkey.apps.reconstruct.DTI",
+            'Perform dti reconstruction'
+        ),
         dti_metrics=(
             "magic_monkey.apps.measure.TensorMetrics",
             'Compute DTI metrics'
@@ -128,6 +134,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         response=(
             "magic_monkey.apps.reconstruct.FiberResponse",
             'Compute single fiber response (and gm and csf if msmt)'
+        ),
+        shells=(
+            "magic_monkey.apps.utils.ExtractShells",
+            'Extract a subset of shells from a dwi dataset'
         ),
         split=(
             "magic_monkey.apps.utils.SplitImage",
