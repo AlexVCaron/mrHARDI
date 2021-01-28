@@ -212,3 +212,49 @@ def squash_b0(
         np.array(out_bvals)[None, ...],
         np.array(out_bvecs).T if bvecs is not None else None
     )
+
+
+def normalize_to_b0(
+    data, bvals, mean=B0PostProcess.batch,
+    ceil=0.9, ref_mean=None, b0_comp=np.less_equal
+):
+    b0_mask = b0_comp(bvals, ceil)
+    mask = np.ma.masked_array(b0_mask)
+    mask[~b0_mask] = np.ma.masked
+
+    b0_clusters = list(np.ma.notmasked_contiguous(mask, axis=0))
+    dwi_clusters = list(np.ma.clump_masked(mask))
+
+    if ref_mean is None:
+        ref_mean = np.mean(data[..., b0_clusters[0]])
+
+    if not b0_comp(bvals[0], ceil):
+        dwi_clusters = dwi_clusters[1:]
+    if not b0_comp(bvals[-1], ceil):
+        if mean == B0PostProcess.batch:
+            mean_val = np.mean(data[..., b0_clusters[-1]])
+        else:
+            mean_val = np.mean(data[..., b0_clusters[-1].start])
+        modif = ref_mean if np.isclose(mean_val, 0) else ref_mean / mean_val
+
+        data[dwi_clusters[-1]] *= modif
+        dwi_clusters = dwi_clusters[:-1]
+
+    for i in range(len(dwi_clusters)):
+        len_cl = dwi_clusters[i].stop - dwi_clusters[i].start
+        weight = np.arange(len_cl).astype(float) / (len_cl - 1)
+        if mean == B0PostProcess.batch:
+            mean_val = np.mean(data[..., b0_clusters[i]])
+            mean_val_p1 = np.mean(data[..., b0_clusters[i + 1]])
+        else:
+            mean_val = np.mean(data[..., b0_clusters[i].end - 1])
+            mean_val_p1 = np.mean(data[..., b0_clusters[i + 1].start])
+
+        modif = weight * mean_val_p1 + (1. - weight) * mean_val
+        data[..., dwi_clusters[i]] *= ref_mean / modif
+
+    for i in range(len(b0_clusters)):
+        mean_cluster = np.mean(data[..., b0_clusters[i]])
+        data[..., b0_clusters[i]] *= ref_mean / mean_cluster
+
+    return data, ref_mean

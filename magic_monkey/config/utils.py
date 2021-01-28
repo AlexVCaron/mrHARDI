@@ -40,7 +40,7 @@ class B0UtilsConfiguration(MagicMonkeyConfigurable):
         return _b0_flags
 
     current_util = Enum(
-        ["extract", "squash", None], None
+        ["extract", "squash", "normalize", None], None
     ).tag(config=True, required=True)
 
     mean_strategy = convert_enum(
