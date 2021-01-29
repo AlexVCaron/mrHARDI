@@ -133,6 +133,7 @@ RUN find . -maxdepth 1 -not \( \
         -name dwi2response -or \
         -name dwi2tensor -or \
         -name dwidenoise -or \
+        -name mrconvert -or \
         -name mrdegibbs \
     \) -exec rm -rf "{}" \;
 
