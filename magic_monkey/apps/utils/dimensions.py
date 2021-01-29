@@ -4,10 +4,10 @@ import sys
 import nibabel as nib
 import numpy as np
 from dipy.segment.mask import crop
-from scilpy.utils.util import voxel_to_world, world_to_voxel
 from scipy.linalg import qr, lu
 from traitlets import Unicode, Any, Dict
 
+from compute.utils import voxel_to_world, world_to_voxel
 from magic_monkey.base.application import MagicMonkeyBaseApplication, \
     required_file, output_file_argument, BoundingBox
 

@@ -14,11 +14,11 @@ import nibabel as nib
 import numpy as np
 
 from dipy.data import get_sphere, default_sphere
-from scilpy.utils.util import voxel_to_world, world_to_voxel
 
 from traitlets import Unicode, Enum, Dict, Bool, Float, Integer
 from enum import Enum as PyEnum
 
+from compute.utils import voxel_to_world, world_to_voxel
 from magic_monkey.base.application import MagicMonkeyBaseApplication, \
     required_arg, MultipleArguments, Resolution, output_prefix_argument, BoundingBox
 

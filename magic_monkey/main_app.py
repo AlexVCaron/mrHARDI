@@ -52,6 +52,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.utils.B0Utils",
             'Basic processing on B0 slices of dwi volumes'
         ),
+        bvals_viz=(
+            "magic_monkey.apps.visualize.BValuesVisualization",
+            "Visualization of diffusion organized by b-values"
+        ),
         shells=(
             "magic_monkey.apps.utils.ExtractShells",
             'Extract a subset of shells from a dwi dataset'
