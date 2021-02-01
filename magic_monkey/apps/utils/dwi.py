@@ -493,7 +493,7 @@ class FlipGradientsOnReference(MagicMonkeyBaseApplication):
     aliases = Dict(default_value=_flip_aliases)
 
     def execute(self):
-        affine = nib.load(self.dwi).affine
+        affine = nib.load(self.dwi).affine[:3, :3]
         flips = np.sign(np.linalg.inv(affine) @ [1, 1, 1]) < 0
         bvecs = np.loadtxt(self.bvecs)
         bvecs[flips, :] *= -1.

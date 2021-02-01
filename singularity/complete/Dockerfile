@@ -10,7 +10,7 @@ RUN git clone https://avcaron@bitbucket.org/avcaron/magic-monkey.git /mmy
 WORKDIR /mmy
 RUN git fetch && git checkout --track origin/devflow
 
-FROM avcaron/magic-monkey:base-v1.0
+FROM avcaron/magic-monkey:base-latest
 WORKDIR /
 RUN mkdir -p /mms/dev/scilpy
 RUN mkdir -p /mms/dev/magic-monkey
