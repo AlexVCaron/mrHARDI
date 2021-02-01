@@ -97,6 +97,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.utils.FitToBox",
             'Pad or crop an image to a bounding box'
         ),
+        flip2ref=(
+            "magic_monkey.apps.utils.FlipGradientsOnReference",
+            'Flip gradients following reference\'s strides'
+        ),
         gif=(
             "magic_monkey.apps.visualize.GifAnimator",
             'Create at gif from a list of images'

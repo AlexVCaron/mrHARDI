@@ -4,8 +4,11 @@ import nibabel as nib
 import numpy as np
 from traitlets import Instance, Unicode, Bool, Dict, TraitError, Enum, Float
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    required_arg, MultipleArguments, output_prefix_argument
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           required_arg,
+                                           MultipleArguments,
+                                           output_prefix_argument,
+                                           required_file)
 from magic_monkey.base.dwi import AcquisitionType, Direction, \
     load_metadata_file, load_metadata, save_metadata, DwiMetadata, \
     DwiMismatchError
@@ -472,3 +475,27 @@ class ExtractShells(MagicMonkeyBaseApplication):
             metadata.directions = directions.tolist()
             metadata.n = int(mask.sum())
             save_metadata(self.output, metadata)
+
+
+_flip_aliases = {
+    "in": "FlipGradientsOnReference.dwi",
+    "bvecs": "FlipGradientsOnReference.bvecs",
+    "out": "FlipGradientsOnReference.output"
+}
+
+
+class FlipGradientsOnReference(MagicMonkeyBaseApplication):
+    dwi = required_file(description="Input dwi file used as reference")
+    bvecs = required_file(description="Input b-vectors to flip")
+
+    output = output_prefix_argument()
+
+    aliases = Dict(default_value=_flip_aliases)
+
+    def execute(self):
+        affine = nib.load(self.dwi).affine
+        flips = np.sign(np.linalg.inv(affine) @ [1, 1, 1]) < 0
+        bvecs = np.loadtxt(self.bvecs)
+        bvecs[flips, :] *= -1.
+
+        np.savetxt("{}.bvec".format(self.output), bvecs)
