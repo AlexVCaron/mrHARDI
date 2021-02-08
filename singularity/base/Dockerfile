@@ -68,12 +68,29 @@ WORKDIR /mms/dev/fsl/bin
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
-        -name 'eddy*' -or \
-        -name topup -or \
+        -name applytopup -or \
         -name bet -or \
         -name bet2 -or \
-        -name applytopup -or \
-        -name fslmaths \
+        -name betsurf -or \
+        -name convert_xfm -or \
+        -name eddy -or \
+        -name eddy_cuda -or \
+        -name eddy_cuda9.1 -or \
+        -name eddy_openmp -or \
+        -name fast -or \
+        -name flirt -or \
+        -name fslhd -or \
+        -name fslmaths -or \
+        -name fslmerge -or \
+        -name fslroi -or \
+        -name fslstats -or \
+        -name fslval -or \
+        -name imcp -or \
+        -name immv -or \
+        -name imtest -or \
+        -name remove_ext -or \
+        -name standard_space_roi -or \
+        -name topup \
     \) -exec rm -rf "{}" \;
 WORKDIR /mms/dev/fsl/extras
 RUN find . -maxdepth 1 -not \( \
@@ -206,6 +223,9 @@ COPY --from=fsl_builder /mms/dev/fsl /mms/dev/fsl
 COPY --from=mrtrix_builder /mms/dev/mrtrix /mms/dev/mrtrix
 COPY --from=diamond_builder /mms/dev/diamond /mms/dev/diamond
 COPY --from=ants_builder /mms/dev/ants /mms/dev/ants
+
+ENV FSLDIR=/mms/dev/fsl
+ENV FSLOUTPUTTYPE=NIFTI_GZ
 
 ENV FSL_BIN=/mms/dev/fsl/bin
 ENV MRTRIX_BIN=/mms/dev/mrtrix/bin
