@@ -510,19 +510,36 @@ _cusp_aliases = {
     "out": "ConvertCUSP.output"
 }
 
+_cusp_flags = dict(
+    round=(
+        {"ConvertCUSP": {"round": True}},
+        'Round b-values to nearest integer'
+    )
+)
+
 
 class ConvertCUSP(MagicMonkeyBaseApplication):
     cusp = required_file(description="Input CUSP scheme file to convert")
     b_nominal = Float(help="Nominal b-value of the CUSP gradient scheme").tag(
         config=True, required=True
     )
-
+    round = Bool(False, help="Round b-values to nearest integer").tag(
+        config=True
+    )
     output = output_prefix_argument()
 
     aliases = Dict(default_value=_cusp_aliases)
+    flags = Dict(default_value=_cusp_flags)
 
     def execute(self):
         bvals, bvecs = CUSPGradientsReader.read(self.cusp, self.b_nominal)
 
-        np.savetxt("{}.bval".format(self.output), bvals[None, :], fmt="%.2f")
+        if self.round:
+            bvals = np.round(bvals).astype(int)
+
+        np.savetxt(
+            "{}.bval".format(self.output), bvals[None, :],
+            fmt="%d" if self.round else "%.2f"
+        )
+
         np.savetxt("{}.bvec".format(self.output), bvecs, fmt="%.8f")
