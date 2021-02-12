@@ -196,9 +196,9 @@ class AntsTransform(MagicMonkeyBaseApplication):
             args, self.configuration.serialize()
         )
 
-        # launch_shell_process(command, join(current_path, "{}.log".format(
-        #     basename(self.output)
-        # )))
+        launch_shell_process(command, join(current_path, "{}.log".format(
+            basename(self.output)
+        )))
 
         metadata = load_metadata(self.image)
         if metadata:
