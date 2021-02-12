@@ -2,6 +2,7 @@ from os import getcwd
 from os.path import basename, join
 
 import numpy as np
+from scipy.io import loadmat
 from traitlets import Dict, Instance, Unicode, Bool
 
 import nibabel as nib
@@ -126,9 +127,9 @@ class AntsRegistration(MagicMonkeyBaseApplication):
 _tr_aliases = {
     'in': 'AntsTransform.image',
     'out': 'AntsTransform.output',
-    'mat': 'AntsTransform.transformation_matrix',
     'ref': 'AntsTransform.transformation_ref',
-    'trans': 'AntsTransform.transformations'
+    'trans': 'AntsTransform.transformations',
+    'bvecs': 'AntsTransform.bvecs'
 }
 
 _tr_description = """
@@ -144,22 +145,34 @@ class AntsTransform(MagicMonkeyBaseApplication):
 
     image = required_file(description="Input image to transform")
 
+    bvecs = Unicode(
+        help="List of b-vectors to realign following "
+             "rigid and affine transformations."
+    ).tag(config=True)
+
     transformation_ref = required_file(
-        description="Reference image for initial rigid transformation"
+        description="Reference image for initial rigid transformation."
     )
 
-    transformation_matrix = Unicode(
-        help="Input affine transformation matrix computed by ants"
-    ).tag(config=True, ignore_write=True)
-
     transformations = MultipleArguments(
-        Unicode(), help="List of transformations to apply after initial "
-                      "rigid registration (and affine if supplied)"
+        Unicode(), help="List of transformations to "
+                        "apply, following ANTs ordering."
     ).tag(config=True, ignore_write=True)
 
-    output = output_file_argument()
+    output = output_prefix_argument()
 
     aliases = Dict(default_value=_tr_aliases)
+
+    def _get_mat_rotation(self, filename):
+        mat = loadmat(filename)
+        if "AffineTransform_double_3_3" in mat:
+            arr = mat["AffineTransform_double_3_3"]
+        elif "AffineTransform_float_3_3" in mat:
+            arr = mat["AffineTransform_float_3_3"]
+        else:
+            return None
+
+        return arr[:9].reshape((3, 3))
 
     def execute(self):
         current_path = getcwd()
@@ -172,26 +185,42 @@ class AntsTransform(MagicMonkeyBaseApplication):
         img_type = 0 if is_3d_data else 3
 
         args = "-i {} -e {} -r {} -o {}".format(
-            self.image, img_type, self.transformation_ref, self.output
+            self.image, img_type, self.transformation_ref,
+            "{}.nii.gz".format(self.output)
         )
 
         if self.transformations and len(self.transformations) > 0:
             args += "".join(" -t {}".format(t) for t in self.transformations)
 
-        if self.transformation_matrix:
-            args += " -t {}".format(self.transformation_matrix)
-
         command = "antsApplyTransforms {} {}".format(
             args, self.configuration.serialize()
         )
 
-        launch_shell_process(command, join(current_path, "{}.log".format(
-            basename(self.output).split(".")[0]
-        )))
+        # launch_shell_process(command, join(current_path, "{}.log".format(
+        #     basename(self.output)
+        # )))
 
         metadata = load_metadata(self.image)
         if metadata:
-            save_metadata(self.output.split(".")[0], metadata)
+            save_metadata(self.output, metadata)
+
+        if self.bvecs:
+            bvecs = np.loadtxt(self.bvecs)
+            bvecs = np.linalg.inv(image.affine[:3, :3]) @ bvecs
+
+            for trans in self.transformations[::-1]:
+                if trans.split(".")[-1] == "mat":
+                    self.log.debug(
+                        "Rotating bvecs with respect to transform {}".format(
+                            basename(trans)
+                        )
+                    )
+                    bvecs = self._get_mat_rotation(trans) @ bvecs
+
+            ref = nib.load(self.transformation_ref)
+            bvecs = ref.affine[:3, :3] @ bvecs
+
+            np.savetxt("{}.bvec".format(self.output), bvecs)
 
 
 _motion_description = """
