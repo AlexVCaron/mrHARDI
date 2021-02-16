@@ -66,7 +66,7 @@ class EddyConfiguration(MagicMonkeyConfigurable):
     current_model = convert_enum(
         CurrentModel, CurrentModel.none
     ).tag(config=True)
-    pre_filter_width = List(Integer(), [0]).tag(config=True)
+    pre_filter_width = List(Float(), [0]).tag(config=True)
     n_iter = Integer(5).tag(config=True)
     fill_empty = Bool(False).tag(config=True)
     interpolation = convert_enum(
