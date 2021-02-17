@@ -33,6 +33,10 @@ _flags = dict(
     umask=(
         {'EddyConfiguration': {'mask_output': True}},
         "Outputs unmasked eddy corrected images"
+    ),
+    seed=(
+        {'EddyConfiguration': {'set_seed': True}},
+        "Set the RNG seed for reproducibility"
     )
 )
 
@@ -103,6 +107,10 @@ class EddyConfiguration(MagicMonkeyConfigurable):
                     "\"<\" comparator instead of \"<=\""
     ).tag(config=True)
 
+    set_seed = Bool(
+        False, help="Set the RNG seed for reproducibility"
+    ).tag(config=True)
+
     def _config_section(self):
         if self.enable_cuda:
             print("cuda enabled")
@@ -147,7 +155,8 @@ class EddyConfiguration(MagicMonkeyConfigurable):
             dont_peas=self.skip_end_alignment,
             b0_peas=self.use_b0_peas,
             data_is_shelled=(not self.check_if_shelled),
-            dont_mask_output=(not self.mask_output)
+            dont_mask_output=(not self.mask_output),
+            initrand=int(self.set_seed)
         ), " ", True)
 
         if self.outlier_model is not None:
