@@ -148,9 +148,7 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
         ])
 
         if self.configuration.interleaved:
-            idxs = np.hstack((idxs[:, ::2, ...], idxs[:, 1::2, ...])).reshape(
-                (-1, self.configuration.multiband_factor)
-            )
+            idxs = np.hstack((idxs[:, ::2, ...], idxs[:, 1::2, ...]))
 
         # if self.configuration.gslider_factor:
         #     idxs = np.pad(
