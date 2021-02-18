@@ -148,7 +148,7 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
         ])
 
         if self.configuration.interleaved:
-            idxs = np.vstack((idxs[:, :2, ...], idxs[:, 1::2, ...])).reshape(
+            idxs = np.vstack((idxs[:, ::2, ...], idxs[:, 1::2, ...])).reshape(
                 (-1, self.configuration.multiband_factor)
             )
 
