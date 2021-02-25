@@ -12,7 +12,7 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
 from magic_monkey.base.dwi import (AcquisitionType,
                                    CUSPGradientsReader,
                                    Direction,
-                                   load_metadata_file,
+                                   SiemensGradientsWriter, load_metadata_file,
                                    load_metadata,
                                    save_metadata,
                                    DwiMetadata,
@@ -514,6 +514,10 @@ _cusp_flags = dict(
     round=(
         {"ConvertCUSP": {"round": True}},
         'Round b-values to nearest integer'
+    ),
+    siemens=(
+        {"ConvertCUSP": {"output_siemens": True}},
+        'Create a Siemens .dvs file as output'
     )
 )
 
@@ -528,6 +532,10 @@ class ConvertCUSP(MagicMonkeyBaseApplication):
     )
     output = output_prefix_argument()
 
+    output_siemens = Bool(
+        False, help="Create a Siemens .dvs file instead"
+    ).tag(config=True)
+
     aliases = Dict(default_value=_cusp_aliases)
     flags = Dict(default_value=_cusp_flags)
 
@@ -537,9 +545,12 @@ class ConvertCUSP(MagicMonkeyBaseApplication):
         if self.round:
             bvals = np.round(bvals).astype(int)
 
-        np.savetxt(
-            "{}.bval".format(self.output), bvals[None, :],
-            fmt="%d" if self.round else "%.2f"
-        )
+        if self.output_siemens:
+            SiemensGradientsWriter.write(bvals, bvecs, self.output)
+        else:
+            np.savetxt(
+                "{}.bval".format(self.output), bvals[None, :],
+                fmt="%d" if self.round else "%.2f"
+            )
 
-        np.savetxt("{}.bvec".format(self.output), bvecs, fmt="%.8f")
+            np.savetxt("{}.bvec".format(self.output), bvecs, fmt="%.8f")

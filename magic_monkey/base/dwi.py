@@ -65,7 +65,11 @@ def non_zero_bvecs(prefix):
     np.savetxt("{}_non_zero.bvec".format(prefix), bvecs, fmt="%.6f")
 
 
-class CUSPGradientsReader:
+class SiemensGradientsReader:
+    @classmethod
+    def get_bvals(cls, b_nominal, bvecs_norms):
+        return b_nominal * (bvecs_norms ** 2.) / (np.max(bvecs_norms) ** 2.)
+
     @classmethod
     def read(cls, filename, b_nominal):
         with open(filename) as cusp_file:
@@ -84,10 +88,32 @@ class CUSPGradientsReader:
 
             bvecs = np.array(bvecs)
             norms = np.linalg.norm(bvecs, axis=1)
-            bvals = b_nominal * (norms ** 2.)
+            bvals = cls.get_bvals(b_nominal, norms)
             bvecs[~np.isclose(norms, 0)] /= norms[~np.isclose(norms, 0), None]
 
             return bvals, bvecs.T
+
+
+class SiemensGradientsWriter:
+    @classmethod
+    def write(cls, bvals, bvecs, filename, coords="xyz"):
+        with open("{}.dvs".format(filename), 'w+') as f:
+            f.write("[directions={}]\n".format(len(bvals)))
+            f.write("CoordinateSystem = {}\n".format(coords))
+            f.write("Normalization = none\n")
+
+            b_nominal = np.max(bvals)
+
+            for i, (bval, bvec) in enumerate(zip(bvals, bvecs.T)):
+                f.write("Vector[{}] = ({:.5}, {:.5}, {:.5})\n".format(
+                    i, *(np.sqrt(bval / b_nominal) * bvec)
+                ))
+
+
+class CUSPGradientsReader(SiemensGradientsReader):
+    @classmethod
+    def get_bvals(cls, b_nominal, bvecs_norms):
+        return b_nominal * (bvecs_norms ** 2.)
 
 
 class DwiMetadata(MagicMonkeyConfigurable):
