@@ -89,6 +89,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.visualize.VisualizeEddyParameters",
             "Visualization of eddy's optimization train"
         ),
+        extension=(
+            "magic_monkey.apps.utils.ChangeExtension",
+            "Change files extensions"
+        ),
         fitbox=(
           "magic_monkey.apps.utils.FitBox",
           'Fit a bounding box with reference to another image'

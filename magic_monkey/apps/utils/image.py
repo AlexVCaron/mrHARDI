@@ -2,13 +2,19 @@ import glob
 
 import nibabel as nib
 import numpy as np
+import re
+from os.path import isfile, basename, join
+from os import listdir, remove, walk
 from traitlets import Integer, Enum, Dict, Unicode, Bool
 from traitlets.config import ArgumentError
 
 from magic_monkey.base.application import MagicMonkeyBaseApplication, \
     required_file, output_file_argument, required_arg, MultipleArguments, \
-    output_prefix_argument, prefix_argument, required_number
+    output_prefix_argument, prefix_argument, required_number, convert_enum
 from magic_monkey.base.dwi import load_metadata, save_metadata
+from magic_monkey.base.image import (image_reader,
+                                     image_writer,
+                                     valid_extensions)
 from magic_monkey.compute.utils import apply_mask_on_data, concatenate_dwi
 
 _apply_mask_aliases = {
@@ -307,3 +313,109 @@ class ReplicateImage(MagicMonkeyBaseApplication):
         data = np.repeat(data, ref.shape[-1], axis=-1)
 
         nib.save(nib.Nifti1Image(data, img.affine, img.header), self.output)
+
+
+_ext_aliases = {
+    'in': 'ChangeExtension.image_or_path',
+    'ext': 'ChangeExtension.output_extension',
+}
+
+_ext_flags = dict(
+    current=(
+        {"ChangeExtension": {'traversal': False}},
+        "Disable sub-folders traversal"
+    ),
+    remove=(
+        {"ChangeExtension": {'remove_source': True}},
+        "Remove the source files"
+    )
+)
+
+
+class ChangeExtension(MagicMonkeyBaseApplication):
+    image_or_path = required_arg(
+        Unicode, description="Input image (.nii/.nii.gz/.nrrd) "
+                             "or path to convert"
+    )
+
+    output_extension = Enum(
+        valid_extensions, "nii.gz"
+    ).tag(config=True)
+
+    remove_source = Bool(
+        False, help="If True, will remove the source file"
+    ).tag(config=True)
+
+    traversal = Bool(
+        True, help="If True, will traverse folder and all "
+                   "sub-folders to check for files to convert"
+    ).tag(config=True)
+
+    aliases = Dict(default_value=_ext_aliases)
+    flags = Dict(default_value=_ext_flags)
+
+    def _get_extension(self, filename):
+        try:
+            match = re.match(
+                ".*(?={})(?P<ext>.*)".format("|".join(valid_extensions)),
+                filename
+            )
+            return match.group("ext")
+        except Exception:
+            return None
+
+    def _split_extension(self, filename):
+        match = re.match(
+            "(?P<name>.*)\\.(?={})(?P<ext>.*)".format(
+                "|".join(valid_extensions)
+            ),
+            filename
+        )
+        try:
+            return match.group("name"), match.group("ext")
+        except Exception:
+            return match.group("name"), None
+
+    def _write_image(self, name, input_ext):
+        image_writer[self.output_extension].write(
+            ".".join([name, self.output_extension]),
+            image_reader[input_ext].read(".".join([name, input_ext]))
+        )
+
+    def _get_path_iterator(self):
+        if self.traversal:
+            for root, dirs, files in walk(self.image_or_path):
+                yield root, [
+                    self._split_extension(f)
+                    for f in filter(
+                        lambda f: self._get_extension(f) in valid_extensions,
+                        files
+                    )
+                ]
+        else:
+            return [
+                self.image_or_path, [
+                    self._split_extension(f)
+                    for f in filter(
+                        lambda f: self._get_extension(f) in valid_extensions,
+                        listdir(self.image_or_path)
+                    )
+                ]
+            ]
+
+    def execute(self):
+        if isfile(self.image_or_path):
+            name, extension = self._get_extension(basename(self.image_or_path))
+            if not extension == self.output_extension:
+                self._write_image(name, extension)
+                if self.remove_source:
+                    remove(self.image_or_path)
+        else:
+            for directory, files in self._get_path_iterator():
+                for name, extension in files:
+                    if not extension == self.output_extension:
+                        self._write_image(join(directory, name), extension)
+                        if self.remove_source:
+                            remove(
+                                ".".join([join(directory, name), extension])
+                            )
