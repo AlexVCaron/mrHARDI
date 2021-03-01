@@ -100,7 +100,7 @@ class SiemensGradientsWriter:
         with open("{}.dvs".format(filename), 'w+') as f:
             f.write("[directions={}]\n".format(len(bvals)))
             f.write("CoordinateSystem = {}\n".format(coords))
-            f.write("Normalization = none\n")
+            f.write("Normalisation = none\n")
 
             b_nominal = np.max(bvals)
 
