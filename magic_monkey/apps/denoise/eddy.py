@@ -98,7 +98,8 @@ class Eddy(MagicMonkeyBaseApplication):
 
     rev_image = input_dwi_prefix(
         description="Input reverse acquisition image prefix "
-                    "(for image and bval/bvec/metadata if not b0)"
+                    "(for image and bval/bvec/metadata if not b0)",
+        required=False
     ).tag(config=True)
 
     eddy_on_rev = Bool().tag(config=True)
