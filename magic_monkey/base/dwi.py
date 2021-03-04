@@ -65,11 +65,41 @@ def non_zero_bvecs(prefix):
     np.savetxt("{}_non_zero.bvec".format(prefix), bvecs, fmt="%.6f")
 
 
-class SiemensGradientsReader:
-    @classmethod
-    def get_bvals(cls, b_nominal, bvecs_norms):
-        return b_nominal * (bvecs_norms ** 2.) / (np.max(bvecs_norms) ** 2.)
+class Normalization(Enum):
+    UNITY = "unity"
+    MAXIMUM = "maximum"
+    NONE = "none"
 
+
+def _r_unity_norm(b_nominal, bvecs):
+    norm = np.linalg.norm(bvecs, axis=0)
+    bvecs[:, ~np.isclose(norm, 0)] /= norm[~np.isclose(norm, 0)]
+
+    return np.array([b_nominal for _ in range(bvecs.shape[1])]), bvecs
+
+
+def _r_max_norm(b_nominal, bvecs):
+    bvals, bvecs = _r_unity_norm(b_nominal, bvecs)
+    max_vals = np.max(np.absolute(bvecs), 0)
+    bvecs[:, ~np.isclose(max_vals, 0)] /= max_vals[~np.isclose(max_vals, 0)]
+    norms = np.linalg.norm(bvecs, axis=0)
+    return bvals * norms, bvecs
+
+
+def _r_none_norm(b_nominal, bvecs):
+    norms = np.linalg.norm(bvecs, axis=0)
+    bvecs[:, ~np.isclose(norms, 0)] /= norms[~np.isclose(norms, 0)]
+    return b_nominal * (norms ** 2.) / (np.max(norms) ** 2.), bvecs
+
+
+_r_norm_fn = {
+    "unity": _r_unity_norm,
+    "maximum": _r_max_norm,
+    "none": _r_none_norm
+}
+
+
+class SiemensGradientsReader:
     @classmethod
     def read(cls, filename, b_nominal):
         with open(filename) as cusp_file:
@@ -77,8 +107,9 @@ class SiemensGradientsReader:
             while line[0] == "#":
                 line = cusp_file.readline()
 
-            for _ in range(2):
-                cusp_file.readline()
+            cusp_file.readline()
+            norm_mode = cusp_file.readline().split("=")[1]
+            norm_mode = norm_mode.strip(" ").strip("\n")
 
             bvecs = []
             for grad_line in cusp_file:
@@ -86,34 +117,61 @@ class SiemensGradientsReader:
                 grad_line = grad_line.lstrip("(").rstrip(")").split(",")
                 bvecs.append([float(g.strip()) for g in grad_line])
 
-            bvecs = np.array(bvecs)
-            norms = np.linalg.norm(bvecs, axis=1)
-            bvals = cls.get_bvals(b_nominal, norms)
-            bvecs[~np.isclose(norms, 0)] /= norms[~np.isclose(norms, 0), None]
+            bvecs = np.array(bvecs).T
+            bvals, bvecs = _r_norm_fn[norm_mode](
+                b_nominal, bvecs
+            )
 
-            return bvals, bvecs.T
+            return bvals, bvecs
+
+
+def _w_unity_norm(_, bvecs):
+    return bvecs
+
+
+def _w_max_norm(bvals, bvecs):
+    bvals /= np.max(bvals)
+    return bvecs * bvals
+
+
+def _w_none_norm(bvals, bvecs):
+    bvals /= np.max(bvals)
+    return bvecs * np.sqrt(bvals)
+
+
+_w_norm_fn = {
+    "unity": _w_unity_norm,
+    "maximum": _w_max_norm,
+    "none": _w_none_norm
+}
 
 
 class SiemensGradientsWriter:
     @classmethod
-    def write(cls, bvals, bvecs, filename, coords="xyz"):
+    def write(
+        cls, bvals, bvecs, filename, coords="xyz",
+        normalization=Normalization.NONE
+    ):
         with open("{}.dvs".format(filename), 'w+') as f:
             f.write("[directions={}]\n".format(len(bvals)))
             f.write("CoordinateSystem = {}\n".format(coords))
-            f.write("Normalisation = none\n")
+            f.write("Normalization = {}\n".format(normalization.value))
 
-            b_nominal = np.max(bvals)
+            if (
+                normalization == Normalization.UNITY and
+                not np.all(np.isclose(bvals, bvals[0]))
+            ):
+                raise SiemensWriterError(
+                    "Normalization is unity, but not all "
+                    "directions have the same b-value"
+                )
 
-            for i, (bval, bvec) in enumerate(zip(bvals, bvecs.T)):
+            bvecs = _w_norm_fn[normalization.value](bvals, bvecs)
+
+            for i, bvec in enumerate(bvecs.T):
                 f.write("Vector[{}] = ({:.5}, {:.5}, {:.5})\n".format(
-                    i, *(np.sqrt(bval / b_nominal) * bvec)
+                    i, *bvec
                 ))
-
-
-class CUSPGradientsReader(SiemensGradientsReader):
-    @classmethod
-    def get_bvals(cls, b_nominal, bvecs_norms):
-        return b_nominal * (bvecs_norms ** 2.)
 
 
 class DwiMetadata(MagicMonkeyConfigurable):
@@ -287,3 +345,8 @@ class DwiMismatchError(Exception):
             self.message = "{}\n{}".format(add_message, self.message)
 
         super().__init__(self.message)
+
+
+class SiemensWriterError(Exception):
+    def __init__(self, message):
+        super().__init__(message)
