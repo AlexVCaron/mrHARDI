@@ -1,5 +1,5 @@
 from copy import deepcopy
-from enum import Enum
+from aenum import Enum, NoAlias
 from os.path import join, dirname, basename, exists
 
 import numpy as np
@@ -66,9 +66,13 @@ def non_zero_bvecs(prefix):
 
 
 class Normalization(Enum):
+    _settings_ = NoAlias
+
     UNITY = "unity"
     MAXIMUM = "maximum"
     NONE = "none"
+    CUSP = "none"
+    NORM = "none"
 
 
 def _r_unity_norm(b_nominal, bvecs):
@@ -92,16 +96,23 @@ def _r_none_norm(b_nominal, bvecs):
     return b_nominal * (norms ** 2.) / (np.max(norms) ** 2.), bvecs
 
 
+def _r_norm_norm(b_nominal, bvecs):
+    norms = np.linalg.norm(bvecs, axis=0)
+    bvecs[:, ~np.isclose(norms, 0)] /= norms[~np.isclose(norms, 0)]
+    return b_nominal * norms / np.max(norms), bvecs
+
+
 _r_norm_fn = {
-    "unity": _r_unity_norm,
-    "maximum": _r_max_norm,
-    "none": _r_none_norm
+    Normalization.UNITY: _r_unity_norm,
+    Normalization.MAXIMUM: _r_max_norm,
+    Normalization.NONE: _r_none_norm,
+    Normalization.NORM: _r_norm_norm
 }
 
 
 class SiemensGradientsReader:
     @classmethod
-    def read(cls, filename, b_nominal):
+    def read(cls, filename, b_nominal, cusp=False, norm=False):
         with open(filename) as cusp_file:
             line = cusp_file.readline()
             while line[0] == "#":
@@ -109,7 +120,11 @@ class SiemensGradientsReader:
 
             cusp_file.readline()
             norm_mode = cusp_file.readline().split("=")[1]
-            norm_mode = norm_mode.strip(" ").strip("\n")
+
+            if norm:
+                norm_mode = Normalization.NORM
+            else:
+                norm_mode = Normalization[norm_mode.strip(" ").strip("\n")]
 
             bvecs = []
             for grad_line in cusp_file:
@@ -119,7 +134,7 @@ class SiemensGradientsReader:
 
             bvecs = np.array(bvecs).T
             bvals, bvecs = _r_norm_fn[norm_mode](
-                b_nominal, bvecs
+                b_nominal * 3. if cusp else b_nominal, bvecs
             )
 
             return bvals, bvecs
@@ -130,19 +145,30 @@ def _w_unity_norm(_, bvecs):
 
 
 def _w_max_norm(bvals, bvecs):
-    bvals /= np.max(bvals)
-    return bvecs * bvals
+    return bvecs * bvals / np.max(bvals)
 
 
 def _w_none_norm(bvals, bvecs):
-    bvals /= np.max(bvals)
-    return bvecs * np.sqrt(bvals)
+    print("Performing bvec * sqrt(bval) / sqrt(max_bval)")
+    return bvecs * np.sqrt(bvals / np.max(bvals))
+
+
+def _w_norm_norm(bvals, bvecs):
+    print("Performing bvec * bval / max_bval")
+    return bvecs * bvals / np.max(bvals)
+
+
+def _w_cusp_norm(bvals, bvecs):
+    print("Performing bvec * sqrt(3. * bval) / sqrt(max_bval)")
+    return bvecs * np.sqrt(3. * bvals / np.max(bvals))
 
 
 _w_norm_fn = {
-    "unity": _w_unity_norm,
-    "maximum": _w_max_norm,
-    "none": _w_none_norm
+    Normalization.UNITY: _w_unity_norm,
+    Normalization.MAXIMUM: _w_max_norm,
+    Normalization.NONE: _w_none_norm,
+    Normalization.CUSP: _w_cusp_norm,
+    Normalization.NORM: _w_norm_norm
 }
 
 
@@ -166,7 +192,7 @@ class SiemensGradientsWriter:
                     "directions have the same b-value"
                 )
 
-            bvecs = _w_norm_fn[normalization.value](bvals, bvecs)
+            bvecs = _w_norm_fn[normalization](bvals, bvecs)
 
             for i, bvec in enumerate(bvecs.T):
                 f.write("Vector[{}] = ({:.5}, {:.5}, {:.5})\n".format(
