@@ -96,10 +96,9 @@ class Eddy(MagicMonkeyBaseApplication):
              "orientation and dwell of the volumes"
     ).tag(config=True)
 
-    rev_image = input_dwi_prefix(
-        description="Input reverse acquisition image prefix "
-                    "(for image and bval/bvec/metadata if not b0)",
-        required=False
+    rev_image = Unicode(
+        help="Input reverse acquisition image prefix "
+             "(for image and bval/bvec/metadata if not b0)"
     ).tag(config=True)
 
     eddy_on_rev = Bool().tag(config=True)
