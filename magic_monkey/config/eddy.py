@@ -27,7 +27,7 @@ _flags = dict(
         "Disable last gradient shell alignment"
     ),
     link_move=(
-        {'EddyConfiguration': {'separate_subject_field', False}},
+        {'EddyConfiguration': {'separate_subject_field': False}},
         "Link subject movement and field DC component"
     ),
     umask=(
