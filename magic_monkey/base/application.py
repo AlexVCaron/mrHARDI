@@ -344,90 +344,85 @@ class MagicMonkeyBaseApplication(Application):
     def _example_command(self, sub_command=""):
         return "magic_monkey {} <args> <flags>".format(sub_command)
 
-    def print_options(self):
+    def emit_options_help(self):
         if not self.flags and not self.aliases:
             return
 
-        lines = ["Welcome To Magic Monkey"]
+        line = "Welcome To Magic Monkey"
 
         if not self.subapp:
-            lines[0] += " : {} sub-command".format(self.__class__.__name__)
+            line += " : {} sub-command".format(self.__class__.__name__)
 
-        separator = '-' * 2 * len(lines[0])
+        separator = '-' * 2 * len(line)
 
-        lines.append(separator)
-        lines.insert(0, separator)
-        lines.append('')
+        yield separator
+        yield line
+        yield separator
+        yield ''
 
         if self.subapp:
-            lines.append("command format : {}".format(
+            yield "command format : {}".format(
                 self._example_command(self.parent.argv[0])
-            ))
+            )
         else:
-            lines.append("command format : {}".format(self._example_command()))
+            yield "command format : {}".format(self._example_command())
 
-        lines.append('')
+        yield ''
 
         for p in wrap_paragraphs(self.option_description):
-            lines.append(p)
-            lines.append('')
+            yield p
+            yield ''
 
-        lines.append(separator)
-        lines.append(
-            "Arguments | format : < --name <value> > or < --name=<value> > | :"
-        )
-        lines.append('')
+        yield separator
+        yield "Arguments | format : < --name <value> > " \
+              "or < --name=<value> > | :"
+        yield ''
 
-        print(linesep.join(lines))
-        lines.clear()
+        for l in self.emit_alias_help():
+            yield l
+        for l in self.emit_exclusive_groups():
+            yield l
 
-        self.print_alias_help()
-        self.print_exclusive_groups()
+        yield ''
+        yield separator
 
-        lines.append('')
-        lines.append(separator)
+        yield "Boolean flags | format : < --name > or <-c> | :"
+        yield ''
 
-        lines.append("Boolean flags | format : < --name > or <-c> | :")
-        lines.append('')
+        for l in self.emit_flag_help():
+            yield l
 
-        print(linesep.join(lines))
-        lines.clear()
+        yield ''
+        yield separator
 
-        self.print_flag_help()
-
-        lines.append('')
-        lines.append(separator)
-
-        print(linesep.join(lines))
-
-    def print_flag_help(self):
+    def emit_flag_help(self):
         """Print the flag part of the help."""
         if not self.flags:
             return
 
-        lines, base_helps = [], []
+        base_helps = []
         for m, (cfg, hlp) in self.flags.items():
             prefix = '--' if len(m) > 1 else '-'
             if m in base_flags.keys():
                 base_helps.extend([prefix+m, indent(dedent(hlp.strip()))])
             else:
-                lines.append(prefix+m)
-                lines.append(indent(dedent(hlp.strip())))
+                yield prefix + m
+                yield indent(dedent(hlp.strip()))
 
-        lines.extend(base_helps)
+        for line in base_helps:
+            yield line
 
-        print(linesep.join(lines))
-
-    def print_alias_help(self):
+    def emit_alias_help(self):
         """Print the alias part of the help."""
         if not self.aliases:
             return
 
         aliases = self.aliases
 
-        self._print_alias_category(aliases)
+        for l in self._emit_alias_category(aliases):
+            yield l
 
-    def _print_alias_category(self, aliases, indentation=0):
+    def _emit_alias_category(self, aliases, indentation=0):
         lines = []
         cd = self._get_class_dict()
 
@@ -450,11 +445,12 @@ class MagicMonkeyBaseApplication(Application):
         for trait_args in base_helps:
             lines = self._trait_help(*trait_args, lines)
 
-        print(linesep.join([
+        for line in [
             indent(ln, indentation) for ln in linesep.join(sorted(
                 lines, key=lambda k: "REQUIRED" in k, reverse=True
             )).splitlines()
-        ]))
+        ]:
+            yield line
 
     @staticmethod
     def _trait_help(alias, cls, trait, longname, lines):
@@ -477,7 +473,7 @@ class MagicMonkeyBaseApplication(Application):
                 classdict[c.__name__] = c
         return classdict
 
-    def print_exclusive_groups(self):
+    def emit_exclusive_groups(self):
         alias_by_group = ListValuedDict()
         cd = self._get_class_dict()
 
@@ -493,7 +489,6 @@ class MagicMonkeyBaseApplication(Application):
             except KeyError:
                 pass
 
-        lines = []
         for group, aliases in alias_by_group.items():
             aliases_by_index = ListValuedDict({0: []})
             for alias, longname in aliases:
@@ -508,21 +503,17 @@ class MagicMonkeyBaseApplication(Application):
                         (alias, longname)
                     )
 
-            lines.append("> Exclusive group {} : ".format(group))
-            lines.append('')
-            print(linesep.join(lines))
-            lines.clear()
+            yield "> Exclusive group {} : ".format(group)
+            yield ''
 
             if len(list(aliases_by_index.values())) == 0:
-                self._print_alias_category(aliases_by_index[0])
+                self._emit_alias_category(aliases_by_index[0])
             else:
                 for idx, opt_aliases in aliases_by_index.items():
-                    lines.append(indent("> Option {} : ".format(idx), 2))
-                    lines.append('')
-                    print(linesep.join(lines))
-                    lines.clear()
+                    yield indent("> Option {} : ".format(idx), 2)
+                    yield ''
 
-                    self._print_alias_category(dict(opt_aliases), 4)
+                    self._emit_alias_category(dict(opt_aliases), 4)
 
     @staticmethod
     def _trait_from_longname(cd, longname):
