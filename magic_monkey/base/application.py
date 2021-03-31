@@ -238,9 +238,9 @@ class MagicMonkeyBaseApplication(Application):
                 ]
 
             i = iter(
-                any(t) for t in trait_bundles.values()
+                all(t) for t in trait_bundles.values()
             )
-            if not (any(i) and not any(i)):
+            if any(i) and any(i):
                 invalid_exclusives.append((group, traits))
 
             # if any(any(t) and not all(t) for t in trait_bundles.values()):
@@ -507,13 +507,15 @@ class MagicMonkeyBaseApplication(Application):
             yield ''
 
             if len(list(aliases_by_index.values())) == 0:
-                self._emit_alias_category(aliases_by_index[0])
+                for l in self._emit_alias_category(aliases_by_index[0]):
+                    yield l
             else:
                 for idx, opt_aliases in aliases_by_index.items():
                     yield indent("> Option {} : ".format(idx), 2)
                     yield ''
 
-                    self._emit_alias_category(dict(opt_aliases), 4)
+                    for l in self._emit_alias_category(dict(opt_aliases), 4):
+                        yield l
 
     @staticmethod
     def _trait_from_longname(cd, longname):
@@ -540,11 +542,11 @@ class MagicMonkeyBaseApplication(Application):
 
         if isinstance(trait, MultipleArguments):
             name = "{}<{}>".format(
-                trait.__class__.__name__, trait.item_trait.__name__
+                trait.__class__.__name__, trait.item_trait.name
             )
         elif isinstance(trait, ChoiceList):
             name = "{}<{}>".format(
-                "Choices", trait.item_trait.__name__
+                "Choices", trait.item_trait.name
             )
         else:
             name = trait.__class__.__name__
@@ -824,7 +826,7 @@ class BoundingBox(TraitType):
 
         if isinstance(value, str):
             if len(value.split(",")) == 6:
-                return self._validate(obj, value.split(","))
+                return self._validate(obj, [int(v) for v in value.split(",")])
 
         if value is not None:
             self.error(obj, value)
