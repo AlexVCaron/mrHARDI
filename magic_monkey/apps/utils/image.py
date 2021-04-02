@@ -2,7 +2,7 @@ import glob
 
 import nibabel as nib
 import numpy as np
-from traitlets import Integer, Enum, Dict, Unicode, Bool
+from traitlets import Integer, Enum, Dict, Undefined, Unicode, Bool
 from traitlets.config import ArgumentError
 
 from magic_monkey.base.application import MagicMonkeyBaseApplication, \
@@ -21,6 +21,13 @@ _apply_mask_aliases = {
 
 
 class ApplyMask(MagicMonkeyBaseApplication):
+    _datatype = {
+        "int": np.int,
+        "long": np.long,
+        "float": np.float,
+        "float64": np.float64
+    }
+
     name = u"Apply Mask"
     description = "Applies a mask to an image an fill the outside."
     image = required_file(description="Input image to mask")
@@ -30,7 +37,7 @@ class ApplyMask(MagicMonkeyBaseApplication):
         0, help="Value used to fill the image outside the mask"
     ).tag(config=True)
     dtype = Enum(
-        [np.int, np.long, np.float, np.float64, None], help="Output type"
+        ["int", "long", "float", "float64", Undefined], help="Output type"
     ).tag(config=True)
 
     output = output_file_argument()
@@ -42,8 +49,10 @@ class ApplyMask(MagicMonkeyBaseApplication):
         mask = nib.load(self.mask).get_fdata().astype(bool)
 
         dtype = self.dtype
-        if dtype is None:
+        if dtype is None or dtype is Undefined:
             dtype = data.get_data_dtype()
+        else:
+            dtype = self._datatype[dtype]
 
         out_data = apply_mask_on_data(
             data.get_fdata().astype(dtype), mask, self.fill_value, dtype
