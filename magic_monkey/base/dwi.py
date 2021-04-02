@@ -1,4 +1,5 @@
 from copy import deepcopy
+from enum import Enum as PyEnum
 from aenum import Enum, NoAlias
 from os.path import join, dirname, basename, exists
 
@@ -67,7 +68,6 @@ def non_zero_bvecs(prefix):
 
 class Normalization(Enum):
     _settings_ = NoAlias
-
     UNITY = "unity"
     MAXIMUM = "maximum"
     NONE = "none"
@@ -111,8 +111,14 @@ _r_norm_fn = {
 
 
 class SiemensGradientsReader:
+    _norm = {
+        "none": Normalization.NONE,
+        "unity": Normalization.UNITY,
+        "maximum": Normalization.MAXIMUM
+    }
+
     @classmethod
-    def read(cls, filename, b_nominal, cusp=False, norm=False):
+    def read(cls, filename, b_nominal, cusp=False, norm=False, nodiv=False):
         with open(filename) as cusp_file:
             line = cusp_file.readline()
             while line[0] == "#":
@@ -124,7 +130,9 @@ class SiemensGradientsReader:
             if norm:
                 norm_mode = Normalization.NORM
             else:
-                norm_mode = Normalization[norm_mode.strip(" ").strip("\n")]
+                norm_mode = SiemensGradientsReader._norm[
+                    norm_mode.strip(" ").strip("\n")
+                ]
 
             bvecs = []
             for grad_line in cusp_file:
@@ -133,9 +141,18 @@ class SiemensGradientsReader:
                 bvecs.append([float(g.strip()) for g in grad_line])
 
             bvecs = np.array(bvecs).T
+            if nodiv:
+                mod = np.linalg.norm(bvecs, axis=0).max()
+                if not norm:
+                    mod **= 2.
+            else:
+                mod = 1.
+
             bvals, bvecs = _r_norm_fn[norm_mode](
                 b_nominal * 3. if cusp else b_nominal, bvecs
             )
+
+            bvals *= mod
 
             return bvals, bvecs
 
@@ -176,12 +193,12 @@ class SiemensGradientsWriter:
     @classmethod
     def write(
         cls, bvals, bvecs, filename, coords="xyz",
-        normalization=Normalization.NONE
+        normalization=Normalization.NONE, nodiv=False
     ):
         with open("{}.dvs".format(filename), 'w+') as f:
             f.write("[directions={}]\n".format(len(bvals)))
             f.write("CoordinateSystem = {}\n".format(coords))
-            f.write("Normalization = {}\n".format(normalization.value))
+            f.write("Normalisation = {}\n".format(normalization.value))
 
             if (
                 normalization == Normalization.UNITY and
@@ -193,6 +210,9 @@ class SiemensGradientsWriter:
                 )
 
             bvecs = _w_norm_fn[normalization](bvals, bvecs)
+
+            if nodiv:
+                max_bval = np.argmax(bvals)
 
             for i, bvec in enumerate(bvecs.T):
                 f.write("Vector[{}] = ({:.5}, {:.5}, {:.5})\n".format(
