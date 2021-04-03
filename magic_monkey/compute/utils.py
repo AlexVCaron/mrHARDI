@@ -14,7 +14,7 @@ def apply_mask_on_data(
         return in_data
 
     out_data = (ones_like(in_data, dtype=float) * fill_value).astype(dtype)
-    out_data[~in_mask] = fill_value
+    out_data[in_mask] = in_data[in_mask]
     return out_data
 
 
