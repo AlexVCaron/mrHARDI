@@ -161,9 +161,10 @@ class B0Utils(MagicMonkeyBaseApplication):
         kwargs = dict(b0_comp=np.less) if self.configuration.strict else dict()
         metadata = load_metadata(self.image)
         kwargs["metadata"] = metadata
+        kwargs["dtype"] = in_dwi.get_data_dtype()
 
         data = extract_b0(
-            in_dwi.get_fdata().astype(in_dwi.get_data_dtype()), bvals,
+            in_dwi, bvals,
             self.configuration.strides,
             self.configuration.get_mean_strategy_enum(),
             self.configuration.ceil_value,
@@ -191,11 +192,12 @@ class B0Utils(MagicMonkeyBaseApplication):
         kwargs = dict(b0_comp=np.less) if self.configuration.strict else dict()
         metadata = load_metadata(self.image)
         kwargs["metadata"] = metadata
+        kwargs["dtype"] = in_dwi.get_data_dtype()
 
         bvecs = np.loadtxt(self.bvecs) if self.bvecs else None
 
         data, bvals, bvecs = squash_b0(
-            in_dwi.get_fdata().astype(in_dwi.get_data_dtype()), bvals, bvecs,
+            in_dwi, bvals, bvecs,
             self.configuration.get_mean_strategy_enum(),
             self.configuration.ceil_value,
             **kwargs

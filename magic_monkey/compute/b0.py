@@ -21,13 +21,13 @@ def pick_b0(b0_mask, b0_strides):
     return b0_mask
 
 
-def mean_b0_clusters(b0_vol, mask, output_shape):
+def mean_b0_clusters(dwi_img, mask, output_shape):
     b0_clusters = np.ma.notmasked_contiguous(mask, axis=0)
     output_vol = np.zeros(output_shape + (0,))
     for cluster in b0_clusters:
         output_vol = np.concatenate((
             output_vol,
-            np.mean(b0_vol[..., cluster].reshape(
+            np.mean(dwi_img.dataobj[..., cluster].reshape(
                 output_shape + (-1,)), axis=-1
             )[..., None]
         ), axis=-1)
@@ -36,23 +36,26 @@ def mean_b0_clusters(b0_vol, mask, output_shape):
 
 
 def extract_b0(
-    dwi_vol, bvals, b0_strides=None,
-    mean=B0PostProcess.none, ceil=0.9,
-    b0_comp=np.less_equal, metadata=None
+    dwi_img, bvals, b0_strides=None, mean=B0PostProcess.none, ceil=0.9,
+    b0_comp=np.less_equal, metadata=None, dtype=None
 ):
     b0_mask = b0_comp(bvals, ceil)
+    mask = np.ma.masked_array(b0_mask)
+    mask[~b0_mask] = np.ma.masked
+
+    dtype = dtype if dtype else dwi_img.get_data_dtype()
 
     if b0_strides:
         print("Extracting b0 volumes at each {} volumes".format(b0_strides))
-        b0_mask[:dwi_vol.shape[-1]] = pick_b0(
-            b0_mask[:dwi_vol.shape[-1]], b0_strides
+        b0_mask[:dwi_img.shape[-1]] = pick_b0(
+            b0_mask[:dwi_img.shape[-1]], b0_strides
         )
 
     if mean is B0PostProcess.batch:
         print("Applying mean to b0 in batch")
         mask = np.ma.masked_array(b0_mask)
         mask[~b0_mask] = np.ma.masked
-        b0_vol = mean_b0_clusters(dwi_vol, mask, dwi_vol.shape[:-1])
+        b0_vol = mean_b0_clusters(dwi_img, mask, dwi_img.shape[:-1])
         print("Found {} mean b0 volumes in dataset".format(b0_vol.shape[-1]))
 
         if metadata:
@@ -69,17 +72,23 @@ def extract_b0(
                 metadata.directions[cluster.start] for cluster in clusters
             ]
     else:
-        b0_vol = dwi_vol[..., b0_mask[:dwi_vol.shape[-1]]]
+        b0_clusters = np.ma.notmasked_contiguous(mask, axis=0)
+        b0_vol = np.zeros(dwi_img.shape[:-1] + (0,))
+        for cluster in b0_clusters:
+            b0_vol = np.concatenate((
+                b0_vol,
+                dwi_img.dataobj[..., cluster]
+            ), axis=-1)
 
         if metadata:
             print(metadata.acquisition_slices_to_list())
             acquisition = (np.array(
                 metadata.acquisition_slices_to_list()
-            )[b0_mask[:dwi_vol.shape[-1]]]).tolist()
+            )[b0_mask[:dwi_img.shape[-1]]]).tolist()
             metadata.update_acquisition_from_list(acquisition)
 
             metadata.directions = (
-                np.array(metadata.directions)[b0_mask[:dwi_vol.shape[-1]]]
+                np.array(metadata.directions)[b0_mask[:dwi_img.shape[-1]]]
             ).tolist()
 
             metadata.n = b0_vol.shape[-1]
@@ -95,22 +104,25 @@ def extract_b0(
                 metadata.acquisition_types = [metadata.acquisition_types[0]]
                 metadata.acquisition_slices = [[0, None]]
                 metadata.directions = [metadata.directions[0]]
-    return b0_vol
+
+    return b0_vol.astype(dtype)
 
 
 def squash_b0(
-    dwi_vol, bvals, bvecs, mean=B0PostProcess.batch,
-    ceil=0.9, b0_comp=np.less_equal, metadata=None
+    dwi_img, bvals, bvecs, mean=B0PostProcess.batch,
+    ceil=0.9, b0_comp=np.less_equal, metadata=None, dtype=None
 ):
     b0_mask = b0_comp(bvals, ceil)
     mask = np.ma.masked_array(b0_mask)
     mask[~b0_mask] = np.ma.masked
 
+    dtype = dtype if dtype else dwi_img.get_data_dtype()
+
     if mean is B0PostProcess.whole:
         meta_b0 = metadata.copy() if metadata else None
         b0 = extract_b0(
-            dwi_vol, bvals, mean=mean, ceil=ceil,
-            b0_comp=b0_comp, metadata=meta_b0
+            dwi_img, bvals, mean=mean, ceil=ceil,
+            b0_comp=b0_comp, metadata=meta_b0, dtype=dtype
         )
         if metadata:
             metadata.directions = np.array(
@@ -127,9 +139,15 @@ def squash_b0(
             meta_b0.extend(metadata)
             metadata.becomes(meta_b0)
 
+        dwi_clusters = list(np.ma.clump_masked(mask))
+        for cluster in dwi_clusters:
+            b0 = np.concatenate((
+                b0,
+                dwi_img.dataobj[..., cluster]
+            ), axis=-1)
+
         ret_tuple = (
-            np.concatenate((b0, dwi_vol[..., ~b0_mask]), -1),
-            np.hstack(([0], bvals[~b0_mask]))[None, :]
+            b0.astype(dtype), np.hstack(([0], bvals[~b0_mask]))[None, :]
         )
 
         if bvecs is not None:
@@ -158,7 +176,7 @@ def squash_b0(
 
         metadata.directions = directions.tolist()
 
-        mb_mask = b0_mask[:dwi_vol.shape[-1]].copy()
+        mb_mask = b0_mask[:dwi_img.shape[-1]].copy()
         for cluster in b0_clusters:
             mb_mask[cluster.start] = False
         idxs = np.where(~mb_mask)[0].tolist()
@@ -170,8 +188,8 @@ def squash_b0(
 
         metadata.n = len(list(metadata.directions))
 
-    output_shape = dwi_vol.shape[:-1] + (
-        dwi_vol.shape[-1] + len(b0_clusters) - np.sum(b0_mask),
+    output_shape = dwi_img.shape[:-1] + (
+        dwi_img.shape[-1] + len(b0_clusters) - np.sum(b0_mask),
     )
 
     data = np.zeros(output_shape)
@@ -186,7 +204,7 @@ def squash_b0(
     shape_reduce = 0
     for i in range(len(dwi_clusters)):
         data[..., b0_clusters[i].start - shape_reduce] = b0_extractor(
-            dwi_vol[..., b0_clusters[i]]
+            dwi_img[..., b0_clusters[i]]
         )
         out_bvals.append(0)
         if bvecs is not None:
@@ -196,19 +214,19 @@ def squash_b0(
             dwi_clusters[i].start - shape_reduce,
             dwi_clusters[i].stop - shape_reduce
         )
-        data[..., data_slice] = dwi_vol[..., dwi_clusters[i]]
+        data[..., data_slice] = dwi_img[..., dwi_clusters[i]]
         out_bvals += bvals[dwi_clusters[i]].tolist()
         if bvecs is not None:
             out_bvecs += bvecs[:, dwi_clusters[i]].T.tolist()
 
     if len(b0_clusters) > len(dwi_clusters):
-        data[..., -1] = b0_extractor(dwi_vol[..., b0_clusters[-1]])
+        data[..., -1] = b0_extractor(dwi_img[..., b0_clusters[-1]])
         out_bvals.append(0)
         if bvecs is not None:
             out_bvecs.append([0, 0, 0])
 
     return (
-        data,
+        data.astype(dtype),
         np.array(out_bvals)[None, ...],
         np.array(out_bvecs).T if bvecs is not None else None
     )
