@@ -2,7 +2,14 @@ from os.path import exists, basename, join, dirname
 
 import nibabel as nib
 import numpy as np
-from traitlets import Instance, Unicode, Bool, Dict, TraitError, Enum, Float
+from traitlets import (Instance,
+                       Integer,
+                       Unicode,
+                       Bool,
+                       Dict,
+                       TraitError,
+                       Enum,
+                       Float)
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            required_arg,
@@ -385,6 +392,7 @@ _shells_aliases = {
     "bvals": "ExtractShells.bvals",
     "bvecs": "ExtractShells.bvecs",
     "shells": "ExtractShells.shells",
+    "count": "ExtractShells.count",
     "keep": "ExtractShells.keep",
     "out": "ExtractShells.output"
 }
@@ -411,13 +419,18 @@ class ExtractShells(MagicMonkeyBaseApplication):
                       "will execute on all shells, excepts b0 volumes."
     ).tag(config=True)
 
+    count = Integer(
+        default_value=0, help="Keep only shells which have a number "
+                              "of directions greater than this parameter"
+    ).tag(config=True)
+
     keep = Enum(
         ["all", "geq", "leq", "bigset", "smallset"], "all",
         help="Selection strategy to subset the initial group of shells."
     ).tag(config=True)
 
     keep_b0 = Bool(
-        False, help="When True, removes the b0 volumes from the output volume"
+        False, help="When False, removes the b0 volumes from the output volume"
     ).tag(config=True)
 
     output = output_prefix_argument()
@@ -431,9 +444,13 @@ class ExtractShells(MagicMonkeyBaseApplication):
         dwi = nib.load(self.dwi)
 
         if not self.shells:
-            shells = np.unique(bvals[~np.isclose(bvals, 0.)])
+            shells, cnt = np.unique(
+                bvals[~np.isclose(bvals, 0.)], return_counts=True
+            )
         else:
-            shells = np.unique(np.array(self.shells))
+            shells, cnt = np.unique(np.array(self.shells), return_counts=True)
+
+        shells = shells[cnt > self.count]
 
         mask = np.zeros_like(bvals, bool)
         if self.keep == "leq":
