@@ -1,7 +1,7 @@
 from os import getcwd
 from os.path import basename, join
 
-from traitlets import Dict, Instance, Unicode
+from traitlets import Bool, Dict, Instance, Unicode
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            mask_arg,
@@ -17,6 +17,13 @@ _aliases = {
     'ms': 'Diamond.model_selection',
     'dti': 'Diamond.initial_dti',
     'p': 'Diamond.n_threads'
+}
+
+_flags = {
+    "verbose": (
+        {'Diamond': {'verbose': True}},
+        "Enables output of additional maps for debugging purposes"
+    )
 }
 
 _description = """
@@ -67,7 +74,12 @@ class Diamond(MagicMonkeyBaseApplication):
 
     n_threads = nthreads_arg(ignore_write=True)
 
+    verbose = Bool(
+        False, help="Enables output of additional maps for debugging purposes"
+    ).tag(config=True)
+
     aliases = Dict(default_value=_aliases)
+    flags = Dict(default_value=_flags)
 
     def _validate_required(self):
         if self.model_selection:
@@ -92,6 +104,9 @@ class Diamond(MagicMonkeyBaseApplication):
 
         if self.initial_dti:
             optionals.append("--init_dti {}".format(self.initial_dti))
+
+        if self.verbose:
+            optionals.append("--verbosedOutput")
 
         optionals.append(self.configuration.serialize())
 
