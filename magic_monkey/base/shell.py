@@ -2,12 +2,20 @@ import time
 import sys
 import traceback
 import codecs
+from copy import deepcopy
 from io import UnsupportedOperation
 from multiprocessing import Queue
-from os import setsid
 from queue import Empty, Full
 from subprocess import CalledProcessError, PIPE, Popen
 from threading import Thread
+
+import os
+sys_kwargs = {}
+if not os.name == 'nt':
+    from os import setsid
+    sys_kwargs = {
+        "preexec_fn": setsid
+    }
 
 
 stdout_decoder = codecs.getdecoder(sys.stdout.encoding)
@@ -107,13 +115,12 @@ def launch_shell_process(
     logging_callback=None, init_logger=None,
     error_manager=basic_error_manager, **_
 ):
+    global sys_kwargs
     process = None
 
     try:
         try:
-            popen_kwargs = {
-                "preexec_fn": setsid
-            }
+            popen_kwargs = deepcopy(sys_kwargs)
             if log_file_path:
                 popen_kwargs["stdout"] = PIPE
                 popen_kwargs["stderr"] = PIPE

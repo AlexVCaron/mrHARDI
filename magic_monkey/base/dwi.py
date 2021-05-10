@@ -3,7 +3,7 @@ from enum import Enum
 from os.path import join, dirname, basename, exists
 
 import numpy as np
-from traitlets import List, Bool, Integer, Float, Unicode
+from traitlets import Dict, List, Bool, Integer, Float, Unicode
 from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import (MagicMonkeyConfigurable,
@@ -68,7 +68,7 @@ def non_zero_bvecs(prefix):
 class DwiMetadata(MagicMonkeyConfigurable):
     n = Integer().tag(config=True)
     n_excitations = Integer().tag(config=True)
-    directions = List(Vector3D(), allow_none=True).tag(config=True)
+    directions = List(Dict(), allow_none=True).tag(config=True)
 
     is_tensor_valued = Bool(False, allow_none=True).tag(config=True)
 
@@ -83,7 +83,7 @@ class DwiMetadata(MagicMonkeyConfigurable):
     ).tag(config=True)
 
     is_multiband = Bool(False, allow_none=True).tag(config=True)
-    multiband = List(List(AnyInt()), allow_none=True).tag(config=True)
+    slice_order = List(List(AnyInt()), allow_none=True).tag(config=True)
     multiband_corrected = Bool(False, allow_none=True).tag(config=True)
 
     affine = List(
@@ -134,10 +134,8 @@ class DwiMetadata(MagicMonkeyConfigurable):
         self.directions = oth.directions
         self.is_tensor_valued = oth.is_tensor_valued
 
-        multiband = self.multiband if self.is_multiband else oth.multiband
-
-        self.is_multiband = oth.is_multiband or self.is_multiband
-        self.multiband = multiband
+        self.is_multiband = oth.is_multiband
+        self.slice_order = oth.slice_order
         self.multiband_corrected = oth.multiband_corrected
         self.affine = oth.affine
         self.dwell = oth.dwell
@@ -147,9 +145,9 @@ class DwiMetadata(MagicMonkeyConfigurable):
     def extend(self, oth):
         assert np.all(np.isclose(self.affine, oth.affine))
 
-        d1 = self.directions if self.directions is not None else [[]]
-        d2 = oth.directions if oth.directions is not None else [[]]
-        self.directions = np.concatenate((d1, d2)).tolist()
+        d1 = self.directions if self.directions is not None else []
+        d2 = oth.directions if oth.directions is not None else []
+        self.directions = d1 + d2
 
         acqs = (
             list(self.acquisition_slices_to_list()) +
@@ -162,9 +160,8 @@ class DwiMetadata(MagicMonkeyConfigurable):
 
         self.topup_indexes += oth.topup_indexes
 
+        # TODO: Add logic to check slice ordering
         if self.is_multiband or oth.is_multiband:
-            multiband = self.multiband if self.is_multiband else oth.multiband
-            self.multiband = multiband
             self.is_multiband = True
 
     def copy(self):
@@ -176,8 +173,7 @@ class DwiMetadata(MagicMonkeyConfigurable):
         metadata.dwell = self.dwell
 
         metadata.is_multiband = self.is_multiband
-        if self.is_multiband:
-            metadata.multiband = deepcopy(self.multiband)
+        metadata.slice_order = deepcopy(self.slice_order)
 
         metadata.is_tensor_valued = self.is_tensor_valued
         metadata.acquisition_types = deepcopy(self.acquisition_types)

@@ -115,7 +115,9 @@ class Topup(MagicMonkeyBaseApplication):
         )
 
         if indexes.max() > len(acqp.split("\n")):
-            if not len(acqp.split("\n")) == len(bvals):
+            if len(acqp.split("\n")) == 1:
+                indexes[:] = 1
+            elif not len(acqp.split("\n")) == len(bvals):
                 raise ConfigError(
                     "No matching configuration found for index "
                     "(maxing at {}) "
@@ -123,12 +125,12 @@ class Topup(MagicMonkeyBaseApplication):
                         indexes.max(), len(acqp), acqp
                     )
                 )
-
-            indexes[:len(bvals[0])] = 1
-            used_indexes = len(bvals[0])
-            for i, bv in enumerate(bvals[1:]):
-                indexes[used_indexes:used_indexes + len(bv)] = i + 2
-                used_indexes += len(bv)
+            else:
+                indexes[:len(bvals[0])] = 1
+                used_indexes = len(bvals[0])
+                for i, bv in enumerate(bvals[1:]):
+                    indexes[used_indexes:used_indexes + len(bv)] = i + 2
+                    used_indexes += len(bv)
 
         metadata.topup_indexes = np.unique(indexes).tolist()
 

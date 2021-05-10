@@ -153,30 +153,33 @@ class Eddy(MagicMonkeyBaseApplication):
             ceil=self.configuration.ceil_value, **kwargs
         )
 
-        if indexes.max() > len(acqp):
-            dataset_indexes = metadata.dataset_indexes[1:] + [len(bvals)]
-            if not len(acqp) == len(dataset_indexes):
-                raise ConfigError(
-                    "No matching configuration found for index "
-                    "(maxing at {}) "
-                    "and acqp file (containing {} lines)\n{}".format(
-                        indexes.max(), len(acqp), acqp
+        if indexes.max() > len(acqp.split("\n")):
+            if len(acqp.split("\n")) == 1:
+                indexes[:] = 1
+            else:
+                dataset_indexes = metadata.dataset_indexes[1:] + [len(bvals)]
+                if not len(acqp.split("\n")) == len(dataset_indexes):
+                    raise ConfigError(
+                        "No matching configuration found for index "
+                        "(maxing at {}) "
+                        "and acqp file (containing {} lines)\n{}".format(
+                            indexes.max(), len(acqp.split("\n")), acqp
+                        )
                     )
-                )
 
-            indexes[:dataset_indexes[0]] = 1
-            for i, idx in enumerate(dataset_indexes[1:]):
-                indexes[dataset_indexes[i]:idx] = i + 2
+                indexes[:dataset_indexes[0]] = 1
+                for i, idx in enumerate(dataset_indexes[1:]):
+                    indexes[dataset_indexes[i]:idx] = i + 2
 
         with open(
             "{}_index.txt".format(self.output_prefix), "w+"
         ) as f:
             f.write(" ".join([str(i) for i in indexes]) + "\n")
 
-        if metadata.is_multiband and self.configuration.enable_cuda:
+        if self.configuration.enable_cuda:
             lines = [
                 " ".join(["{:d}".format(mm) for mm in m]) + "\n"
-                for m in metadata.multiband
+                for m in metadata.slice_order
             ]
 
             with open("{}_slspec.txt".format(self.output_prefix), "w+") as f:

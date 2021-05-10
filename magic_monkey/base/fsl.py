@@ -56,5 +56,5 @@ def prepare_topup_index(
 
 def prepare_acqp_file(dwell, directions):
     return "\n".join("{} {:.8f}".format(
-        " ".join(str(dd) for dd in d), dwell
+        " ".join(str(dd) for dd in d["dir"]), dwell
     ) for d in directions)
