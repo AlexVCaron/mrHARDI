@@ -147,7 +147,26 @@ class DwiMetadata(MagicMonkeyConfigurable):
 
         d1 = self.directions if self.directions is not None else []
         d2 = oth.directions if oth.directions is not None else []
+
+        for d in d2:
+            d["range"] = (
+                d["range"][0] + d1[-1]["range"][1],
+                d["range"][1] + d1[-1]["range"][1]
+            )
+
         self.directions = d1 + d2
+
+        directions = [self.directions[0]]
+        for d in self.directions[1:]:
+            if directions[-1]["dir"] == d["dir"]:
+                directions[-1]["range"] = (
+                    directions[-1]["range"][0],
+                    d["range"][1]
+                )
+            else:
+                directions.append(d)
+
+        self.directions = directions
 
         acqs = (
             list(self.acquisition_slices_to_list()) +

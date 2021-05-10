@@ -1,3 +1,4 @@
+from copy import deepcopy
 from enum import Enum
 
 import numpy as np
@@ -68,9 +69,26 @@ def extract_b0(
 
             metadata.n = b0_vol.shape[-1]
 
-            metadata.directions = [
-                metadata.directions[cluster.start] for cluster in clusters
-            ]
+            directions = []
+            for i, cl in enumerate(clusters):
+                for d in metadata.directions:
+                    if d["range"][1] > cl.start >= d["range"][0]:
+                        directions.append({
+                            "dir": d["dir"],
+                            "range": (i, i + 1)
+                        })
+
+            dd = [directions[0]]
+            for d in directions[1:]:
+                if dd[-1]["dir"] == d["dir"]:
+                    dd[-1]["range"] = (
+                        dd[-1]["range"][0],
+                        d["range"][1]
+                    )
+                else:
+                    dd.append(d)
+
+            metadata.directions = dd
     else:
         b0_clusters = np.ma.notmasked_contiguous(mask, axis=0)
         b0_vol = np.zeros(dwi_img.shape[:-1] + (0,))
@@ -87,9 +105,35 @@ def extract_b0(
             )[b0_mask[:dwi_img.shape[-1]]]).tolist()
             metadata.update_acquisition_from_list(acquisition)
 
-            metadata.directions = (
-                np.array(metadata.directions)[b0_mask[:dwi_img.shape[-1]]]
-            ).tolist()
+            directions = []
+            start = 0
+            for cl in b0_clusters:
+                curr_cl = deepcopy(cl)
+                for i, d in enumerate(metadata.directions):
+                    if d["range"][1] > curr_cl.start >= d["range"][0]:
+                        n = min(curr_cl.stop, d["range"][1]) - curr_cl.start
+                        lg = curr_cl.stop > d["range"][1]
+                        directions.append({
+                            "dir": d["dir"],
+                            "range": (start, start + n)
+                        })
+                        start += n
+                        if lg:
+                            curr_cl.start = d["range"][1]
+                        else:
+                            break
+
+            dd = [directions[0]]
+            for d in directions[1:]:
+                if dd[-1]["dir"] == d["dir"]:
+                    dd[-1]["range"] = (
+                        dd[-1]["range"][0],
+                        d["range"][1]
+                    )
+                else:
+                    dd.append(d)
+
+            metadata.directions = dd
 
             metadata.n = b0_vol.shape[-1]
 
@@ -103,7 +147,10 @@ def extract_b0(
                 metadata.n = 1
                 metadata.acquisition_types = [metadata.acquisition_types[0]]
                 metadata.acquisition_slices = [[0, None]]
-                metadata.directions = [metadata.directions[0]]
+                metadata.directions = [{
+                    "dir": metadata.directions[0]["dir"],
+                    "range": (0, 1)
+                }]
 
     return b0_vol.astype(dtype)
 
@@ -115,6 +162,8 @@ def squash_b0(
     b0_mask = b0_comp(bvals, ceil)
     mask = np.ma.masked_array(b0_mask)
     mask[~b0_mask] = np.ma.masked
+    b0_clusters = list(np.ma.notmasked_contiguous(mask, axis=0))
+    dwi_clusters = list(np.ma.clump_masked(mask))
 
     dtype = dtype if dtype else dwi_img.get_data_dtype()
 
@@ -125,21 +174,28 @@ def squash_b0(
             b0_comp=b0_comp, metadata=meta_b0, dtype=dtype
         )
         if metadata:
-            metadata.directions = np.array(
-                metadata.directions
-            )[~b0_mask].tolist()
+            for cl in b0_clusters:
+                curr_cl = deepcopy(cl)
+                for i, d in enumerate(metadata.directions):
+                    if d["range"][1] > curr_cl.start >= d["range"][0]:
+                        n = min(curr_cl.stop, d["range"][1]) - curr_cl.start
+                        lg = curr_cl.stop > d["range"][1]
+                        d["range"] = (d["range"][0], d["range"][1] - n)
+                        if lg:
+                            curr_cl.start = d["range"][1]
+                        else:
+                            break
 
             acquisition = metadata.acquisition_slices_to_list()
             metadata.update_acquisition_from_list(
                 (np.array(acquisition)[~b0_mask]).tolist()
             )
 
-            metadata.n = len(metadata.directions)
+            metadata.n = int(np.sum(~b0_mask))
 
             meta_b0.extend(metadata)
             metadata.becomes(meta_b0)
 
-        dwi_clusters = list(np.ma.clump_masked(mask))
         for cluster in dwi_clusters:
             b0 = np.concatenate((
                 b0,
@@ -157,24 +213,21 @@ def squash_b0(
 
         return ret_tuple
 
-    b0_clusters = list(np.ma.notmasked_contiguous(mask, axis=0))
-    dwi_clusters = list(np.ma.clump_masked(mask))
-
     if metadata:
-        directions = np.concatenate(tuple(
-            np.concatenate((
-                [metadata.directions[b0_clusters[i].start]],
-                metadata.directions[dwi_clusters[i]]
-            ), axis=0)
-            for i in range(len(dwi_clusters))
-        ), axis=0)
-
-        if len(b0_clusters) > len(dwi_clusters):
-            directions = np.concatenate((
-                directions, [metadata.directions[b0_clusters[-1].start]]
-            ), axis=0)
-
-        metadata.directions = directions.tolist()
+        for cl in b0_clusters:
+            curr_cl = deepcopy(cl)
+            lg = False
+            for i, d in enumerate(metadata.directions):
+                if d["range"][1] > curr_cl.start >= d["range"][0]:
+                    n = min(curr_cl.stop, d["range"][1]) - curr_cl.start
+                    if not lg:
+                        n -= 1
+                    lg = curr_cl.stop > d["range"][1]
+                    d["range"] = (d["range"][0], d["range"][1] - n)
+                    if lg:
+                        curr_cl.start = d["range"][1]
+                    else:
+                        break
 
         mb_mask = b0_mask[:dwi_img.shape[-1]].copy()
         for cluster in b0_clusters:
@@ -186,7 +239,7 @@ def squash_b0(
             (np.array(acquisition)[~mb_mask]).tolist()
         )
 
-        metadata.n = len(list(metadata.directions))
+        metadata.n = int(np.sum(~b0_mask) + len(b0_clusters))
 
     output_shape = dwi_img.shape[:-1] + (
         dwi_img.shape[-1] + len(b0_clusters) - np.sum(b0_mask),
