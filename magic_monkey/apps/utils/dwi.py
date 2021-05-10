@@ -10,7 +10,7 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            output_prefix_argument,
                                            required_file)
 from magic_monkey.base.dwi import (AcquisitionType,
-                                   CUSPGradientsReader,
+                                   SiemensGradientsReader,
                                    Direction,
                                    SiemensGradientsWriter, load_metadata_file,
                                    load_metadata,
@@ -540,7 +540,9 @@ class ConvertCUSP(MagicMonkeyBaseApplication):
     flags = Dict(default_value=_cusp_flags)
 
     def execute(self):
-        bvals, bvecs = CUSPGradientsReader.read(self.cusp, self.b_nominal)
+        bvals, bvecs = SiemensGradientsReader.read(
+            self.cusp, self.b_nominal, cusp=True
+        )
 
         if self.round:
             bvals = np.round(bvals).astype(int)
