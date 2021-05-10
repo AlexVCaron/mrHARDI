@@ -140,14 +140,15 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
 
         return configuration
 
-    def _get_multiband_indexes(self, images):
-        directions = self.get_multiband_directions(images)
+    def _get_slice_indexes(self, images):
+        directions = self.get_slice_directions(images)
         idxs = np.array([
             np.pad(
                 np.arange(img["data"].shape[np.absolute(d).argmax()]),
                 (0, img["data"].shape[np.absolute(d).argmax()] %
                  self.configuration.multiband_factor
                  ),
+                mode="constant",
                 constant_values=-1
             ).reshape(
                 (self.configuration.multiband_factor, -1)
@@ -204,7 +205,7 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             return self._expand_to_slices(
                 [
                     val_extractor(Direction[d])
-                    for d in self.configuration.direction
+                    for d in directions
                 ],
                 images
             )
@@ -212,11 +213,21 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             return []
 
     def get_phase_directions(self, images, val_extractor=lambda v: v.value):
-        return self._unpack_directions(
-            images, self.configuration.direction, val_extractor
-        )
+        if len(self.configuration.direction) == 1:
+            d = self.configuration.direction[0]
+            return [{
+                "dir": val_extractor(Direction[d]),
+                "range": (0, i["data"].shape[-1])
+            } for i in images]
+        elif len(self.configuration.direction) == len(images):
+            return [{
+                "dir": val_extractor(Direction[d]),
+                "range": (0, i["data"].shape[-1])
+            } for d, i in zip(self.configuration.direction, images)]
+        else:
+            return []
 
-    def get_multiband_directions(self, images, val_extractor=lambda v: v.value):
+    def get_slice_directions(self, images, val_extractor=lambda v: v.value):
         return self._unpack_directions(
             images, self.configuration.slice_direction, val_extractor
         )
@@ -248,16 +259,7 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             self._only_update_affine(images)
 
         directions = self.get_phase_directions(images)
-        multibands = None
-
-        if (
-            self.configuration.multiband_factor and
-            self.configuration.multiband_factor > 1
-        ):
-            multibands = self._get_multiband_indexes(images)
-
-        if multibands is None:
-            multibands = [None for _ in range(len(directions))]
+        slice_directions = self._get_slice_indexes(images)
 
         slice_dirs = self.configuration.slice_direction
         if len(self.configuration.slice_direction) == 1:
@@ -265,8 +267,8 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
                 self.configuration.slice_direction, len(images)
             ).tolist()
 
-        for name, img, d, mb, sd in zip(
-            self.dwis, images, directions, multibands, slice_dirs
+        for name, img, d, ss, sd in zip(
+            self.dwis, images, directions, slice_directions, slice_dirs
         ):
             shape = img["data"].shape
             metadata = load_metadata(name) if self.metadata else DwiMetadata()
@@ -275,11 +277,14 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
                 np.argmax(np.absolute(Direction[sd].value))
             ] / self.configuration.multiband_factor)
             metadata.affine = img["data"].affine.tolist()
-            metadata.directions = d.tolist()
+            metadata.directions = [d]
             metadata.dwell = self.configuration.dwell
 
-            metadata.is_multiband = mb is not None
-            metadata.multiband = mb if mb is not None else []
+            metadata.is_multiband = (
+                self.configuration.multiband_factor and
+                self.configuration.multiband_factor > 1
+            )
+            metadata.slice_order = ss if ss is not None else []
             metadata.multiband_corrected = \
                 self.configuration.multiband_corrected or False
 
