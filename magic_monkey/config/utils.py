@@ -123,7 +123,7 @@ class DwiMetadataUtilsConfiguration(MagicMonkeyConfigurable):
         config=True, required=True
     )
 
-    multiband_factor = Integer(None, allow_none=True).tag(config=True)
+    multiband_factor = Integer(1, allow_none=True).tag(config=True)
 
     gslider_factor = Integer(None, allow_none=True).tag(config=True)
 

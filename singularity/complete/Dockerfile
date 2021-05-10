@@ -6,6 +6,9 @@ WORKDIR /
 RUN mkdir -p /scilpy
 RUN mkdir -p /mmy
 RUN git clone https://github.com/boiteaclou/scilpy.git /scilpy
+WORKDIR /scilpy
+RUN git fetch && git checkout --track origin/develop
+WORKDIR /
 RUN git clone https://avcaron@bitbucket.org/avcaron/magic-monkey.git /mmy
 WORKDIR /mmy
 RUN git fetch && git checkout --track origin/devflow

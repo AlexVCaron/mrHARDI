@@ -76,6 +76,7 @@ _cat_flags = dict(
     )
 )
 
+
 class Concatenate(MagicMonkeyBaseApplication):
     name = u"Concatenate"
     description = "Concatenates multiple images together"
@@ -114,6 +115,15 @@ class Concatenate(MagicMonkeyBaseApplication):
             dwi.get_fdata().astype(dtype=dwi.get_data_dtype())
             for dwi in dwi_list
         ]
+
+        if (
+            not all(len(dt.shape) == 3 for dt in data) or
+            all(len(dt.shape == 4) for dt in data)
+        ):
+            data = [
+                dt if len(dt.shape) == 4 else dt[..., None]
+                for dt in data
+            ]
 
         if len(data) == 1:
             out_dwi, out_bvals, out_bvecs = (
