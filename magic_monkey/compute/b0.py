@@ -204,7 +204,7 @@ def squash_b0(
     shape_reduce = 0
     for i in range(len(dwi_clusters)):
         data[..., b0_clusters[i].start - shape_reduce] = b0_extractor(
-            dwi_img[..., b0_clusters[i]]
+            dwi_img.dataobj[..., b0_clusters[i]]
         )
         out_bvals.append(0)
         if bvecs is not None:
@@ -214,13 +214,13 @@ def squash_b0(
             dwi_clusters[i].start - shape_reduce,
             dwi_clusters[i].stop - shape_reduce
         )
-        data[..., data_slice] = dwi_img[..., dwi_clusters[i]]
+        data[..., data_slice] = dwi_img.dataobj[..., dwi_clusters[i]]
         out_bvals += bvals[dwi_clusters[i]].tolist()
         if bvecs is not None:
             out_bvecs += bvecs[:, dwi_clusters[i]].T.tolist()
 
     if len(b0_clusters) > len(dwi_clusters):
-        data[..., -1] = b0_extractor(dwi_img[..., b0_clusters[-1]])
+        data[..., -1] = b0_extractor(dwi_img.dataobj[..., b0_clusters[-1]])
         out_bvals.append(0)
         if bvecs is not None:
             out_bvecs.append([0, 0, 0])
