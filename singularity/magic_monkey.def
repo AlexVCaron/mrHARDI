@@ -1,2 +1,2 @@
 BootStrap: docker
-From: avcaron/magic-monkey:v1.0
+From: avcaron/magic-monkey:latest
