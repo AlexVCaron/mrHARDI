@@ -1,5 +1,5 @@
 import numpy as np
-from traitlets import Enum, Integer, default, Float, Bool, Unicode
+from traitlets import Enum, Integer, default, Float, Bool, Unicode, List
 
 from magic_monkey.base.application import (MagicMonkeyConfigurable,
                                            convert_enum,
@@ -73,6 +73,7 @@ _meta_aliases = dict(
     dir="DwiMetadataUtilsConfiguration.direction",
     mb="DwiMetadataUtilsConfiguration.multiband_factor",
     sd="DwiMetadataUtilsConfiguration.slice_direction",
+    si="DwiMetadataUtilsConfiguration.slice_indexes",
     gsl="DwiMetadataUtilsConfiguration.gslider_factor",
     acq="DwiMetadataUtilsConfiguration.acquisition",
     dwell="DwiMetadataUtilsConfiguration.dwell"
@@ -123,15 +124,20 @@ class DwiMetadataUtilsConfiguration(MagicMonkeyConfigurable):
         config=True, required=True
     )
 
-    multiband_factor = Integer(1, allow_none=True).tag(config=True)
-
     gslider_factor = Integer(None, allow_none=True).tag(config=True)
+
+    multiband_factor = Integer(1, allow_none=True).tag(config=True)
 
     interleaved = Bool(
         None, allow_none=True,
         help="If True, will output interleaved "
              "slices in the multiband index definition"
     ).tag(config=True)
+
+    slice_indexes = List(
+        List(Integer()), None, allow_none=True
+    ).tag(config=True)
+
     multiband_corrected = Bool(
         False, allow_none=True,
         help="Specifies if the dataset has been corrected "
