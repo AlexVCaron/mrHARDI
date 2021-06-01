@@ -72,6 +72,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.reconstruct.CSD",
             'Perform constrained spherical deconvolution'
         ),
+        db_stats=(
+            "magic_monkey.apps.utils.DBStats",
+            'Generate statistics db and dashboard on an ensemble of projects'
+        ),
         diamond=(
             "magic_monkey.apps.reconstruct.Diamond",
             'Perform diamond reconstruction'
