@@ -105,6 +105,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.visualize.GifAnimator",
             'Create at gif from a list of images'
         ),
+        conv_bids=(
+            "magic_monkey.apps.io.ConvertBidsToMMY",
+            'Convert a series of bids trees to Magic-Monkey input trees'
+        ),
         metadata=(
             "magic_monkey.apps.utils.DwiMetadataUtils",
             'Create metadata file(s) describing one or more dwi datasets'
