@@ -10,6 +10,7 @@ from traitlets import (Instance,
                        TraitError,
                        Enum,
                        Float)
+from traitlets.config import Config
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            required_arg,
@@ -24,7 +25,8 @@ from magic_monkey.config.utils import DwiMetadataUtilsConfiguration
 _mb_aliases = {
     'in': 'DwiMetadataUtils.dwis',
     'out': 'DwiMetadataUtils.output_folder',
-    'suffix': 'DwiMetadataUtils.suffix'
+    'suffix': 'DwiMetadataUtils.suffix',
+    'json': 'DwiMetadataUtils.json_config'
 }
 _mb_flags = dict(
     overwrite=(
@@ -121,15 +123,15 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
         traits = self.traits(config=True)
         conf_traits = self.configuration.traits(config=True)
         configuration = {
-            self.__class__.name: {},
-            self.configuration.__class__.name: {}
+            self.__class__.__name__: {},
+            self.configuration.__class__.__name__: {}
         }
 
-        for k, v in config.values():
+        for k, v in config.items():
             if k in traits:
-                configuration[self.__class__.name][k] = v
+                configuration[self.__class__.__name__][k] = v
             elif k in conf_traits:
-                configuration[self.configuration.__class__.name][k] = v
+                configuration[self.configuration.__class__.__name__][k] = v
             else:
                 raise TraitError(
                     "Trait {} not found in {} nor {}".format(
@@ -138,7 +140,7 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
                     )
                 )
 
-        return configuration
+        return Config(configuration)
 
     def _get_slice_indexes(self, images):
         directions = self.get_slice_directions(images)
@@ -259,7 +261,12 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             self._only_update_affine(images)
 
         directions = self.get_phase_directions(images)
-        slice_directions = self._get_slice_indexes(images)
+
+        slice_indexes = self.configuration.slice_indexes
+        if slice_indexes is None:
+            slice_indexes = self._get_slice_indexes(images)
+        else:
+            slice_indexes = [slice_indexes for _ in range(len(images))]
 
         slice_dirs = self.configuration.slice_direction
         if len(self.configuration.slice_direction) == 1:
@@ -268,7 +275,7 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             ).tolist()
 
         for name, img, d, ss, sd in zip(
-            self.dwis, images, directions, slice_directions, slice_dirs
+            self.dwis, images, directions, slice_indexes, slice_dirs
         ):
             shape = img["data"].shape
             metadata = load_metadata(name) if self.metadata else DwiMetadata()
