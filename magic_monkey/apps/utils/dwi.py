@@ -17,9 +17,13 @@ from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            MultipleArguments,
                                            output_prefix_argument,
                                            required_file)
-from magic_monkey.base.dwi import AcquisitionType, Direction, \
-    load_metadata_file, load_metadata, save_metadata, DwiMetadata, \
-    DwiMismatchError
+from magic_monkey.base.dwi import (AcquisitionType,
+                                   Direction,
+                                   load_metadata_file,
+                                   load_metadata,
+                                   save_metadata,
+                                   DwiMetadata,
+                                   DwiMismatchError)
 from magic_monkey.config.utils import DwiMetadataUtilsConfiguration
 
 _mb_aliases = {
@@ -160,26 +164,6 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
         if self.configuration.interleaved:
             idxs = np.hstack((idxs[:, ::2, ...], idxs[:, 1::2, ...]))
 
-        # if self.configuration.gslider_factor:
-        #     idxs = np.pad(
-        #         idxs,
-        #         (
-        #             (0, 0),
-        #             (0, idxs.shape[1] % self.configuration.gslider_factor),
-        #             (0, 0)
-        #         ),
-        #         constant_values=(
-        #             (None, None),
-        #             (None, np.repeat(-1, self.configuration.multiband_factor)),
-        #             (None, None)
-        #         )
-        #     ).reshape((
-        #         idxs.shape[0],
-        #         -1,
-        #         self.configuration.multiband_factor *
-        #         self.configuration.gslider_factor
-        #     ))
-
         return [
             [list(filter(lambda i: not i == -1, k)) for k in ki]
             for ki in idxs
@@ -248,7 +232,9 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
         )
 
     def _only_update_affine(self, images):
-        base_meta = load_metadata_file(self.metadata) if self.metadata else None
+        base_meta = load_metadata_file(self.metadata) \
+            if self.metadata else None
+
         for img in images:
             mt = base_meta.copy() if base_meta else load_metadata(img["name"])
             mt.affine = img["data"].affine.tolist()

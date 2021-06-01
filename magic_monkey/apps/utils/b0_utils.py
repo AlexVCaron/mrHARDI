@@ -6,8 +6,9 @@ import numpy as np
 from traitlets import Instance, Unicode, Dict
 from traitlets.config import Config
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    required_file, output_prefix_argument
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           required_file,
+                                           output_prefix_argument)
 from magic_monkey.base.dwi import load_metadata, save_metadata
 from magic_monkey.compute.b0 import extract_b0, normalize_to_b0, squash_b0
 from magic_monkey.config.utils import B0UtilsConfiguration

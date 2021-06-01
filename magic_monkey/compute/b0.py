@@ -232,7 +232,6 @@ def squash_b0(
         mb_mask = b0_mask[:dwi_img.shape[-1]].copy()
         for cluster in b0_clusters:
             mb_mask[cluster.start] = False
-        idxs = np.where(~mb_mask)[0].tolist()
 
         acquisition = metadata.acquisition_slices_to_list()
         metadata.update_acquisition_from_list(

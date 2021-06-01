@@ -141,6 +141,7 @@ class CSD(MagicMonkeyBaseApplication):
                 np.loadtxt(self.bvals),
                 return_counts=True
             )
+
             mask = shells > 0
             shells = shells[mask]
             counts = counts[mask]
@@ -149,7 +150,6 @@ class CSD(MagicMonkeyBaseApplication):
                 self.configuration.shells = [shells[counts.argmax()]]
             else:
                 self.configuration.shells = shells.tolist()
-
 
         if self.mask:
             optionals.append("-mask {}".format(self.mask))
@@ -258,7 +258,11 @@ class FiberResponse(MagicMonkeyBaseApplication):
         optionals = []
 
         if not self.configuration.shells:
-            shells, counts = np.unique(np.loadtxt(self.bvals), return_counts=True)
+            shells, counts = np.unique(
+                np.loadtxt(self.bvals),
+                return_counts=True
+            )
+
             mask = shells > 0
             shells = shells[mask]
             counts = counts[mask]

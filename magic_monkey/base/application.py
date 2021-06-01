@@ -181,7 +181,9 @@ class MagicMonkeyBaseApplication(Application):
             traits_bools = {}
             for k, t in trait_bundles.items():
                 traits_bools[k] = [
-                    tt.get(self) != self.get_default_value(tt) or not ("required" in tt.metadata and tt.metadata["required"]) for tt in t
+                    tt.get(self) != self.get_default_value(tt) or not (
+                        "required" in tt.metadata and tt.metadata["required"]
+                    ) for tt in t
                 ]
 
             if any(all(t) for t in traits_bools.values()):
@@ -320,7 +322,7 @@ class MagicMonkeyBaseApplication(Application):
             return True
 
     def document_config_options(self):
-        """Generate rST format documentation for the config options this application
+        """Generate rST format documentation for the config options
 
         Returns a multiline string.
         """
@@ -378,10 +380,10 @@ class MagicMonkeyBaseApplication(Application):
               "or < --name=<value> > | :"
         yield ''
 
-        for l in self.emit_alias_help():
-            yield l
-        for l in self.emit_exclusive_groups():
-            yield l
+        for ln in self.emit_alias_help():
+            yield ln
+        for ln in self.emit_exclusive_groups():
+            yield ln
 
         yield ''
         yield separator
@@ -389,8 +391,8 @@ class MagicMonkeyBaseApplication(Application):
         yield "Boolean flags | format : < --name > or <-c> | :"
         yield ''
 
-        for l in self.emit_flag_help():
-            yield l
+        for ln in self.emit_flag_help():
+            yield ln
 
         yield ''
         yield separator
@@ -419,8 +421,8 @@ class MagicMonkeyBaseApplication(Application):
 
         aliases = self.aliases
 
-        for l in self._emit_alias_category(aliases):
-            yield l
+        for ln in self._emit_alias_category(aliases):
+            yield ln
 
     def _emit_alias_category(self, aliases, indentation=0):
         lines = []
@@ -507,15 +509,15 @@ class MagicMonkeyBaseApplication(Application):
             yield ''
 
             if len(list(aliases_by_index.values())) == 0:
-                for l in self._emit_alias_category(aliases_by_index[0]):
-                    yield l
+                for ln in self._emit_alias_category(aliases_by_index[0]):
+                    yield ln
             else:
                 for idx, opt_aliases in aliases_by_index.items():
                     yield indent("> Option {} : ".format(idx), 2)
                     yield ''
 
-                    for l in self._emit_alias_category(dict(opt_aliases), 4):
-                        yield l
+                    for ln in self._emit_alias_category(dict(opt_aliases), 4):
+                        yield ln
 
     @staticmethod
     def _trait_from_longname(cd, longname):
@@ -684,7 +686,6 @@ class MagicMonkeyConfigurable(Configurable):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.name = self.__class__.__name__
-
 
     @catch_config_error
     def validate(self):

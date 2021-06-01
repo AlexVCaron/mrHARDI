@@ -42,7 +42,7 @@ def _dequeue_pipe(log_file, queue, tag, sys_stream, stream_end_eol=True):
             ln = ln.split("\n") if length > 0 else []
             if ln:
                 wr = "\n".join(
-                    "[{}] {}".format(tag, l) if l else "" for l in ln
+                    "[{}] {}".format(tag, ll) if ll else "" for ll in ln
                 )
                 if not stream_end_eol:
                     wr = wr[3 + len(tag):]
@@ -154,7 +154,8 @@ def launch_shell_process(
             if process.returncode != 0:
                 with open(log_file_path, "a+") as log_file:
                     log_file.write(
-                        "[ERR] Process ended in error. Return code : {}\n".format(
+                        "[ERR] Process ended in error. "
+                        "Return code : {}\n".format(
                             process.returncode
                         )
                     )
@@ -195,7 +196,9 @@ def launch_shell_process(
         if log_file_path:
             with open(log_file_path, "a+") as log_file:
                 print(type(e))
-                log_file.write("Caught unknow exception : {}\n".format(e if e else "No description"))
+                log_file.write("Caught unknown exception : {}\n".format(
+                    e if e else "No description"
+                ))
                 log_file.flush()
 
         process.terminate()

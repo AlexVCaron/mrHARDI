@@ -1,6 +1,9 @@
 from ipython_genutils.text import wrap_paragraphs
-from traitlets.config import Configurable, HasTraits, Config, \
-    PyFileConfigLoader, ConfigFileNotFound
+from traitlets.config import (Configurable,
+                              HasTraits,
+                              Config,
+                              PyFileConfigLoader,
+                              ConfigFileNotFound)
 
 
 class ConfigurationLoader:
@@ -56,7 +59,9 @@ class ConfigurationLoader:
                 )
         else:
             if self.log:
-                self.log.debug("Loaded config file: %s", pyloader.full_filename)
+                self.log.debug(
+                    "Loaded config file: %s", pyloader.full_filename
+                )
         if config:
             yield config, pyloader.full_filename
 

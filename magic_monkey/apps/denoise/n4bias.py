@@ -6,8 +6,10 @@ import numpy as np
 
 from traitlets import Unicode, Bool, Instance, Dict
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    required_file, mask_arg, output_prefix_argument
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           required_file,
+                                           mask_arg,
+                                           output_prefix_argument)
 from magic_monkey.base.dwi import (load_metadata,
                                    load_metadata_file,
                                    save_metadata)

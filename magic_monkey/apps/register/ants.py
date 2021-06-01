@@ -9,7 +9,6 @@ import nibabel as nib
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            MultipleArguments,
-                                           output_file_argument,
                                            output_prefix_argument,
                                            required_arg,
                                            required_file)
@@ -179,7 +178,6 @@ class AntsTransform(MagicMonkeyBaseApplication):
 
         image = nib.load(self.image)
         shape = image.shape
-        dtype = image.get_data_dtype()
 
         is_3d_data = not (len(shape) == 4 and shape[-1] > 1)
         img_type = 0 if is_3d_data else 3
@@ -254,7 +252,9 @@ _mot_flags = dict(
 class AntsMotionCorrection(MagicMonkeyBaseApplication):
     name = u"ANTs Motion Correction"
     description = _motion_description
-    configuration = Instance(AntsMotionCorrectionConfiguration).tag(config=True)
+    configuration = Instance(AntsMotionCorrectionConfiguration).tag(
+        config=True
+    )
 
     target_images = required_arg(
         MultipleArguments, traits_args=(Unicode(),),

@@ -5,9 +5,14 @@ import numpy as np
 from traitlets import Integer, Enum, Dict, Undefined, Unicode, Bool
 from traitlets.config import ArgumentError
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    required_file, output_file_argument, required_arg, MultipleArguments, \
-    output_prefix_argument, prefix_argument, required_number
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           required_file,
+                                           output_file_argument,
+                                           required_arg,
+                                           MultipleArguments,
+                                           output_prefix_argument,
+                                           prefix_argument,
+                                           required_number)
 from magic_monkey.base.dwi import load_metadata, save_metadata
 from magic_monkey.compute.utils import apply_mask_on_data, concatenate_dwi
 
@@ -179,8 +184,9 @@ _split_flags = dict(
 class SplitImage(MagicMonkeyBaseApplication):
     name = u"Split image given an axis"
     description = (
-        "Given an axis into an image, split the image into it's sub-parts "
-        "along it. Can also reverse the split to reconstruct the initial image."
+        "Given an axis into an image, split the image "
+        "into it's sub-parts along it. Can also reverse "
+        "the split to reconstruct the initial image."
     )
 
     image = required_file(
@@ -234,7 +240,6 @@ class SplitImage(MagicMonkeyBaseApplication):
             try:
                 mt.topup_indexes = [metadata.topup_indexes[i]]
             except IndexError:
-                print("What the hellllll {}".format(self.image))
                 mt.topup_indexes = []
             mt.directions = [metadata.directions[i]]
 

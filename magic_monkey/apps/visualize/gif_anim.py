@@ -6,7 +6,7 @@ from dipy.reconst.shm import SphHarmFit
 
 from os.path import join, dirname
 from tempfile import mkdtemp
-from xml.etree import ElementTree as ET
+from xml.etree import ElementTree as eTree
 
 import imageio
 import pygifsicle
@@ -14,13 +14,17 @@ import nibabel as nib
 import numpy as np
 
 from dipy.data import get_sphere, default_sphere
-from scilpy.utils.util import voxel_to_world, world_to_voxel
 
 from traitlets import Unicode, Enum, Dict, Bool, Float, Integer
 from enum import Enum as PyEnum
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    required_arg, MultipleArguments, Resolution, output_prefix_argument, BoundingBox
+from compute.utils import voxel_to_world, world_to_voxel
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           required_arg,
+                                           MultipleArguments,
+                                           Resolution,
+                                           output_prefix_argument,
+                                           BoundingBox)
 
 from magic_monkey.compute.math.tensor import compute_eigenvalues
 
@@ -198,11 +202,7 @@ class GifAnimator(MagicMonkeyBaseApplication):
             evals, evecs = self._tensors2eigens(data, bbox)
             evecs *= strides[:, None]
             evecs = self._align_snaps_to_z(evecs[bbox])
-            # fa = compute_fa(
-            #     (np.flip(evals[bbox], -1), None),
-            #     np.ones(evals[bbox].shape[:3]).astype(bool)
-            # )
-            # cfa = color(fa, np.moveaxis(np.flip(evecs[bbox, 0], -1), -2, -1))
+
             return actor.tensor_slicer(
                 self._align_snaps_to_z(evals[bbox]), evecs,
                 scale=0.4, scalar_colors=np.absolute(evecs[..., -1]),
@@ -212,11 +212,12 @@ class GifAnimator(MagicMonkeyBaseApplication):
     def _get_actor_for_odfs(self, odfs):
         odfs = self._align_snaps_to_z(odfs)
         return actor.odf_slicer(
-            odfs, opacity=1., scale=1., sphere=default_sphere, colormap='Wistia'
+            odfs, opacity=1., scale=1.,
+            sphere=default_sphere, colormap='Wistia'
         )
 
     def _load_bdo_bounds(self, mask, mask_affine):
-        xml_box = ET.parse(self.bdo_box).getroot()
+        xml_box = eTree.parse(self.bdo_box).getroot()
         assert xml_box.get("type") == "Cuboid"
         origin = xml_box.find("origin")
         origin = [origin.get("x"), origin.get("y"), origin.get("z")]
@@ -331,7 +332,6 @@ class GifAnimator(MagicMonkeyBaseApplication):
 
         back_data[~mask] = 0.
 
-        # back_data, _ = self._flip_to_background(back_data, back_img.affine, back_stride, [-1, -1, 1])
         scene = window.Scene()
         actors = [self._get_actor_for_data(
             back_data, back_img.affine, slicer, self.background_opacity
@@ -348,8 +348,9 @@ class GifAnimator(MagicMonkeyBaseApplication):
                 np.sign(np.diag(nib_img.affine))[:3],
                 back_stride
             )
-            data, _ = self._flip_to_background(data, affine,
-                                                    np.sign(np.diag(affine))[:3], [-1, -1, 1])
+            data, _ = self._flip_to_background(
+                data, affine, np.sign(np.diag(affine))[:3], [-1, -1, 1]
+            )
             data[~mask] = 0.
             actors.append(self._get_actor_for_data(
                 data.astype(nib_img.get_data_dtype()), affine, slicer
@@ -364,7 +365,7 @@ class GifAnimator(MagicMonkeyBaseApplication):
             )
             order = int((-3 + np.sqrt(9 + 8 * (1 + data.shape[-1] - 1))) / 2)
             bvals, bvecs = np.loadtxt(self.bvals), np.loadtxt(self.bvecs)
-            #bvecs = self._flip_bvecs_to_background(bvecs, strides, back_stride)
+
             response = np.loadtxt(self.response)
             model = ConstrainedSphericalDeconvModel(
                 gradient_table(bvals, bvecs),
@@ -391,12 +392,6 @@ class GifAnimator(MagicMonkeyBaseApplication):
                 scene.add(act)
                 act.display(None, None, i)
 
-
-            # scene.set_camera(
-            #     position=actors[0].GetCenter() - np.array(camera_dir) * (np.array(actors[0].GetCenter()) + displacement),
-            #     focal_point=actors[0].GetCenter(),
-            #     view_up=self.ViewUp[self.camera_direction].value
-            # )
             scene.reset_clipping_range()
             scene.reset_camera()
             snapshots.append(join(proc_dir, "snap_{}.png".format(snap_ix)))

@@ -169,7 +169,8 @@ class AntsMotionCorrectionConfiguration(MagicMonkeyConfigurable):
                    "all time points to template image"
     ).tag(config=True)
     n_template_points = Integer(
-        10, help="Number of time points to use to construct the moving template"
+        10, help="Number of time points to use "
+                 "to construct the moving template"
     ).tag(config=True)
     learn_once = Bool(
         False, help="If true, the learning step size will only be "
