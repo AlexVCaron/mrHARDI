@@ -1,4 +1,4 @@
-from traitlets import  Integer
+from traitlets import Integer
 
 from magic_monkey.base.application import MagicMonkeyConfigurable
 

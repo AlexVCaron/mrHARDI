@@ -1,5 +1,3 @@
-from enum import Enum as PyEnum
-
 import nibabel as nib
 import numpy as np
 
@@ -9,8 +7,9 @@ from fury.window import Scene
 
 from traitlets import Unicode, Float, Integer, Dict, Bool, List, Enum
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    output_prefix_argument, MultipleArguments
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           output_prefix_argument,
+                                           MultipleArguments)
 
 _aliases = {
     "in": "Mosaic.images",
@@ -314,15 +313,15 @@ class Mosaic(MagicMonkeyBaseApplication):
         return len(self._cache["imgs"])
 
     def _generate_mosaic(
-        self, scene, n, rows, cols, cnt, start_x, start_y, X, Y, Z
+        self, scene, n, rows, cols, cnt, start_x, start_y, x, y, z
     ):
         border = self.border_thickness
         front_actor = self._cache["front_actors"][n]
         for j in range(rows):
             for i in range(cols):
                 pos = (
-                    start_x + (X + border) * i,
-                    cols * (Y + border) - (Y + border) * j + start_y,
+                    start_x + (x + border) * i,
+                    cols * (y + border) - (y + border) * j + start_y,
                     0
                 )
 
@@ -342,10 +341,10 @@ class Mosaic(MagicMonkeyBaseApplication):
                 scene.add(front_mosaic)
 
                 cnt += self.stride
-                if cnt > Z:
+                if cnt > z:
                     break
 
-            if cnt > Z:
+            if cnt > z:
                 break
 
     def execute(self):
@@ -376,7 +375,7 @@ class Mosaic(MagicMonkeyBaseApplication):
         self._create_front_actors()
         start, end = self._get_z_bounds()
 
-        X, Y, Z = self._get_xy_bounds() + (end,)
+        x, y, z = self._get_xy_bounds() + (end,)
 
         rows = int(np.ceil((end - start) / (self.stride * self.length)))
         cols = self.length
@@ -406,12 +405,14 @@ class Mosaic(MagicMonkeyBaseApplication):
             cnt = start
             start_x, start_y = 0, 0
             if self.left_right:
-                start_x = n * (cols * (X + border) + 2 * border)
+                start_x = n * (cols * (x + border) + 2 * border)
             else:
-                start_y = (num_mosaics - n) * (rows * (Y + border) + 2 * border)
+                start_y = (num_mosaics - n) * (
+                    rows * (y + border) + 2 * border
+                )
 
             self._generate_mosaic(
-                scene, n, rows, cols, cnt, start_x, start_y, X, Y, Z
+                scene, n, rows, cols, cnt, start_x, start_y, x, y, z
             )
 
         scene.reset_camera_tight(1.2)
@@ -428,7 +429,9 @@ class Mosaic(MagicMonkeyBaseApplication):
                     p0 = ((bounds[0] + i * border / res[0]) + i / n_bars, 0.01)
                     p1 = (1. / n_bars, 0.1)
                 else:
-                    p0 = (0.9, ((bounds[2] + i * border) / res[1]) + i / n_bars)
+                    p0 = (
+                        0.9, ((bounds[2] + i * border) / res[1]) + i / n_bars
+                    )
                     p1 = (0.1, 1. / n_bars)
 
                 print("Bar pos {}, size {}".format(p0, p1))

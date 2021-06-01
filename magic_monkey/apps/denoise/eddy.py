@@ -57,15 +57,15 @@ then
     args="$args --slspec=$SLSPEC"
 fi
 
-base_args="--imain=$dwi --acqp=$acqp --index=$index"
-base_args="$base_args --bvecs=$bvec --bvals=$bval"
+bargs="--imain=$dwi --acqp=$acqp --index=$index"
+bargs="$bargs --bvecs=$bvec --bvals=$bval"
 
 if [ -f $mask ]
 then
-    base_args="$base_args --mask=$mask"
+    bargs="$bargs --mask=$mask"
 fi
 
-{executable} $base_args $args {more_args} --out=$output --very_verbose {debug_args}
+{executable} $bargs $args {more_args} --out=$output --very_verbose {debug_args}
 """
 
 _description = """

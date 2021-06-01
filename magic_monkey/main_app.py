@@ -43,7 +43,9 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.register.AntsTransform",
             'Apply a registration transform'
         ),
-        apply_mask=("magic_monkey.apps.utils.ApplyMask", 'Apply mask to image'),
+        apply_mask=(
+            "magic_monkey.apps.utils.ApplyMask", 'Apply mask to image'
+        ),
         apply_topup=(
             "magic_monkey.apps.denoise.ApplyTopup",
             'Apply Topup correction to a set of images'
@@ -79,7 +81,9 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
         diamond_metrics=(
             "magic_monkey.apps.measure.DiamondMetrics", 'Compute DTI metrics'
         ),
-        dti=("magic_monkey.apps.reconstruct.DTI", 'Perform dti reconstruction'),
+        dti=(
+            "magic_monkey.apps.reconstruct.DTI", 'Perform dti reconstruction'
+        ),
         dti_metrics=(
             "magic_monkey.apps.measure.TensorMetrics",
             'Compute DTI metrics'
@@ -146,6 +150,3 @@ def console_entry_point():
 
 if __name__ == '__main__':
     console_entry_point()
-
-
-

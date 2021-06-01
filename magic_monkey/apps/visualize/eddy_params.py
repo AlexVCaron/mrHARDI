@@ -7,8 +7,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from traitlets import Dict
 
-from magic_monkey.base.application import MagicMonkeyBaseApplication, \
-    prefix_argument
+from magic_monkey.base.application import (MagicMonkeyBaseApplication,
+                                           prefix_argument)
 
 
 _aliases = {
@@ -85,7 +85,9 @@ class VisualizeEddyParameters(MagicMonkeyBaseApplication):
 
     def _load_parameters(self, param_type):
         return np.loadtxt(
-            "{}.eddy_{}_parameter_history".format(self.input_prefix, param_type)
+            "{}.eddy_{}_parameter_history".format(
+                self.input_prefix, param_type
+            )
         ), np.loadtxt(
             "{}.eddy_{}_mss_history".format(self.input_prefix, param_type)
         )

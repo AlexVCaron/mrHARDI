@@ -7,7 +7,6 @@ from traitlets import Dict, List, Bool, Integer, Float, Unicode
 from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import (MagicMonkeyConfigurable,
-                                           Vector3D,
                                            ChoiceList,
                                            AnyInt)
 
@@ -96,7 +95,9 @@ class DwiMetadata(MagicMonkeyConfigurable):
     dataset_indexes = List(Integer(), default_value=[0]).tag(config=True)
 
     def get_spacing(self):
-        return np.absolute(np.linalg.eigvalsh(np.array(self.affine)[:3, :3])).tolist()
+        return np.absolute(
+            np.linalg.eigvalsh(np.array(self.affine)[:3, :3])
+        ).tolist()
 
     def acquisition_slices_to_list(self):
         slices = [
