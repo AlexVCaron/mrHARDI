@@ -7,7 +7,7 @@ from dipy.segment.mask import crop
 from scipy.linalg import qr, lu
 from traitlets import Unicode, Any, Dict
 
-from compute.utils import voxel_to_world, world_to_voxel
+from magic_monkey.compute.utils import voxel_to_world, world_to_voxel
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            required_file,
                                            output_file_argument,
