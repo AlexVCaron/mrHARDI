@@ -138,6 +138,8 @@ class Eddy(MagicMonkeyBaseApplication):
 
             with open("{}_acqp.txt".format(self.output_prefix), 'w+') as f:
                 f.write(acqp)
+
+            acqp = acqp.split("\n")
         else:
             acqp = []
             with open(self.acquisition_file) as f:
@@ -153,17 +155,17 @@ class Eddy(MagicMonkeyBaseApplication):
             ceil=self.configuration.ceil_value, **kwargs
         )
 
-        if indexes.max() > len(acqp.split("\n")):
-            if len(acqp.split("\n")) == 1:
+        if indexes.max() > len(acqp):
+            if len(acqp) == 1:
                 indexes[:] = 1
             else:
                 dataset_indexes = metadata.dataset_indexes[1:] + [len(bvals)]
-                if not len(acqp.split("\n")) == len(dataset_indexes):
+                if not len(acqp) == len(dataset_indexes):
                     raise ConfigError(
                         "No matching configuration found for index "
                         "(maxing at {}) "
                         "and acqp file (containing {} lines)\n{}".format(
-                            indexes.max(), len(acqp.split("\n")), acqp
+                            indexes.max(), len(acqp), "\n".join(acqp)
                         )
                     )
 
