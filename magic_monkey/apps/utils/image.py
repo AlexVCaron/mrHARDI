@@ -331,3 +331,47 @@ class ReplicateImage(MagicMonkeyBaseApplication):
         data = np.repeat(data, ref.shape[-1], axis=-1)
 
         nib.save(nib.Nifti1Image(data, img.affine, img.header), self.output)
+
+
+_seg_aliases = {
+    'in': 'Segmentation2Mask.segmentation',
+    'values': 'Segmentation2Mask.values',
+    'labels': 'Segmentation2Mask.labels',
+    'out': 'Segmentation2Mask.output_prefix'
+}
+
+
+class Segmentation2Mask(MagicMonkeyBaseApplication):
+    segmentation = required_file(description="Input segmentation image")
+
+    values = required_arg(
+        MultipleArguments, traits_args=(Integer(),),
+        description="Image intensities corresponding to tissues"
+    )
+
+    labels = required_arg(
+        MultipleArguments, traits_args=(Unicode(),),
+        description="Labels corresponding to each tissues "
+                    "used to generate the output filenames"
+    )
+
+    output_prefix = output_prefix_argument()
+
+    aliases = Dict(default_value=_seg_aliases)
+
+    def _validate(self):
+        super()._validate()
+        if len(self.values) != len(self.labels):
+            raise ArgumentError(
+                "Number of images intensities differ from number of labels"
+            )
+
+    def execute(self):
+        img = nib.load(self.segmentation)
+        data = img.get_fdata().astype(int)
+
+        for label, value in zip(self.labels, self.values):
+            nib.save(
+                nib.Nifti1Image((data == value).astype(np.uint8), img.affine),
+                "{}_{}.nii.gz".format(self.output_prefix, label)
+            )
