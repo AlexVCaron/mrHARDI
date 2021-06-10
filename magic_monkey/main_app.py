@@ -133,6 +133,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.reconstruct.FiberResponse",
             'Compute single fiber response (and gm and csf if msmt)'
         ),
+        seg2mask=(
+            "magic_monkey.apps.utils.Segmentation2Mask",
+            'Splits a segmentation image intensities into masks'
+        ),
         split=(
             "magic_monkey.apps.utils.SplitImage",
             'Split an image given an axis'
