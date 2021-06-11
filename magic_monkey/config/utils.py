@@ -6,10 +6,11 @@ from magic_monkey.base.application import (MagicMonkeyConfigurable,
                                            ChoiceList)
 
 from magic_monkey.base.dwi import Direction, AcquisitionType
-from magic_monkey.compute.b0 import B0PostProcess
+from magic_monkey.compute.b0 import B0PostProcess, B0Reference
 
 _b0_aliases = dict(
     mean="B0UtilsConfiguration.mean_strategy",
+    ref="B0UtilsConfiguration.reference_strategy",
     type="B0UtilsConfiguration.dtype",
     strides="B0UtilsConfiguration.strides",
     ceil="B0UtilsConfiguration.ceil_value"
@@ -44,7 +45,21 @@ class B0UtilsConfiguration(MagicMonkeyConfigurable):
     ).tag(config=True, required=True)
 
     mean_strategy = convert_enum(
-        B0PostProcess, B0PostProcess.batch, allow_none=True
+        B0PostProcess, B0PostProcess.batch, allow_none=True,
+        description="Strategy to use when averaging the b0 volume(s). "
+                    "Either averages the whole set of b0s (whole), does "
+                    "the averages by clump of continuous b0 (batch) or "
+                    "takes the first on of each clump (none)."
+    ).tag(config=True)
+
+    reference_strategy = convert_enum(
+        B0Reference, B0Reference.linear,
+        description="ONLY USED WHEN DOING NORMALIZATION. Defines which "
+                    "strategy will be used to select b0 volumes for "
+                    "averaging. Can either do a linear interpolation between "
+                    "b0 volumes appearing before and after each group of "
+                    "diffusion volumes (linear), take the one appearing "
+                    "before (first) or after (last)."
     ).tag(config=True)
 
     ceil_value = Float(
@@ -67,6 +82,9 @@ class B0UtilsConfiguration(MagicMonkeyConfigurable):
 
     def get_mean_strategy_enum(self):
         return B0PostProcess[self.mean_strategy]
+
+    def get_ref_strategy_enum(self):
+        return B0Reference[self.reference_strategy]
 
 
 _meta_aliases = dict(

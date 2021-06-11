@@ -628,10 +628,11 @@ class MagicMonkeyBaseApplication(Application):
         return flags
 
 
-def convert_enum(enum, default_value=None, allow_none=False):
+def convert_enum(enum, default_value=None, allow_none=False, description=None):
     return Enum(
         [v.name for v in enum], default_value.name if default_value else None,
-        allow_none=allow_none or default_value is None
+        allow_none=allow_none or default_value is None,
+        help=description
     )
 
 

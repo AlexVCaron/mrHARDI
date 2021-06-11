@@ -212,6 +212,14 @@ RUN find . -maxdepth 1 -not \( \
         -name DenoiseImage \
     \) -exec rm -rf "{}" \;
 
+FROM alpine:latest AS file_wget
+
+RUN apk add --no-cache wget
+
+WORKDIR /
+RUN wget https://afni.nimh.nih.gov/pub/dist/atlases/macaque/nmt/NMT_v2.0_asym.tgz
+RUN tar -xf NMT_v2.0_asym.tgz
+
 # Build final image
 FROM base
 WORKDIR /
@@ -219,10 +227,17 @@ RUN mkdir -p /mms/dev/fsl
 RUN mkdir -p /mms/dev/mrtrix
 RUN mkdir -p /mms/dev/diamond
 RUN mkdir -p /mms/dev/ants
+RUN mkdir -p /nmt
 COPY --from=fsl_builder /mms/dev/fsl /mms/dev/fsl
 COPY --from=mrtrix_builder /mms/dev/mrtrix /mms/dev/mrtrix
 COPY --from=diamond_builder /mms/dev/diamond /mms/dev/diamond
 COPY --from=ants_builder /mms/dev/ants /mms/dev/ants
+COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_SS.nii.gz /nmt/NMT_v2.0_asym_SS.nii.gz
+COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_segmentation.nii.gz /nmt/NMT_v2.0_asym_segmentation.nii.gz
+COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_GM_cortical_mask.nii.gz /nmt/NMT_v2.0_asym_GM_cortical_mask.nii.gz
+COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/SARM_in_NMT_v2.0_asym.nii.gz /nmt/SARM_in_NMT_v2.0_asym.nii.gz
+COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/CHARM_in_NMT_v2.0_asym.nii.gz /nmt/CHARM_in_NMT_v2.0_asym.nii.gz
+COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/D99_atlas_in_NMT_v2.0_asym.nii.gz /nmt/D99_atlas_in_NMT_v2.0_asym.nii.gz
 
 ENV FSLDIR=/mms/dev/fsl
 ENV FSLOUTPUTTYPE=NIFTI_GZ
@@ -239,6 +254,8 @@ RUN apt-get update && apt-get -y install \
 RUN add-apt-repository ppa:deadsnakes/ppa
 
 RUN apt-get update && apt-get -y install \
+    bc \
+    dc \
     libblas-dev \
     libeigen3-dev \
     liblapack-dev \

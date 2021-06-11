@@ -10,6 +10,12 @@ class B0PostProcess(Enum):
     none = None
 
 
+class B0Reference(Enum):
+    first = "first"
+    last = "last"
+    linear = "linear"
+
+
 def pick_b0(b0_mask, b0_strides):
     first_b0_idx = b0_mask.argmax()
     for i in range(first_b0_idx, len(b0_mask)):
@@ -286,8 +292,16 @@ def squash_b0(
 
 def normalize_to_b0(
     data, bvals, mean=B0PostProcess.batch,
-    ceil=0.9, ref_mean=None, b0_comp=np.less_equal
+    ref_strategy=B0Reference.linear, ref_mean=None,
+    ceil=0.9, b0_comp=np.less_equal
 ):
+    reference_last = ref_strategy == B0Reference.last
+
+    if reference_last:
+        data = data[..., ::-1]
+        bvals = bvals[::-1]
+        ref_strategy = B0Reference.first
+
     b0_mask = b0_comp(bvals, ceil)
     mask = np.ma.masked_array(b0_mask)
     mask[~b0_mask] = np.ma.masked
@@ -307,24 +321,34 @@ def normalize_to_b0(
             mean_val = np.mean(data[..., b0_clusters[-1].start])
         modif = ref_mean if np.isclose(mean_val, 0) else ref_mean / mean_val
 
-        data[dwi_clusters[-1]] *= modif
+        data[..., dwi_clusters[-1]] *= modif
         dwi_clusters = dwi_clusters[:-1]
 
     for i in range(len(dwi_clusters)):
         len_cl = dwi_clusters[i].stop - dwi_clusters[i].start
-        weight = np.arange(len_cl).astype(float) / (len_cl - 1)
+
         if mean == B0PostProcess.batch:
             mean_val = np.mean(data[..., b0_clusters[i]])
-            mean_val_p1 = np.mean(data[..., b0_clusters[i + 1]])
         else:
             mean_val = np.mean(data[..., b0_clusters[i].end - 1])
-            mean_val_p1 = np.mean(data[..., b0_clusters[i + 1].start])
 
-        modif = weight * mean_val_p1 + (1. - weight) * mean_val
+        if ref_strategy == B0Reference.linear:
+            weight = np.arange(len_cl).astype(float) / (len_cl - 1)
+            if mean == B0PostProcess.batch:
+                mean_val_p1 = np.mean(data[..., b0_clusters[i + 1]])
+            else:
+                mean_val_p1 = np.mean(data[..., b0_clusters[i + 1].start])
+            modif = weight * mean_val_p1 + (1. - weight) * mean_val
+        else:
+            modif = mean_val
+
         data[..., dwi_clusters[i]] *= ref_mean / modif
 
     for i in range(len(b0_clusters)):
         mean_cluster = np.mean(data[..., b0_clusters[i]])
         data[..., b0_clusters[i]] *= ref_mean / mean_cluster
+
+    if reference_last:
+        data = data[..., ::-1]
 
     return data, ref_mean
