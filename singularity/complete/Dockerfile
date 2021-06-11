@@ -26,9 +26,6 @@ ENV LC_ALL=en_US.utf8
 RUN apt-get update && apt-get -y install \
     build-essential \
     gfortran \
-    libblas-dev \
-    liblapack-dev \
-    bc \
     && rm -rf /var/lib/apt/lists/*
 
 RUN python3 -m pip install Cython

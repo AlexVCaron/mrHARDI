@@ -102,7 +102,8 @@ class B0Utils(MagicMonkeyBaseApplication):
         data, ref_mean = normalize_to_b0(
             in_dwi.get_fdata().astype(in_dwi.get_data_dtype()), bvals,
             self.configuration.get_mean_strategy_enum(),
-            self.configuration.ceil_value,
+            self.configuration.get_ref_strategy_enum(),
+            ceil=self.configuration.ceil_value,
             **kwargs
         )
 
@@ -136,8 +137,9 @@ class B0Utils(MagicMonkeyBaseApplication):
             data, _ = normalize_to_b0(
                 rev_data, bvals,
                 self.configuration.get_mean_strategy_enum(),
-                self.configuration.ceil_value,
+                self.configuration.get_ref_strategy_enum(),
                 ref_mean,
+                ceil=self.configuration.ceil_value,
                 **kwargs
             )
 
