@@ -35,9 +35,10 @@ class AntsConfiguration(MagicMonkeyConfigurable):
         help="List of registration passes (Rigid, Affine or SyN)"
     ).tag(config=True)
     interpolation = Enum(
-        ["Linear", "NearestNeighbor", "Gaussian",  "BSpline"], "Linear",
+        ["Linear", "NearestNeighbor", "Gaussian",  "BSpline", "MultiLabel"],
+        "Linear",
         help="Interpolation strategy. Choices : {}".format(
-            ["Linear", "NearestNeighbor", "Gaussian",  "BSpline"]
+            ["Linear", "NearestNeighbor", "Gaussian",  "BSpline", "MultiLabel"]
         )
     ).tag(config=True)
     dimension = Integer(
