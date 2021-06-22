@@ -7,6 +7,7 @@ from .dwi import (DwiMetadataUtils,
 from .image import (ApplyMask,
                     Concatenate,
                     ConvertImage,
+                    FixOddDimensions,
                     ReplicateImage,
                     Segmentation2Mask,
                     SplitImage)
