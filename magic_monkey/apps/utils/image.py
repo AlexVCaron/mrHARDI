@@ -1,4 +1,5 @@
 import glob
+from os.path import basename
 
 import nibabel as nib
 import numpy as np
@@ -375,3 +376,152 @@ class Segmentation2Mask(MagicMonkeyBaseApplication):
                 nib.Nifti1Image((data == value).astype(np.uint8), img.affine),
                 "{}_{}.nii.gz".format(self.output_prefix, label)
             )
+
+
+_odd_aliases = {
+    "in": "FixOddDimensions.image",
+    "assoc": "FixOddDimensions.associations",
+    "suffix": "FixOddDimensions.suffix",
+    "strat": "FixOddDimensions.strategy"
+}
+
+
+class FixOddDimensions(MagicMonkeyBaseApplication):
+    image = required_file(description="Input main image")
+
+    associations = MultipleArguments(
+        Unicode(), [], help="Other images associated with the main image, "
+                          "for which the same slices should be added "
+                          "or removed to achieve evenness"
+    ).tag(config=True)
+
+    strategy = Enum(
+        ["add", "sub"], "sub",
+        help="Either add a slice at 0 of an odd dimension "
+             "or remove the slice with less information"
+    ).tag(config=True)
+
+    suffix = Unicode(
+        "", help="Suffix to append to image names defining the output name"
+    ).tag(config=True)
+
+    aliases = Dict(default_value=_odd_aliases)
+
+    def _validate_associations_shape(self, shape):
+        for assoc in self.associations:
+            if not np.allclose(nib.load(assoc).shape, shape):
+                raise ArgumentError(
+                    "Association {} differs in shape from main image".format(
+                        basename(assoc)
+                    )
+                )
+
+    def _get_best_slices(self, odd_dims, img):
+        best_slice = [None for _ in odd_dims]
+        data = img.get_fdata()
+        if len(img.shape) > 3:
+            for _ in range(len(img.shape) - 3):
+                data = np.mean(data, axis=-1)
+
+        for i, is_odd in enumerate(odd_dims):
+            if is_odd:
+                slicer = [slice(0, s) for s in data.shape]
+                slicer[i] = slice(0, 1)
+                first_slice_mean = np.mean(data[tuple(slicer)])
+                slicer = [slice(0, s) for s in data.shape]
+                slicer[i] = slice(slicer[i].stop - 1, slicer[i].stop)
+                last_slice_mean = np.mean(data[tuple(slicer)])
+                if first_slice_mean > last_slice_mean:
+                    best_slice[i] = "top"
+                else:
+                    best_slice[i] = "bottom"
+
+        return best_slice
+
+    def execute(self):
+        img = nib.load(self.image)
+
+        self._validate_associations_shape(img.shape[:-1])
+
+        odd_dims = tuple(s % 2 == 1 for s in img.shape[:-1])
+
+        slice_removal = None
+        if self.strategy == "sub":
+            slice_removal = self._get_best_slices(odd_dims, img)
+
+        for image in [self.image] + self.associations:
+            img = nib.load(image)
+            metadata = load_metadata(image)
+            name = image.split(".")[0] + self.suffix
+            extension = ".".join(image.split(".")[1:])
+
+            if self.strategy == "add":
+                padding = [(1 if odd else 0, 0) for odd in odd_dims]
+                for _ in img.shape[3:]:
+                    padding += [(0, 0)]
+                data = np.pad(img.get_fdata(), padding)
+
+                if metadata is not None:
+                    dir_idx = np.argmax(
+                        np.absolute(metadata.directions[0]['dir'])
+                    )
+                    if odd_dims[dir_idx]:
+                        metadata.slice_order = [[0]] + [
+                            [i + 1 for i in ii] for ii in metadata.slice_order
+                        ]
+
+                        metadata.n_excitations += 1
+
+            else:
+                data = img.get_fdata()
+                slicer = [slice(0, s) for s in img.shape]
+                for i, (is_odd, sl) in enumerate(
+                    zip(odd_dims, slice_removal)
+                ):
+                    if is_odd:
+                        if sl == "bottom":
+                            slicer[i] = slice(1, slicer[i].stop)
+                        else:
+                            slicer[i] = slice(
+                                slicer[i].start, slicer[i].stop - 1
+                            )
+
+                data = data[tuple(slicer)]
+
+                if metadata is not None:
+                    dir_idx = np.argmax(
+                        np.absolute(metadata.directions[0]['dir'])
+                    )
+                    if odd_dims[dir_idx]:
+                        if slice_removal[dir_idx] == "bottom":
+                            for i, so in enumerate(metadata.slice_order):
+                                if 0 in so:
+                                    so.remove(0)
+                            metadata.slice_order = [
+                                [s - 1 for s in so]
+                                for so in metadata.slice_order
+                                if len(so) > 0
+                            ]
+                        else:
+                            max_idx, max_val = 0, 0
+                            for i, so in enumerate(metadata.slice_order):
+                                for s in so:
+                                    if s > max_val:
+                                        max_val = s
+                                        max_idx = i
+
+                            metadata.slice_order[max_idx].remove(max_val)
+                            metadata.slice_order = [
+                                so for so in metadata.slice_order
+                                if len(so) > 0
+                            ]
+
+                        metadata.n_excitations = len(metadata.slice_order)
+
+            nib.save(
+                nib.Nifti1Image(data, img.affine, img.header),
+                ".".join([name, extension])
+            )
+
+            if metadata is not None:
+                save_metadata(name, metadata)

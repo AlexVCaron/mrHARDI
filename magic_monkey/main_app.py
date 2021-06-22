@@ -93,6 +93,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.visualize.VisualizeEddyParameters",
             "Visualization of eddy's optimization train"
         ),
+        even_dimensions=(
+            "magic_monkey.apps.utils.FixOddDimensions",
+            'Fixes images with a odd number of slices in a space dimension'
+        ),
         fitbox=(
           "magic_monkey.apps.utils.FitBox",
           'Fit a bounding box with reference to another image'
