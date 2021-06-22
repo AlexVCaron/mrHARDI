@@ -104,8 +104,8 @@ class Topup(MagicMonkeyBaseApplication):
 
         kwargs = dict(b0_comp=np.less) if self.configuration.strict else dict()
 
-        bvals = [np.loadtxt(bvs) for bvs in self.bvals]
-        rev_bvals = [np.loadtxt(bvs) for bvs in self.rev_bvals]
+        bvals = [np.loadtxt(bvs, ndmin=1) for bvs in self.bvals]
+        rev_bvals = [np.loadtxt(bvs, ndmin=1) for bvs in self.rev_bvals]
         if rev_bvals:
             bvals = [bv for bv in bvals + rev_bvals]
 
