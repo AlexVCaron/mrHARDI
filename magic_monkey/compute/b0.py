@@ -259,6 +259,13 @@ def squash_b0(
     else:
         b0_extractor = lambda cluster: np.mean(cluster, axis=-1)
 
+    if len(dwi_clusters) > len(b0_clusters):
+        data[..., dwi_clusters[0]] = dwi_img.dataobj[..., dwi_clusters[0]]
+        out_bvals += bvals[dwi_clusters[0]].tolist()
+        if bvecs is not None:
+            out_bvecs += bvecs[:, dwi_clusters[0]].T.tolist()
+        dwi_clusters = dwi_clusters[1:]
+
     shape_reduce = 0
     for i in range(len(dwi_clusters)):
         data[..., b0_clusters[i].start - shape_reduce] = b0_extractor(
