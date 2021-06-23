@@ -1,9 +1,10 @@
 from os import chmod
+from os.path import exists
 
 import numpy as np
 from GPUtil import GPUtil
 from traitlets import Dict, Instance, Unicode, Bool, Enum
-from traitlets.config.loader import ConfigError
+from traitlets.config.loader import ArgumentError, ConfigError
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            output_prefix_argument,
@@ -126,7 +127,15 @@ class Eddy(MagicMonkeyBaseApplication):
         metadata = load_metadata(self.image)
         if self.rev_image:
             rev_bvals = np.loadtxt("{}.bval".format(self.rev_image), ndmin=1)
-            non_zero_bvecs(self.rev_image)
+
+            if exists("{}.bvec".format(self.rev_image)):
+                non_zero_bvecs(self.rev_image)
+            elif not np.allclose(rev_bvals, 0):
+                raise ArgumentError(
+                    "No bvec file found, but reverse phase acquisition "
+                    "seems to contain diffusion volumes"
+                )
+
             metadata.extend(load_metadata(self.rev_image))
         else:
             rev_bvals = np.array([])
@@ -235,10 +244,14 @@ class Eddy(MagicMonkeyBaseApplication):
                     len(bvals) == len(rev_bvals) and
                     np.allclose(bvals, rev_bvals)
                 ):
-                    bvecs = np.loadtxt("{}.bvec".format(self.image))
-                    rev_bvecs = np.loadtxt("{}.bvec".format(self.rev_image))
-                    if np.allclose(bvecs, rev_bvecs):
-                        self.configuration.resampling = "lsquare"
+                    if exists("{}.bvec".format(self.rev_image)):
+                        bvecs = np.loadtxt("{}.bvec".format(self.image))
+                        rev_bvecs = np.loadtxt(
+                            "{}.bvec".format(self.rev_image)
+                        )
+
+                        if np.allclose(bvecs, rev_bvecs):
+                            self.configuration.resampling = "lsquare"
 
             if self.configuration.resampling == "lsquare":
                 self.configuration.fill_empty = True
