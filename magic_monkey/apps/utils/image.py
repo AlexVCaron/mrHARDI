@@ -409,7 +409,7 @@ class FixOddDimensions(MagicMonkeyBaseApplication):
 
     def _validate_associations_shape(self, shape):
         for assoc in self.associations:
-            if not np.allclose(nib.load(assoc).shape, shape):
+            if not np.allclose(nib.load(assoc).shape[:3], shape):
                 raise ArgumentError(
                     "Association {} differs in shape from main image".format(
                         basename(assoc)
@@ -441,9 +441,9 @@ class FixOddDimensions(MagicMonkeyBaseApplication):
     def execute(self):
         img = nib.load(self.image)
 
-        self._validate_associations_shape(img.shape[:-1])
+        self._validate_associations_shape(img.shape[:3])
 
-        odd_dims = tuple(s % 2 == 1 for s in img.shape[:-1])
+        odd_dims = tuple(s % 2 == 1 for s in img.shape[:3])
 
         slice_removal = None
         if self.strategy == "sub":
