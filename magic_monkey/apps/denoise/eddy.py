@@ -125,7 +125,7 @@ class Eddy(MagicMonkeyBaseApplication):
         non_zero_bvecs(self.image)
         metadata = load_metadata(self.image)
         if self.rev_image:
-            rev_bvals = np.loadtxt("{}.bval".format(self.rev_image), ndim=1)
+            rev_bvals = np.loadtxt("{}.bval".format(self.rev_image), ndmin=1)
             non_zero_bvecs(self.rev_image)
             metadata.extend(load_metadata(self.rev_image))
         else:
