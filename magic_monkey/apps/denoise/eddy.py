@@ -238,8 +238,10 @@ class Eddy(MagicMonkeyBaseApplication):
                 debug_args = " ".join("--{}=True".format(d) for d in dargs)
 
             if self.eddy_on_rev:
-                bvals = np.loadtxt("{}.bval".format(self.image))
-                rev_bvals = np.loadtxt("{}.bval".format(self.rev_image))
+                bvals = np.loadtxt("{}.bval".format(self.image), ndmin=1)
+                rev_bvals = np.loadtxt(
+                    "{}.bval".format(self.rev_image), ndmin=1
+                )
                 if (
                     len(bvals) == len(rev_bvals) and
                     np.allclose(bvals, rev_bvals)
