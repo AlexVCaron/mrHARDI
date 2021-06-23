@@ -131,7 +131,7 @@ class Concatenate(MagicMonkeyBaseApplication):
 
         bvals_list = [
             np.zeros((data[i].shape[-1],)) if bvals == "0" else
-            np.loadtxt(bvals) for i, bvals in enumerate(self.bvals)
+            np.loadtxt(bvals, ndmin=1) for i, bvals in enumerate(self.bvals)
         ] if self.bvals else None
         bvecs_list = [
             np.zeros((3, data[i].shape[-1],)) if bvecs == "0" else
