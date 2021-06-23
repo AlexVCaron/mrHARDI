@@ -247,9 +247,11 @@ class Eddy(MagicMonkeyBaseApplication):
                     np.allclose(bvals, rev_bvals)
                 ):
                     if exists("{}.bvec".format(self.rev_image)):
-                        bvecs = np.loadtxt("{}.bvec".format(self.image))
+                        bvecs = np.loadtxt(
+                            "{}.bvec".format(self.image), ndmin=2
+                        )
                         rev_bvecs = np.loadtxt(
-                            "{}.bvec".format(self.rev_image)
+                            "{}.bvec".format(self.rev_image), ndmin=2
                         )
 
                         if np.allclose(bvecs, rev_bvecs):
