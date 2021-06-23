@@ -92,10 +92,14 @@ class Concatenate(MagicMonkeyBaseApplication):
     )
 
     bvals = MultipleArguments(
-        Unicode(), help="If provided, will be also concatenated"
+        Unicode(), help="If provided, will be also concatenated. For a b0 "
+                        "image, this argument should be either a b-value "
+                        "file or the number 0."
     ).tag(config=True)
     bvecs = MultipleArguments(
-        Unicode(), help="If provided, will be also concatenated"
+        Unicode(), help="If provided, will be also concatenated. For a b0 "
+                        "image, this argument should be either a b-vector "
+                        "file or the number 0."
     ).tag(config=True)
 
     prefix = output_prefix_argument()
@@ -107,12 +111,6 @@ class Concatenate(MagicMonkeyBaseApplication):
 
     def execute(self):
         dwi_list = [nib.load(dwi) for dwi in self.images]
-        bvals_list = [
-            np.loadtxt(bvals) for bvals in self.bvals
-        ] if self.bvals else None
-        bvecs_list = [
-            np.loadtxt(bvecs) for bvecs in self.bvecs
-        ] if self.bvecs else None
 
         reference_affine = dwi_list[0].affine
         reference_header = dwi_list[0].header
@@ -130,6 +128,15 @@ class Concatenate(MagicMonkeyBaseApplication):
                 dt if len(dt.shape) == 4 else dt[..., None]
                 for dt in data
             ]
+
+        bvals_list = [
+            np.zeros((data[i].shape[-1],)) if bvals == "0" else
+            np.loadtxt(bvals) for i, bvals in enumerate(self.bvals)
+        ] if self.bvals else None
+        bvecs_list = [
+            np.zeros((3, data[i].shape[-1],)) if bvecs == "0" else
+            np.loadtxt(bvecs) for i, bvecs in enumerate(self.bvecs)
+        ] if self.bvecs else None
 
         if len(data) == 1:
             out_dwi, out_bvals, out_bvecs = (
