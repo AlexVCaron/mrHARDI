@@ -135,7 +135,7 @@ class Concatenate(MagicMonkeyBaseApplication):
         ] if self.bvals else None
         bvecs_list = [
             np.zeros((3, data[i].shape[-1],)) if bvecs == "0" else
-            np.loadtxt(bvecs) for i, bvecs in enumerate(self.bvecs)
+            np.loadtxt(bvecs, ndmin=2) for i, bvecs in enumerate(self.bvecs)
         ] if self.bvecs else None
 
         if len(data) == 1:
