@@ -425,7 +425,7 @@ class FixOddDimensions(MagicMonkeyBaseApplication):
 
     def _get_best_slices(self, odd_dims, img):
         best_slice = [None for _ in odd_dims]
-        data = img.get_fdata()
+        data = img.get_fdata().astype(img.get_data_dtype())
         if len(img.shape) > 3:
             for _ in range(len(img.shape) - 3):
                 data = np.mean(data, axis=-1)
@@ -466,7 +466,10 @@ class FixOddDimensions(MagicMonkeyBaseApplication):
                 padding = [(1 if odd else 0, 0) for odd in odd_dims]
                 for _ in img.shape[3:]:
                     padding += [(0, 0)]
-                data = np.pad(img.get_fdata(), padding)
+                data = np.pad(
+                    img.get_fdata().astype(img.get_data_dtype()),
+                    padding
+                )
 
                 if metadata is not None:
                     dir_idx = np.argmax(
@@ -480,7 +483,7 @@ class FixOddDimensions(MagicMonkeyBaseApplication):
                         metadata.n_excitations += 1
 
             else:
-                data = img.get_fdata()
+                data = img.get_fdata().astype(img.get_data_dtype())
                 slicer = [slice(0, s) for s in img.shape]
                 for i, (is_odd, sl) in enumerate(
                     zip(odd_dims, slice_removal)
