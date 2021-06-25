@@ -72,10 +72,6 @@ class Topup(MagicMonkeyBaseApplication):
 
     output_prefix = output_prefix_argument()
 
-    final_bvals = Unicode(
-        help="Bvalues of the final image on which Topup will be applied"
-    ).tag(config=True)
-
     extra_arguments = Unicode(
         u'',
         help="Extra arguments to pass to topup, "
@@ -147,7 +143,8 @@ class Topup(MagicMonkeyBaseApplication):
             f.write(acqp)
 
         with open("{}_config.cnf".format(self.output_prefix), 'w+') as f:
-            f.write(self.configuration.serialize())
+            max_spacing = np.max(nib.load(self.b0_volumes).header.get_zooms()[:3])
+            f.write(self.configuration.serialize(max_spacing))
 
         if self.verbose:
             if self.extra_arguments:
