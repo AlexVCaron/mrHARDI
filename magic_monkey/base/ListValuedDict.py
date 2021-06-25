@@ -1,5 +1,6 @@
 import json
 from collections.abc import MutableMapping
+from copy import deepcopy
 from typing import Generator
 
 from magic_monkey.base.encoding import MagicConfigEncoder
@@ -20,6 +21,9 @@ class MagicDict(MutableMapping):
                 "Base attributes of a Magic Dict " \
                 "must be supplied in a dictionary"
         return init_attributes
+
+    def copy_attributes(self):
+        return deepcopy(self._dict)
 
     def __setitem__(self, k, v):
         self._dict[k] = v
