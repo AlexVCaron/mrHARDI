@@ -131,7 +131,7 @@ class ConvertBidsToMMY(MagicMonkeyBaseApplication):
     @classmethod
     def save_metadata(cls, dwi, output_folder, tag, defaults):
         output_metadata = {
-            'dwell': defaults['dwell'],
+            'readout': defaults['readout'],
             'direction': defaults['direction'],
             'slice_direction': 'IS',
             'interleaved': defaults['interleaved'],
@@ -147,7 +147,7 @@ class ConvertBidsToMMY(MagicMonkeyBaseApplication):
         with open(dwi.path.replace('.nii.gz', '.json'), 'r') as handle:
             metadata = json.load(handle)
             if 'TotalReadoutTime' in metadata:
-                output_metadata['dwell'] = metadata['TotalReadoutTime']
+                output_metadata['readout'] = metadata['TotalReadoutTime']
             if 'PhaseEncodingDirection' in metadata:
                 output_metadata['direction'] = conversion[metadata[
                     'PhaseEncodingDirection'
@@ -271,7 +271,7 @@ class ConvertBidsToMMY(MagicMonkeyBaseApplication):
             sessions = layout.get_sessions()
 
             defaults = {
-                'dwell': self.default_readout,
+                'readout': self.default_readout,
                 'direction': self.default_phase_direction,
                 'interleaved': self.default_interleaved,
                 'multiband_factor': self.default_multiband_factor
