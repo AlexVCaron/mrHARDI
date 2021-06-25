@@ -94,7 +94,7 @@ class Eddy(MagicMonkeyBaseApplication):
 
     acquisition_file = Unicode(
         help="Acquisition file describing the "
-             "orientation and dwell of the volumes"
+             "orientation and readout of the volumes"
     ).tag(config=True)
 
     rev_image = Unicode(
@@ -142,7 +142,7 @@ class Eddy(MagicMonkeyBaseApplication):
 
         if not self.acquisition_file:
             acqp = prepare_acqp_file(
-                metadata.dwell, metadata.directions
+                metadata.readout, metadata.directions
             )
 
             with open("{}_acqp.txt".format(self.output_prefix), 'w+') as f:

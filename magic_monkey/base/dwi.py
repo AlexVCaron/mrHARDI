@@ -89,7 +89,7 @@ class DwiMetadata(MagicMonkeyConfigurable):
         List(Float(), minlen=4, maxlen=4), minlen=4, maxlen=4
     ).tag(config=True)
 
-    dwell = Float().tag(config=True)
+    readout = Float().tag(config=True)
 
     topup_indexes = List(Integer(), allow_none=True).tag(config=True)
     dataset_indexes = List(Integer(), default_value=[0]).tag(config=True)
@@ -139,7 +139,7 @@ class DwiMetadata(MagicMonkeyConfigurable):
         self.slice_order = oth.slice_order
         self.multiband_corrected = oth.multiband_corrected
         self.affine = oth.affine
-        self.dwell = oth.dwell
+        self.readout = oth.readout
         self.topup_indexes = oth.topup_indexes
         self.dataset_indexes = oth.dataset_indexes
 
@@ -190,7 +190,7 @@ class DwiMetadata(MagicMonkeyConfigurable):
         metadata.n_excitations = self.n_excitations
         metadata.directions = deepcopy(self.directions)
         metadata.affine = deepcopy(self.affine)
-        metadata.dwell = self.dwell
+        metadata.readout = self.readout
 
         metadata.is_multiband = self.is_multiband
         metadata.slice_order = deepcopy(self.slice_order)

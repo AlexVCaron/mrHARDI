@@ -95,7 +95,7 @@ class Topup(MagicMonkeyBaseApplication):
         metadata = load_metadata(self.b0_volumes)
 
         acqp = prepare_acqp_file(
-            metadata.dwell, metadata.directions
+            metadata.readout, metadata.directions
         )
 
         kwargs = dict(b0_comp=np.less) if self.configuration.strict else dict()
@@ -198,7 +198,7 @@ class ApplyTopup(MagicMonkeyBaseApplication):
 
     acquisition_file = required_file(
         description="Acquisition file describing the "
-                    "orientation and dwell of the volumes"
+                    "orientation and readout of the volumes"
     )
 
     dwi = required_arg(

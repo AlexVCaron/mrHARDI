@@ -271,7 +271,7 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             ] / self.configuration.multiband_factor)
             metadata.affine = img["data"].affine.tolist()
             metadata.directions = [d]
-            metadata.dwell = self.configuration.dwell
+            metadata.readout = self.configuration.readout
 
             metadata.is_multiband = (
                 self.configuration.multiband_factor and
