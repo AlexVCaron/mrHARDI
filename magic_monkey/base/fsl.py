@@ -54,7 +54,7 @@ def prepare_topup_index(
     return clip(indexes, a_min=1, a_max=len(b0_clumps))
 
 
-def prepare_acqp_file(dwell, directions):
+def prepare_acqp_file(readout, directions):
     return "\n".join("{} {:.8f}".format(
-        " ".join(str(dd) for dd in d["dir"]), dwell
+        " ".join(str(dd) for dd in d["dir"]), readout
     ) for d in directions)

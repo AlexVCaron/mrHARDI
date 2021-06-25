@@ -94,7 +94,7 @@ _meta_aliases = dict(
     si="DwiMetadataUtilsConfiguration.slice_indexes",
     gsl="DwiMetadataUtilsConfiguration.gslider_factor",
     acq="DwiMetadataUtilsConfiguration.acquisition",
-    dwell="DwiMetadataUtilsConfiguration.dwell"
+    readout="DwiMetadataUtilsConfiguration.readout"
 )
 
 _meta_flags = dict(
@@ -138,7 +138,7 @@ class DwiMetadataUtilsConfiguration(MagicMonkeyConfigurable):
              "   - N : one direction per dataset, applied to all slices"
     ).tag(config=True)
 
-    dwell = Float(help="Acquisition readout time (in ms)").tag(
+    readout = Float(help="Acquisition readout time (in ms)").tag(
         config=True, required=True
     )
 
