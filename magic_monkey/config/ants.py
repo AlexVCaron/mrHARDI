@@ -124,7 +124,8 @@ _aliases = {
 
 class AntsTransformConfiguration(MagicMonkeyConfigurable):
     interpolation = Enum(
-        ["Linear", "NearestNeighbor", "Gaussian", "BSpline"], "Linear"
+        ["Linear", "NearestNeighbor", "Gaussian", "BSpline", "MultiLabel"],
+        "Linear"
     ).tag(config=True)
     fill_value = Integer(0).tag(config=True)
     dimensionality = Integer(None, allow_none=True).tag(config=True)
