@@ -248,6 +248,9 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
 
         directions = self.get_phase_directions(images)
 
+        if self.configuration.multiband_factor in [None, 0]:
+            self.configuration.multiband_factor = 1
+
         slice_indexes = self.configuration.slice_indexes
         if slice_indexes is None:
             slice_indexes = self._get_slice_indexes(images)
