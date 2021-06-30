@@ -144,6 +144,9 @@ class ConvertBidsToMMY(MagicMonkeyBaseApplication):
         if tag == 'rev' and output_metadata['direction'] != 'todo':
             output_metadata['direction'] = output_metadata['direction'][::-1]
 
+        if output_metadata['direction'] in ['IS', 'SI']:
+            output_metadata['slice_direction'] = 'AP'
+
         with open(dwi.path.replace('.nii.gz', '.json'), 'r') as handle:
             metadata = json.load(handle)
             if 'TotalReadoutTime' in metadata:
