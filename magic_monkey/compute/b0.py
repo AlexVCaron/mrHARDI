@@ -125,7 +125,7 @@ def extract_b0(
                         })
                         start += n
                         if lg:
-                            curr_cl.start = d["range"][1]
+                            curr_cl = slice(d["range"][1], curr_cl.stop)
                         else:
                             break
 
@@ -188,7 +188,7 @@ def squash_b0(
                         lg = curr_cl.stop > d["range"][1]
                         d["range"] = (d["range"][0], d["range"][1] - n)
                         if lg:
-                            curr_cl.start = d["range"][1]
+                            curr_cl = slice(d["range"][1], curr_cl.stop)
                         else:
                             break
 
@@ -231,7 +231,7 @@ def squash_b0(
                     lg = curr_cl.stop > d["range"][1]
                     d["range"] = (d["range"][0], d["range"][1] - n)
                     if lg:
-                        curr_cl.start = d["range"][1]
+                        curr_cl = slice(d["range"][1], curr_cl.stop)
                     else:
                         break
 
