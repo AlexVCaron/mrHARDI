@@ -48,4 +48,5 @@ class TopupPass(Mergeable):
     def serialize(self, voxel_size):
         attributes = self.copy_attributes()
         attributes["warpres"] = [voxel_size * w for w in attributes["warpres"]]
+        attributes["fwhm"] = [voxel_size * f for f in attributes["fwhm"]]
         return serialize_fsl_args(attributes)
