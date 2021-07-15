@@ -113,7 +113,7 @@ def basic_error_manager(process):
 def launch_shell_process(
     command, log_file_path=None, overwrite=False, sleep=4,
     logging_callback=None, init_logger=None,
-    error_manager=basic_error_manager, **_
+    error_manager=basic_error_manager, additional_env=None, **_
 ):
     global sys_kwargs
     process = None
@@ -124,6 +124,12 @@ def launch_shell_process(
             if log_file_path:
                 popen_kwargs["stdout"] = PIPE
                 popen_kwargs["stderr"] = PIPE
+
+            env = os.environ.copy()
+            if additional_env:
+                env = {**env, **additional_env}
+
+            popen_kwargs["env"] = env
 
             process = Popen(
                 command.split(" "),

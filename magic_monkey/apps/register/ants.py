@@ -111,11 +111,16 @@ class AntsRegistration(MagicMonkeyBaseApplication):
         if self.verbose:
             ants_config_fmt += " --verbose"
 
+        additional_env = None
+        if self.configuration.seed is not None:
+            additional_env["ANTS_RANDOM_SEED"] = self.configuration.seed
+
         launch_shell_process(
             "antsRegistration {}".format(ants_config_fmt),
             join(current_path, "{}.log".format(
                 basename(self.output_prefix)
-            ))
+            )),
+            additional_env=additional_env
         )
 
         metadata = load_metadata(self.moving_images[0])

@@ -4,7 +4,8 @@ from magic_monkey.base.application import MagicMonkeyConfigurable, BoundedInt
 
 
 _aliases = dict(
-    spacing="N4BiasCorrectionConfiguration.spacing"
+    spacing="N4BiasCorrectionConfiguration.spacing",
+    seed="N4BiasCorrectionConfiguration.seed"
 )
 
 _flags = {
@@ -27,6 +28,7 @@ class N4BiasCorrectionConfiguration(MagicMonkeyConfigurable):
     filter_width = Float(0.15).tag(config=True)
     noise = Float(0.01).tag(config=True)
     bins = Integer(200).tag(config=True)
+    seed = Integer(None, allow_none=True).tag(config=True)
 
     @default('app_aliases')
     def _app_aliases_default(self):
