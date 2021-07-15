@@ -6,6 +6,10 @@ from magic_monkey.base.application import (DictInstantiatingInstance,
                                            MagicMonkeyConfigurable)
 from magic_monkey.traits.ants import AntsPass, InitialTransform
 
+_aliases = {
+    "seed": "AntsConfiguration.seed"
+}
+
 _flags = {
     "no-HM": (
         {"AntsConfiguration": {"match_histogram": False}},
@@ -63,6 +67,7 @@ class AntsConfiguration(MagicMonkeyConfigurable):
                                     "between two images to align the dataset"
     ).tag(config=True)
     register_last_dimension = Bool(True).tag(config=True)
+    seed = Integer(None, allow_none=True).tag(config=True)
 
     def _config_section(self):
 
@@ -76,6 +81,10 @@ class AntsConfiguration(MagicMonkeyConfigurable):
     @default('app_flags')
     def _app_flags_default(self):
         return _flags
+
+    @default('app_aliases')
+    def _app_aliases_default(self):
+        return _aliases
 
     def _validate(self):
         if not 2 <= self.dimension <= 4:

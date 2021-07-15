@@ -125,12 +125,19 @@ class N4BiasCorrection(MagicMonkeyBaseApplication):
 
             command.append(scil_cmd)
 
+        additional_env = None
+        if self.configuration.seed is not None:
+            additional_env = {
+                "ANTS_RANDOM_SEED": self.configuration.seed
+            }
+
         for i, cmd in enumerate(command):
             launch_shell_process(
                 cmd,
                 join(current_path, "{}_cmd{}.log".format(
                     basename(self.output), i
-                ))
+                )),
+                additional_env=additional_env
             )
 
         if self.apply_to:
