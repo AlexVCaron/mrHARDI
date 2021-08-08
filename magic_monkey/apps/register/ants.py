@@ -242,9 +242,13 @@ class AntsTransform(MagicMonkeyBaseApplication):
                 )
         elif img_type == ImageType.TENSOR.value and len(shape) == 4:
             with TemporaryDirectory(dir=current_path) as tmp_dir:
-                data = image.get_fdata()[..., None, :]
+                data = image.get_fdata()[..., None, (0, 1, 3, 2, 4, 5)]
+                header = image.header.copy()
+                zooms = header.get_zooms()
+                header.set_zooms(zooms[:3] + (0.,))
+                header.set_intent("symmetric matrix")
                 nib.save(
-                    nib.Nifti1Image(data, image.affine, image.header),
+                    nib.Nifti1Image(data, image.affine, header),
                     join(tmp_dir, "tensor.nii.gz")
                 )
 
@@ -258,7 +262,7 @@ class AntsTransform(MagicMonkeyBaseApplication):
                 )
 
                 output = nib.load(join(tmp_dir, "tensor_trans.nii.gz"))
-                data = output.get_fdata().squeeze()
+                data = output.get_fdata().squeeze()[..., (0, 1, 3, 2, 4, 5)]
                 nib.save(
                     nib.Nifti1Image(data, output.affine, output.header),
                     "{}.nii.gz".format(self.output)
