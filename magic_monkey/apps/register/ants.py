@@ -223,9 +223,7 @@ class AntsTransform(MagicMonkeyBaseApplication):
                             join(tmp_dir, "v{}.nii.gz".format(i)),
                             join(tmp_dir, "v{}_trans.nii.gz".format(i))
                         ),
-                        join(current_path, "{}.log".format(
-                            basename(join(tmp_dir, "v{}_trans".format(i)))
-                        ))
+                        join(tmp_dir, "v{}_trans.log".format(i))
                     )
 
                 base_output = nib.load(join(tmp_dir, "v0_trans.nii.gz"))
@@ -240,6 +238,29 @@ class AntsTransform(MagicMonkeyBaseApplication):
                     nib.Nifti1Image(
                         data.squeeze(), base_output.affine, image.header
                     ),
+                    "{}.nii.gz".format(self.output)
+                )
+        elif img_type == ImageType.TENSOR.value and len(shape) == 4:
+            with TemporaryDirectory(dir=current_path) as tmp_dir:
+                data = image.get_fdata()[..., None, :]
+                nib.save(
+                    nib.Nifti1Image(data, image.affine, image.header),
+                    join(tmp_dir, "tensor.nii.gz")
+                )
+
+                launch_shell_process(
+                    "{} {} -i {} -o {}".format(
+                        command, args,
+                        join(tmp_dir, "tensor.nii.gz"),
+                        join(tmp_dir, "tensor_trans.nii.gz")
+                    ),
+                    join(tmp_dir, "tensor_trans.log")
+                )
+
+                output = nib.load(join(tmp_dir, "tensor_trans.nii.gz"))
+                data = output.get_fdata().squeeze()
+                nib.save(
+                    nib.Nifti1Image(data, output.affine, output.header),
                     "{}.nii.gz".format(self.output)
                 )
         else:
