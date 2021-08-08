@@ -1,5 +1,6 @@
 from os import getcwd
 from os.path import basename, join
+from tempfile import TemporaryDirectory, mkdtemp
 
 import numpy as np
 from scipy.io import loadmat
@@ -16,7 +17,8 @@ from magic_monkey.base.dwi import load_metadata, save_metadata
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.ants import (AntsConfiguration,
                                       AntsTransformConfiguration,
-                                      AntsMotionCorrectionConfiguration)
+                                      AntsMotionCorrectionConfiguration,
+                                      ImageType)
 
 from magic_monkey.traits.ants import AntsAffine, AntsRigid, AntsSyN
 
@@ -184,24 +186,68 @@ class AntsTransform(MagicMonkeyBaseApplication):
         image = nib.load(self.image)
         shape = image.shape
 
-        is_3d_data = not (len(shape) == 4 and shape[-1] > 1)
-        img_type = 0 if is_3d_data else 3
+        if self.configuration.image_type is None:
+            is_3d_data = not (len(shape) == 4 and shape[-1] > 1)
+            img_type = 0 if is_3d_data else 3
+        else:
+            img_type = ImageType[self.configuration.image_type].value
 
-        args = "-i {} -e {} -r {} -o {}".format(
-            self.image, img_type, self.transformation_ref,
-            "{}.nii.gz".format(self.output)
-        )
+        args = "-e {} -r {}".format(img_type, self.transformation_ref)
 
         if self.transformations and len(self.transformations) > 0:
-            args += "".join(" -t {}".format(t) for t in self.transformations)
+            args += "".join(
+                " -t {}".format(t) for t in self.transformations
+            )
 
-        command = "antsApplyTransforms {} {}".format(
-            args, self.configuration.serialize()
+        command = "antsApplyTransforms {}".format(
+            self.configuration.serialize()
         )
 
-        launch_shell_process(command, join(current_path, "{}.log".format(
-            basename(self.output)
-        )))
+        if (img_type == ImageType.VECTOR.value
+                and len(shape) == 4 and shape[-1] == 15):
+
+            with TemporaryDirectory(dir=current_path) as tmp_dir:
+                data = image.get_fdata()
+
+                for i in range(5):
+                    nib.save(
+                        nib.Nifti1Image(
+                            data[..., 3 * i, 3 * (i + 1)],
+                            image.affine, image.header
+                        ),
+                        join(tmp_dir.name, "v{}.nii.gz".format(i))
+                    )
+                    launch_shell_process(
+                        "{} {} -i {} -o {}".format(
+                            command, args,
+                            join(tmp_dir.name, "v{}.nii.gz".format(i)),
+                            join(tmp_dir.name, "v{}_trans.nii.gz".format(i))
+                        ),
+                        join(current_path, "{}.log".format(
+                            basename(join(tmp_dir.name, "v{}_trans".format(i)))
+                        ))
+                    )
+
+                base_output = nib.load(join(tmp_dir.name, "v0_trans.nii.gz"))
+                data = base_output.get_fdata()
+                for i in range(1, 5):
+                    other_data = nib.load(
+                        join(tmp_dir.name, "v{}_trans.nii.gz".format(i))
+                    ).get_fdata()
+                    data = np.concatenate((data, other_data), axis=-1)
+
+                nib.save(
+                    nib.Nifti1Image(data, base_output.affine, image.header),
+                    "{}.nii.gz".format(self.output)
+                )
+        else:
+            command += " {} -i {} -o {}".format(
+                args, self.image, "{}.nii.gz".format(self.output)
+            )
+
+            launch_shell_process(command, join(current_path, "{}.log".format(
+                basename(self.output)
+            )))
 
         metadata = load_metadata(self.image)
         if metadata:

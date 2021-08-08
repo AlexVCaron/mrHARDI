@@ -1,9 +1,11 @@
+from enum import Enum as PyEnum
 from traitlets import Float, Integer, default
 from traitlets.config import Bool, Enum, List
 from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import (DictInstantiatingInstance,
-                                           MagicMonkeyConfigurable)
+                                           MagicMonkeyConfigurable,
+                                           convert_enum)
 from magic_monkey.traits.ants import AntsPass, InitialTransform
 
 _aliases = {
@@ -127,8 +129,16 @@ class AntsConfiguration(MagicMonkeyConfigurable):
 _aliases = {
     "dim": "AntsTransformConfiguration.dimensionality",
     "interp": "AntsTransformConfiguration.interpolation",
-    "fill": "AntsTransformConfiguration.fill_value"
+    "fill": "AntsTransformConfiguration.fill_value",
+    "type": "AntsTransformConfiguration.image_type"
 }
+
+
+class ImageType(PyEnum):
+    SCALAR = 0
+    VECTOR = 1
+    TENSOR = 2
+    TIMESERIES = 3
 
 
 class AntsTransformConfiguration(MagicMonkeyConfigurable):
@@ -138,6 +148,7 @@ class AntsTransformConfiguration(MagicMonkeyConfigurable):
     ).tag(config=True)
     fill_value = Integer(0).tag(config=True)
     dimensionality = Integer(None, allow_none=True).tag(config=True)
+    image_type = convert_enum(ImageType, None, True).tag(config=True)
 
     @default('app_aliases')
     def _app_aliases_default(self):
