@@ -212,7 +212,7 @@ class AntsTransform(MagicMonkeyBaseApplication):
                 for i in range(5):
                     nib.save(
                         nib.Nifti1Image(
-                            data[..., 3 * i, 3 * (i + 1)],
+                            data[..., (3 * i):(3 * (i + 1))],
                             image.affine, image.header
                         ),
                         join(tmp_dir, "v{}.nii.gz".format(i))
@@ -237,7 +237,9 @@ class AntsTransform(MagicMonkeyBaseApplication):
                     data = np.concatenate((data, other_data), axis=-1)
 
                 nib.save(
-                    nib.Nifti1Image(data, base_output.affine, image.header),
+                    nib.Nifti1Image(
+                        data.squeeze(), base_output.affine, image.header
+                    ),
                     "{}.nii.gz".format(self.output)
                 )
         else:
