@@ -215,24 +215,24 @@ class AntsTransform(MagicMonkeyBaseApplication):
                             data[..., 3 * i, 3 * (i + 1)],
                             image.affine, image.header
                         ),
-                        join(tmp_dir.name, "v{}.nii.gz".format(i))
+                        join(tmp_dir, "v{}.nii.gz".format(i))
                     )
                     launch_shell_process(
                         "{} {} -i {} -o {}".format(
                             command, args,
-                            join(tmp_dir.name, "v{}.nii.gz".format(i)),
-                            join(tmp_dir.name, "v{}_trans.nii.gz".format(i))
+                            join(tmp_dir, "v{}.nii.gz".format(i)),
+                            join(tmp_dir, "v{}_trans.nii.gz".format(i))
                         ),
                         join(current_path, "{}.log".format(
-                            basename(join(tmp_dir.name, "v{}_trans".format(i)))
+                            basename(join(tmp_dir, "v{}_trans".format(i)))
                         ))
                     )
 
-                base_output = nib.load(join(tmp_dir.name, "v0_trans.nii.gz"))
+                base_output = nib.load(join(tmp_dir, "v0_trans.nii.gz"))
                 data = base_output.get_fdata()
                 for i in range(1, 5):
                     other_data = nib.load(
-                        join(tmp_dir.name, "v{}_trans.nii.gz".format(i))
+                        join(tmp_dir, "v{}_trans.nii.gz".format(i))
                     ).get_fdata()
                     data = np.concatenate((data, other_data), axis=-1)
 
