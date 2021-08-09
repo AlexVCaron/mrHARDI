@@ -192,7 +192,11 @@ class AntsTransform(MagicMonkeyBaseApplication):
         else:
             img_type = ImageType[self.configuration.image_type].value
 
-        args = "-e {} -r {}".format(img_type, self.transformation_ref)
+        trans_type = img_type
+        if trans_type == ImageType.RGB.value:
+            trans_type = ImageType.VECTOR.value
+
+        args = "-e {} -r {}".format(trans_type, self.transformation_ref)
 
         if self.transformations and len(self.transformations) > 0:
             args += "".join(
@@ -202,9 +206,67 @@ class AntsTransform(MagicMonkeyBaseApplication):
         command = "antsApplyTransforms {}".format(
             self.configuration.serialize()
         )
+        if img_type == ImageType.RGB.value:
+            with TemporaryDirectory(dir=current_path) as tmp_dir:
+                data = (image.get_fdata() / 255.)[..., None, :]
+                nib.save(
+                    nib.Nifti1Image(data, image.affine, image.header),
+                    join(tmp_dir, "rgb_vec.nii.gz")
+                )
 
-        if img_type == ImageType.VECTOR.value and len(shape) == 4:
+                launch_shell_process(
+                    "{} {} -i {} -o {}".format(
+                        command, args,
+                        join(tmp_dir, "rgb_vec.nii.gz"),
+                        join(tmp_dir, "rgb_vec_trans.nii.gz")
+                    ),
+                    join(tmp_dir, "rgb_vec_trans.log")
+                )
 
+                output = nib.load(join(tmp_dir, "rgb_vec_trans.nii.gz"))
+                nib.save(
+                    nib.Nifti1Image(
+                        output.get_fdata().squeeze() * 255.,
+                        output.affine, output.header
+                    ),
+                    "{}.nii.gz".format(self.output)
+                )
+        elif img_type == ImageType.SCALAR.value and len(shape) > 3:
+            with TemporaryDirectory(dir=current_path) as tmp_dir:
+                data = image.get_fdata().reshape(shape[:3] + (-1,))
+
+                for i in range(data.shape[-1]):
+                    nib.save(
+                        nib.Nifti1Image(
+                            data[..., i], image.affine, image.header
+                        ),
+                        join(tmp_dir, "v{}.nii.gz".format(i))
+                    )
+                    launch_shell_process(
+                        "{} {} -i {} -o {}".format(
+                            command, args,
+                            join(tmp_dir, "v{}.nii.gz".format(i)),
+                            join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                        ),
+                        join(tmp_dir, "v{}_trans.log".format(i))
+                    )
+
+                base_output = nib.load(join(tmp_dir, "v0_trans.nii.gz"))
+                data = base_output.get_fdata()
+                for i in range(1, data.shape[-1]):
+                    other_data = nib.load(
+                        join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                    ).get_fdata()
+                    data = np.concatenate((data, other_data), axis=-1)
+
+                nib.save(
+                    nib.Nifti1Image(
+                        data.reshape(data.shape[:3] + shape[3:]),
+                        base_output.affine, image.header
+                    ),
+                    "{}.nii.gz".format(self.output)
+                )
+        elif img_type == ImageType.VECTOR.value and len(shape) == 4:
             with TemporaryDirectory(dir=current_path) as tmp_dir:
                 data = image.get_fdata()
 

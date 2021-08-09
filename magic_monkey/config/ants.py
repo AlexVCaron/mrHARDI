@@ -139,6 +139,7 @@ class ImageType(PyEnum):
     VECTOR = 1
     TENSOR = 2
     TIMESERIES = 3
+    RGB = 4
 
 
 class AntsTransformConfiguration(MagicMonkeyConfigurable):
