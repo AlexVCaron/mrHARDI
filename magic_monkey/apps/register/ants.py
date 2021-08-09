@@ -254,8 +254,8 @@ class AntsTransform(MagicMonkeyBaseApplication):
 
                 base_output = nib.load(
                     join(tmp_dir, "v0_trans.nii.gz")
-                )[..., None]
-                out_data = base_output.get_fdata()
+                )
+                out_data = base_output.get_fdata()[..., None]
                 for i in range(1, data.shape[-1]):
                     other_data = nib.load(
                         join(tmp_dir, "v{}_trans.nii.gz".format(i))
@@ -272,13 +272,15 @@ class AntsTransform(MagicMonkeyBaseApplication):
         elif img_type == ImageType.VECTOR.value and len(shape) == 4:
             with TemporaryDirectory(dir=current_path) as tmp_dir:
                 data = image.get_fdata()
+                header = image.header.copy()
+                header.set_intent('vector')
 
                 if shape[-1] == 15:
                     for i in range(5):
                         nib.save(
                             nib.Nifti1Image(
                                 data[..., None, (3 * i):(3 * (i + 1))],
-                                image.affine, image.header
+                                image.affine, header
                             ),
                             join(tmp_dir, "v{}.nii.gz".format(i))
                         )
@@ -301,7 +303,7 @@ class AntsTransform(MagicMonkeyBaseApplication):
                 else:
                     nib.save(
                         nib.Nifti1Image(
-                            data[..., None, :], image.affine, image.header
+                            data[..., None, :], image.affine, header
                         ),
                         join(tmp_dir, "vectors.nii.gz")
                     )
