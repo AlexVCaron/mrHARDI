@@ -252,17 +252,19 @@ class AntsTransform(MagicMonkeyBaseApplication):
                         join(tmp_dir, "v{}_trans.log".format(i))
                     )
 
-                base_output = nib.load(join(tmp_dir, "v0_trans.nii.gz"))
+                base_output = nib.load(
+                    join(tmp_dir, "v0_trans.nii.gz")
+                )[..., None]
                 out_data = base_output.get_fdata()
                 for i in range(1, data.shape[-1]):
                     other_data = nib.load(
                         join(tmp_dir, "v{}_trans.nii.gz".format(i))
-                    ).get_fdata()
+                    ).get_fdata()[..., None]
                     out_data = np.concatenate((out_data, other_data), axis=-1)
 
                 nib.save(
                     nib.Nifti1Image(
-                        data.reshape(out_data.shape[:3] + shape[3:]),
+                        out_data.reshape(out_data.shape[:3] + shape[3:]),
                         base_output.affine, image.header
                     ),
                     "{}.nii.gz".format(self.output)
