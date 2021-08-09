@@ -231,7 +231,8 @@ class AntsTransform(MagicMonkeyBaseApplication):
                     ),
                     "{}.nii.gz".format(self.output)
                 )
-        elif img_type == ImageType.SCALAR.value and len(shape) > 3:
+        elif (img_type == ImageType.SCALAR.value
+              and len(shape) > 3 and shape[-1] > 1):
             with TemporaryDirectory(dir=current_path) as tmp_dir:
                 data = image.get_fdata().reshape(shape[:3] + (-1,))
 
