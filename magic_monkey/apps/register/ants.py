@@ -203,36 +203,47 @@ class AntsTransform(MagicMonkeyBaseApplication):
             self.configuration.serialize()
         )
 
-        if (img_type == ImageType.VECTOR.value
-                and len(shape) == 4 and shape[-1] == 15):
+        if img_type == ImageType.VECTOR.value and len(shape) == 4:
 
             with TemporaryDirectory(dir=current_path) as tmp_dir:
                 data = image.get_fdata()
 
-                for i in range(5):
-                    nib.save(
-                        nib.Nifti1Image(
-                            data[..., (3 * i):(3 * (i + 1))],
-                            image.affine, image.header
-                        ),
-                        join(tmp_dir, "v{}.nii.gz".format(i))
-                    )
+                if shape[-1] == 15:
+                    for i in range(5):
+                        nib.save(
+                            nib.Nifti1Image(
+                                data[..., (3 * i):(3 * (i + 1))],
+                                image.affine, image.header
+                            ),
+                            join(tmp_dir, "v{}.nii.gz".format(i))
+                        )
+                        launch_shell_process(
+                            "{} {} -i {} -o {}".format(
+                                command, args,
+                                join(tmp_dir, "v{}.nii.gz".format(i)),
+                                join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                            ),
+                            join(tmp_dir, "v{}_trans.log".format(i))
+                        )
+
+                    base_output = nib.load(join(tmp_dir, "v0_trans.nii.gz"))
+                    data = base_output.get_fdata()
+                    for i in range(1, 5):
+                        other_data = nib.load(
+                            join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                        ).get_fdata()
+                        data = np.concatenate((data, other_data), axis=-1)
+                else:
                     launch_shell_process(
                         "{} {} -i {} -o {}".format(
                             command, args,
-                            join(tmp_dir, "v{}.nii.gz".format(i)),
-                            join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                            self.image, join(tmp_dir, "v_trans.nii.gz")
                         ),
-                        join(tmp_dir, "v{}_trans.log".format(i))
+                        join(tmp_dir, "v_trans.log")
                     )
 
-                base_output = nib.load(join(tmp_dir, "v0_trans.nii.gz"))
-                data = base_output.get_fdata()
-                for i in range(1, 5):
-                    other_data = nib.load(
-                        join(tmp_dir, "v{}_trans.nii.gz".format(i))
-                    ).get_fdata()
-                    data = np.concatenate((data, other_data), axis=-1)
+                    base_output = nib.load(join(tmp_dir, "v_trans.nii.gz"))
+                    data = base_output.get_fdata()
 
                 nib.save(
                     nib.Nifti1Image(
