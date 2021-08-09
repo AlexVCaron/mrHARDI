@@ -274,7 +274,7 @@ class AntsTransform(MagicMonkeyBaseApplication):
                     for i in range(5):
                         nib.save(
                             nib.Nifti1Image(
-                                data[..., (3 * i):(3 * (i + 1))],
+                                data[..., None, (3 * i):(3 * (i + 1))],
                                 image.affine, image.header
                             ),
                             join(tmp_dir, "v{}.nii.gz".format(i))
@@ -296,10 +296,17 @@ class AntsTransform(MagicMonkeyBaseApplication):
                         ).get_fdata()
                         data = np.concatenate((data, other_data), axis=-1)
                 else:
+                    nib.save(
+                        nib.Nifti1Image(
+                            data[..., None, :], image.affine, image.header
+                        ),
+                        join(tmp_dir, "vectors.nii.gz")
+                    )
                     launch_shell_process(
                         "{} {} -i {} -o {}".format(
                             command, args,
-                            self.image, join(tmp_dir, "v_trans.nii.gz")
+                            join(tmp_dir, "vectors.nii.gz"),
+                            join(tmp_dir, "v_trans.nii.gz")
                         ),
                         join(tmp_dir, "v_trans.log")
                     )
