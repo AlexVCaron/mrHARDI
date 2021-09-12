@@ -1,0 +1,2 @@
+BootStrap: docker
+From: sandywangrest/deepbet:1.0

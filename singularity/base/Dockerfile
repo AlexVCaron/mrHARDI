@@ -1,6 +1,9 @@
-FROM nvidia/cuda:9.1-runtime-ubuntu16.04 AS base
+FROM ubuntu:16.04 AS base
 
-RUN apt-get update && apt-get -y install \
+RUN apt-get update && apt-get -y install --no-install-recommends \
+    apt-transport-https \
+    ca-certificates \
+    gnupg-curl \
     locales \
     libc6 \
     libc6-dev \
@@ -12,6 +15,39 @@ ENV LC_CTYPE=en_US.utf8
 ENV LC_ALL=en_US.utf8
 ENV LANG=en_US.utf8
 ENV LANGUAGE=en_US.utf8
+
+RUN NVIDIA_GPGKEY_SUM=d1be581509378368edeec8c1eb2958702feedf3bc3d17011adbf24efacce4ab5 && \
+    NVIDIA_GPGKEY_FPR=ae09fe4bbd223a84b2ccfce3f60f4b3d7fa2af80 && \
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub && \
+    apt-key adv --export --no-emit-version -a $NVIDIA_GPGKEY_FPR | tail -n +5 > cudasign.pub && \
+    echo "$NVIDIA_GPGKEY_SUM  cudasign.pub" | sha256sum -c --strict - && \
+    rm cudasign.pub && \
+    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
+    echo "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list && \
+    apt-get purge --auto-remove -y gnupg-curl
+
+ENV CUDA_VERSION=9.1.85
+ENV CUDA_PKG_VERSION=9-1=9.1.85-1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cuda-cudart-$CUDA_PKG_VERSION && \
+    ln -s cuda-9.1 /usr/local/cuda && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
+    echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+
+ENV PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+ENV NVIDIA_DISABLE_REQUIRE=true
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    cuda-libraries-$CUDA_PKG_VERSION \
+    cuda-npp-$CUDA_PKG_VERSION \
+    cuda-cublas-9-1=9.1.85.3-1 && \
+    rm -rf /var/lib/apt/lists/*
 
 # Build Cmake base
 FROM base AS cmake_base
@@ -209,7 +245,10 @@ RUN find . -maxdepth 1 -not \( \
         -name antsApplyTransforms -or \
         -name antsMotionCorr -or \
         -name antsMotionCorrDiffusionDirection -or \
-        -name DenoiseImage \
+        -name DenoiseImage -or \
+        -name Atropos -or \
+        -name ImageMath -or \
+        -name 'antsAtroposN4*' \
     \) -exec rm -rf "{}" \;
 
 FROM alpine:latest AS file_wget
@@ -238,6 +277,7 @@ COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_GM_cortical_mas
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/SARM_in_NMT_v2.0_asym.nii.gz /nmt/SARM_in_NMT_v2.0_asym.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/CHARM_in_NMT_v2.0_asym.nii.gz /nmt/CHARM_in_NMT_v2.0_asym.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/D99_atlas_in_NMT_v2.0_asym.nii.gz /nmt/D99_atlas_in_NMT_v2.0_asym.nii.gz
+COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_brainmask.nii.gz /nmt/NMT_v2.0_asym_brainmask.nii.gz
 
 ENV FSLDIR=/mms/dev/fsl
 ENV FSLOUTPUTTYPE=NIFTI_GZ
@@ -247,6 +287,7 @@ ENV MRTRIX_BIN=/mms/dev/mrtrix/bin
 ENV DIAMOND_BIN=/mms/dev/diamond/bin
 ENV ANTS_BIN=/mms/dev/ants/bin
 ENV PATH=$ANTS_BIN:$DIAMOND_BIN:$MRTRIX_BIN:$FSL_BIN:$PATH
+ENV ANTSPATH=$ANTS_BIN
 
 RUN apt-get update && apt-get -y install \
     software-properties-common \
