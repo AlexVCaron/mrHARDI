@@ -1,4 +1,4 @@
-from traitlets import  Integer
+from traitlets import Integer
 
 from magic_monkey.base.application import MagicMonkeyConfigurable
 
@@ -7,7 +7,7 @@ class ParticleFilteringConfiguration(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         pass
 
     max_crossing = Integer(

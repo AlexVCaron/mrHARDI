@@ -1,6 +1,6 @@
 from typing import Generator
 
-from numpy import isclose
+from numpy import less_equal, clip
 from numpy.ma import clump_masked, clump_unmasked, masked_array
 
 from magic_monkey.compute.utils import value_closest, value_first
@@ -10,11 +10,17 @@ def serialize_fsl_args(args_dict, separator="\n", bool_as_flags=False):
     base_string = ""
     if bool_as_flags:
         base_string = separator.join([
-            "--{}".format(args_dict.pop(key)) for key, val in filter(
-                lambda kv: isinstance(kv[1], bool) and kv[1], args_dict
+            "--{}".format(key) for key, val in filter(
+                lambda kv: isinstance(kv[1], bool) and kv[1],
+                args_dict.items()
             )
         ])
-        base_string += separator
+        if base_string:
+            base_string += separator
+
+        args_dict = dict(
+            filter(lambda kv: not isinstance(kv[1], bool), args_dict.items())
+        )
 
     def serialize_value(val):
         if isinstance(val, (list, tuple, Generator)):
@@ -27,10 +33,12 @@ def serialize_fsl_args(args_dict, separator="\n", bool_as_flags=False):
     )
 
 
-def prepare_eddy_index(bvals, dir0=1, strategy="closest"):
+def prepare_topup_index(
+    bvals, dir0=1, strategy="closest", ceil=0.9, b0_comp=less_equal
+):
     strat = value_closest if strategy == "closest" else value_first
     indexes = []
-    mask = masked_array(bvals, isclose(bvals, 0))
+    mask = masked_array(bvals, b0_comp(bvals, ceil))
     b0_clumps = list(clump_masked(mask))
     dw_clumps = list(clump_unmasked(mask))
     j = dir0
@@ -43,15 +51,10 @@ def prepare_eddy_index(bvals, dir0=1, strategy="closest"):
         for i in range(b0_clumps[-1].stop - b0_clumps[-1].start):
             indexes += [j]
 
-    return indexes
+    return clip(indexes, a_min=1, a_max=len(b0_clumps))
 
 
-def prepare_acqp_file(ap_b0_shapes, pa_b0_shapes, dwell):
-    param_string = ""
-    for ap_b0, pa_b0 in zip(ap_b0_shapes, pa_b0_shapes):
-        for _ in range(ap_b0[-1]):
-            param_string += "0.0 1.0 0.0 {:.8f}\n".format(dwell)
-        for _ in range(pa_b0[-1]):
-            param_string += "0.0 -1.0 0.0 {:.8f}\n".format(dwell)
-
-    return param_string
+def prepare_acqp_file(readout, directions):
+    return "\n".join("{} {:.8f}".format(
+        " ".join(str(dd) for dd in d["dir"]), readout
+    ) for d in directions)

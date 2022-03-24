@@ -1,11 +1,12 @@
 from os import getcwd
+from os.path import basename, join
 
-from traitlets import Dict, Instance, Unicode
+from traitlets import Bool, Dict, Instance, Unicode
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            mask_arg,
-                                           output_prefix_argument,
-                                           required_file)
+                                           output_file_argument,
+                                           required_file, nthreads_arg)
 from magic_monkey.base.shell import launch_shell_process
 from magic_monkey.config.diamond import DiamondConfiguration
 
@@ -14,7 +15,15 @@ _aliases = {
     'out': 'Diamond.output',
     'mask': 'Diamond.mask',
     'ms': 'Diamond.model_selection',
-    'dti': 'Diamond.initial_dti'
+    'dti': 'Diamond.initial_dti',
+    'p': 'Diamond.n_threads'
+}
+
+_flags = {
+    "verbose": (
+        {'Diamond': {'verbose': True}},
+        "Enables output of additional maps for debugging purposes"
+    )
 }
 
 _description = """
@@ -51,7 +60,7 @@ class Diamond(MagicMonkeyBaseApplication):
                     "use the same base filename for them to be detected "
                     "by diamond"
     )
-    output = output_prefix_argument()
+    output = output_file_argument()
 
     mask = mask_arg()
 
@@ -63,7 +72,14 @@ class Diamond(MagicMonkeyBaseApplication):
              "the stick model of the diamond algorithms"
     ).tag(config=True)
 
-    aliases = Dict(_aliases)
+    n_threads = nthreads_arg(ignore_write=True)
+
+    verbose = Bool(
+        False, help="Enables output of additional maps for debugging purposes"
+    ).tag(config=True)
+
+    aliases = Dict(default_value=_aliases)
+    flags = Dict(default_value=_flags)
 
     def _validate_required(self):
         if self.model_selection:
@@ -76,7 +92,7 @@ class Diamond(MagicMonkeyBaseApplication):
 
         super()._validate_required()
 
-    def _start(self):
+    def execute(self):
         current_path = getcwd()
         optionals = []
 
@@ -89,10 +105,17 @@ class Diamond(MagicMonkeyBaseApplication):
         if self.initial_dti:
             optionals.append("--init_dti {}".format(self.initial_dti))
 
+        if self.verbose:
+            optionals.append("--verbosedOutput")
+
         optionals.append(self.configuration.serialize())
 
-        command = "crlDCIEstimate -i {} -o {} {}".format(
-            self.image, self.output, " ".join(optionals)
+        command = "crlDCIEstimate -p {} -i {} -o {} {}".format(
+            self.n_threads, self.image,
+            "{}.nii.gz".format(self.output),
+            " ".join(optionals)
         )
 
-        launch_shell_process(command, current_path)
+        launch_shell_process(command, join(current_path, "{}.log".format(
+            basename(self.output).split(".")[0]
+        )))

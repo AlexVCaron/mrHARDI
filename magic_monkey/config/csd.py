@@ -17,9 +17,9 @@ class CSDConfiguration(MagicMonkeyConfigurable):
         klass=SphericalDeconvAlgorithm
     ).tag(config=True)
 
-    shells = List(Float).tag(config=True)
+    shells = List(Float()).tag(config=True)
     lmax = Integer().tag(config=True)
-    strides = List(Integer).tag(config=True)
+    strides = List(Integer()).tag(config=True)
 
     @default("app_aliases")
     def _app_aliases_default(self):
@@ -28,7 +28,7 @@ class CSDConfiguration(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.shells:
@@ -60,7 +60,7 @@ class FiberResponseConfiguration(MagicMonkeyConfigurable):
         klass=ResponseAlgorithm
     ).tag(config=True)
 
-    shells = List(Float).tag(config=True)
+    shells = List(Float()).tag(config=True)
     lmax = Integer().tag(config=True)
 
     @default("app_aliases")
@@ -70,7 +70,7 @@ class FiberResponseConfiguration(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.shells:
@@ -83,4 +83,4 @@ class FiberResponseConfiguration(MagicMonkeyConfigurable):
                 "-lmax {}".format(self.lmax)
             )
 
-        return " ".join([self.algorithm.serialize()] + optionals)
+        return " ".join(self.algorithm.serialize() + optionals)

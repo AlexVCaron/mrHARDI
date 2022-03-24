@@ -5,7 +5,7 @@ from numpy import (allclose,
                    moveaxis,
                    sqrt,
                    std,
-                   zeros)
+                   zeros, ones, absolute)
 
 
 def _fa(evals, axis=0):
@@ -71,3 +71,11 @@ def compute_peaks(eigs, mask):
     peaks[0, mask] = evecs[mask, 0, :]
 
     return moveaxis(peaks, 0, -2).reshape(mask.shape + (15,))
+
+
+def color(metric, evecs, mask=None):
+    if mask is None:
+        mask = ones(metric.shape[:3]).astype(bool)
+    cmetric = zeros(metric.shape[:3] + (3,))
+    cmetric[mask] = absolute(metric[mask, None] * evecs[mask, 0, :])
+    return cmetric

@@ -5,7 +5,7 @@ c = get_config()
 # -----------------------------------------------------------------------------
 # DiamondMetrics(MagicMonkeyBaseApplication) configuration
 # -----------------------------------------------------------------------------
-c.DiamondMetrics.free_water = False
+c.DiamondMetrics.free_water = True
 
 c.DiamondMetrics.hindered = False
 
@@ -13,9 +13,11 @@ c.DiamondMetrics.metrics = ['fmd', 'fad', 'frd', 'ffa', 'ff', 'peaks']
 
 c.DiamondMetrics.mmetrics = []
 
-c.DiamondMetrics.opt_metrics = []
+c.DiamondMetrics.n_fascicles = 3
 
-c.DiamondMetrics.output_colors = False
+c.DiamondMetrics.opt_metrics = ["all"]
+
+c.DiamondMetrics.output_colors = True
 
 c.DiamondMetrics.output_haeberlen = False
 

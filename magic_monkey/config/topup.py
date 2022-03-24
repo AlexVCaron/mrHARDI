@@ -1,5 +1,6 @@
 from enum import Enum as BaseEnum
 
+from traitlets import Float
 from traitlets.config import Bool, List, Unicode
 
 from magic_monkey.base.application import (DictInstantiatingInstance,
@@ -9,23 +10,25 @@ from magic_monkey.base.fsl import serialize_fsl_args
 from magic_monkey.traits.topup import TopupPass
 
 _default_passes = [
-    TopupPass(20, 2, 8, 5, 5E-3),
-    TopupPass(16, 2, 6, 5, 1E-3),
-    TopupPass(14, 2, 4, 5, 1E-4),
-    TopupPass(12, 2, 3, 5, 15E-6),
-    TopupPass(10, 2, 3, 5, 5E-7),
+    TopupPass(5, 2, 8, 5, 5E-3),
+    TopupPass(4, 2, 6, 5, 1E-3),
+    TopupPass(3.5, 2, 4, 5, 1E-4),
+    TopupPass(3, 2, 3, 5, 15E-6),
+    TopupPass(2.5, 2, 3, 5, 5E-7),
     TopupPass(
-        6, 1, 2, 10, 5E-7, False, TopupPass.Minimizer.Scaled_Conjugate_Gradient
-    ),
-    TopupPass(
-        4, 1, 1, 10, 5E-8, False, TopupPass.Minimizer.Scaled_Conjugate_Gradient
-    ),
-    TopupPass(
-        4, 1, 0, 20, 5E-10, False,
+        1.5, 1, 2, 10, 5E-7, False,
         TopupPass.Minimizer.Scaled_Conjugate_Gradient
     ),
     TopupPass(
-        4, 1, 0, 20, 5E-11, False,
+        1, 1, 1, 10, 5E-8, False,
+        TopupPass.Minimizer.Scaled_Conjugate_Gradient
+    ),
+    TopupPass(
+        1, 1, 0, 20, 5E-10, False,
+        TopupPass.Minimizer.Scaled_Conjugate_Gradient
+    ),
+    TopupPass(
+        1, 1, 0, 20, 5E-11, False,
         TopupPass.Minimizer.Scaled_Conjugate_Gradient
     )
 ]
@@ -69,7 +72,16 @@ class TopupConfiguration(MagicMonkeyConfigurable):
 
     precision = Unicode(u'double').tag(config=True)
 
-    def serialize(self):
+    ceil_value = Float(
+        0.9, help="Higher bound determining a valid b-value for a b0 volume"
+    ).tag(config=True)
+
+    strict = Bool(
+        False, help="If True, test b0 b-values with "
+                    "\"<\" comparator instead of \"<=\""
+    ).tag(config=True)
+
+    def serialize(self, voxel_size, *args, **kwargs):
         if len(self.passes) > 1:
             self.passes[0].merge(*self.passes[1:])
             self.passes = [self.passes[0]]
@@ -81,4 +93,4 @@ class TopupConfiguration(MagicMonkeyConfigurable):
             numprec=self.precision,
             interp=TopupConfiguration.Interpolation[self.interpolation].value,
             scale=int(self.scale_intensities)
-        )) + "\n" + self.passes[0].serialize()
+        )) + "\n" + self.passes[0].serialize(voxel_size)

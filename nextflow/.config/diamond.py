@@ -41,7 +41,7 @@ c.DiamondConfiguration.gen_error_iters = 0
 
 c.DiamondConfiguration.initial_stick = None
 
-c.DiamondConfiguration.iso_if_no_fascicle = False
+c.DiamondConfiguration.iso_no_fascicle = False
 
 c.DiamondConfiguration.klass = "magic_monkey.config.diamond.DiamondConfiguration"
 
@@ -68,8 +68,6 @@ c.DiamondConfiguration.n_tensors = 3
 c.DiamondConfiguration.noise_model = "gaussian"
 
 c.DiamondConfiguration.optimizer = "bobyqa"
-
-c.DiamondConfiguration.processes = 4
 
 c.DiamondConfiguration.regularization = 1.0
 

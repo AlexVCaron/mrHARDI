@@ -65,6 +65,11 @@ build. To do so, use *magic_monkey_local.def* instead. Be sure the base
 singularity can be found in the **singularity** directory and that it is 
 named **magic_monkey_heavy.sif**
 
+To ensure the magic-monkey library installed inside the singularity is 
+up-to-date and aligns with the requirements of the Nextflow library, be 
+sure to position your local repository on the branch *feat/singularity_mmy* 
+and that your local branch is up-to-date with the repository.
+
 ### Sanity check on built images
 
 As of now, building the singularity will never lead to error, meaning you'll 
