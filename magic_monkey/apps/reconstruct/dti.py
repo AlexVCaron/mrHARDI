@@ -1,4 +1,5 @@
 from os import getcwd
+from os.path import basename, join
 
 from traitlets import Bool, Dict, Instance
 
@@ -71,10 +72,10 @@ class DTI(MagicMonkeyBaseApplication):
         help="Outputs the kurtosis moment estimations"
     ).tag(config=True)
 
-    aliases = Dict(_aliases)
-    flags = Dict(_flags)
+    aliases = Dict(default_value=_aliases)
+    flags = Dict(default_value=_flags)
 
-    def _start(self):
+    def execute(self):
         current_path = getcwd()
         optionals = []
 
@@ -98,12 +99,14 @@ class DTI(MagicMonkeyBaseApplication):
                 self.mask
             ))
 
-        optionals.append("-fslgrad {} {}".format(self.bvals, self.bvecs))
-        optionals.append(self.configuration.serialize())
+        optionals.append("-fslgrad {} {}".format(self.bvecs, self.bvals))
 
-        command = "dwi2tensor {} {} {}".format(
+        command = "dwi2tensor {} {} {} {}".format(
             " ".join(optionals), self.image,
-            "{}_dti.nii.gz".format(self.output_prefix)
+            "{}_dti.nii.gz".format(self.output_prefix),
+            self.configuration.serialize()
         )
 
-        launch_shell_process(command, current_path)
+        launch_shell_process(command, join(current_path, "{}.log".format(
+            basename(self.output_prefix)
+        )))

@@ -47,7 +47,7 @@ class PftTracking(MagicMonkeyBaseApplication):
 
     seed_list = Unicode(
         None, allow_none=True,
-        description="List of seed points to start the tracking algorithm"
+        help="List of seed points to start the tracking algorithm"
     ).tag(config=True, exclusive_group="seed", group_index=0)
 
     pve_threshold = Float(
@@ -74,7 +74,7 @@ class PftTracking(MagicMonkeyBaseApplication):
         if not self.seed_list:
             self.compute_seeds = True
 
-    def _start(self):
+    def execute(self):
         coeffs = nib.load(self.sh_coefficients).get_data()
         affine = np.loadtxt(self.affine)
 

@@ -10,7 +10,7 @@ include { measure_wkf } from "./workflows/measure.nf"
 
 workflow {
     dataloader = load_dataset()
-    dwi = preprocess_wkf(dataloader.dwi, dataloader.rev, dataloader.anat)
-    // recons = reconstruct_wkf(dwi.collect{ it.subTuple(0, 4) }, dwi.collect{ new Tuple2(it[0], it[it.size() - 1]) })
-    // measure = measure_wkf(recons, dataloader.affine)
+    preprocess_wkf(dataloader.dwi, dataloader.rev, dataloader.anat, dataloader.metadata, dataloader.rev_metadata)
+    reconstruct_wkf(preprocess_wkf.out.dwi, preprocess_wkf.out.mask, preprocess_wkf.out.metadata)
+    measure = measure_wkf(preprocess_wkf.out.dwi, reconstruct_wkf.out.all, preprocess_wkf.out.mask, preprocess_wkf.out.metadata)
 }

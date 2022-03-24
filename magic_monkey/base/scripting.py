@@ -7,12 +7,11 @@ do
     key=\"$1\"
     case $key in
         {}
-    *)
-        POSITIONAL+=(\"$2\")
-        shift
-        ;;
+        *)
+            POSITIONAL+=(\"$1\")
+            shift
+            ;;
     esac
-    shift
 done
 """
 

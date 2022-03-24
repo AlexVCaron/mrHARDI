@@ -7,7 +7,7 @@ c = get_config()
 # -----------------------------------------------------------------------------
 c.TensorMetrics.metrics = ['fa', 'md', 'ad', 'rd', 'peaks']
 
-c.TensorMetrics.output_colors = False
+c.TensorMetrics.output_colors = True
 
 c.TensorMetrics.save_eigs = False
 

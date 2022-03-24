@@ -7,11 +7,11 @@ import nibabel as nib
 import numpy as np
 from traitlets import Bool, Dict, Integer
 from traitlets.config import ArgumentError
+from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import (ChoiceEnum,
                                            ChoiceList,
                                            MagicMonkeyBaseApplication,
-                                           affine_file,
                                            output_prefix_argument,
                                            required_file,
                                            required_number)
@@ -22,6 +22,7 @@ from magic_monkey.base.application import (ChoiceEnum,
 # ffa = fascicle fa --check
 # ff = fascicle fractions --check
 # peaks = main eigenvectors of each fascicle
+from magic_monkey.base.dwi import load_metadata
 
 _DIAMOND_METRICS = [
     "fmd", "fad", "frd", "ffa", "ff", "peaks"
@@ -77,8 +78,7 @@ _aliases = {
     'opt-metrics': 'DiamondMetrics.opt_metrics',
     'in': 'DiamondMetrics.input_prefix',
     'out': 'DiamondMetrics.output_prefix',
-    'n': 'DiamondMetrics.n_fascicles',
-    'affine': 'DiamondMetrics.affine'
+    'n': 'DiamondMetrics.n_fascicles'
 }
 
 
@@ -127,17 +127,17 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
     name = u"Diamond Metrics"
     description = _description
     metrics = ChoiceList(
-        copy(_DIAMOND_METRICS), DiamondMetricsEnum, copy(_DIAMOND_METRICS),
+        copy(_DIAMOND_METRICS), DiamondMetricsEnum(), [],
         True, help="Basic diamond metrics to run on the outputs"
     ).tag(config=True)
     mmetrics = ChoiceList(
-        copy(_MAGIC_DIAMOND_METRICS), MagicDiamondMetricsEnum, [], True,
+        copy(_MAGIC_DIAMOND_METRICS), MagicDiamondMetricsEnum(), [], True,
         help="Magic diamond metrics to run on the outputs "
              "(Requires tensor valued input, check your input "
              "prefix to assure it respects convection)"
     ).tag(config=True)
     opt_metrics = ChoiceList(
-        copy(_OPTIONAL_METRICS), DiamondOptionalMetricsEnum, [], True,
+        copy(_OPTIONAL_METRICS), DiamondOptionalMetricsEnum(), [], True,
         help="Optional diamond metrics to run on the outputs"
     ).tag(config=True)
 
@@ -149,7 +149,6 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
         Integer, ignore_write=False,
         description="Maximum number of possible fascicles in a voxel"
     )
-    affine = affine_file()
 
     output_colors = Bool(
         False, help="Output color metrics if available"
@@ -174,10 +173,10 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
         False, help="Save the final data cache of the metrics computing"
     ).tag(config=True)
 
-    cache = Dict({})
+    cache = Dict(default_value={})
 
-    aliases = Dict(_aliases)
-    flags = Dict(_flags)
+    aliases = Dict(default_value=_aliases)
+    flags = Dict(default_value=_flags)
 
     def _validate_required(self):
         super()._validate_required()
@@ -194,14 +193,18 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
                     "\"sph\" directories : {}".format(self.input_prefix)
                 )
 
-    def _start(self):
+    def execute(self):
         import magic_monkey.traits.metrics.diamond as metrics_module
 
         mask = None
         if exists("{}_mask.nii.gz".format(self.input_prefix)):
             mask = nib.load("{}_mask.nii.gz".format(self.input_prefix))
 
-        affine = np.loadtxt(self.affine)
+        metadata = load_metadata(self.input_prefix)
+        if metadata is None:
+            raise ConfigError(
+                "Need a metadata file for {}".format(self.input_prefix)
+            )
 
         for metric in self.metrics + self.mmetrics + self.opt_metrics:
             klass = getattr(
@@ -210,26 +213,26 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
 
             klass(
                 self.n_fascicles, self.input_prefix,
-                self.output_prefix, self.cache,
-                affine, mask=mask.get_fdata().astype(bool), shape=mask.shape,
+                self.output_prefix, self.cache, metadata.affine,
+                mask=mask.get_fdata().astype(bool), shape=mask.shape,
                 colors=self.output_colors, with_fw=self.free_water,
-                with_res=self.restricted, with_hind=self.hindered
+                with_res=self.restricted, with_hind=self.hindered,
             ).measure()
 
         if self.output_haeberlen:
-            self._output_haeberlen()
+            self._output_haeberlen(metadata.affine)
 
         if self.save_cache:
             self._save_cache()
 
-    def _output_haeberlen(self):
+    def _output_haeberlen(self, affine):
         from magic_monkey.traits.metrics.diamond import HaeberlenConvention
 
         mask = None
         if exists("{}_mask.nii.gz".format(self.input_prefix)):
             mask = nib.load("{}_mask.nii.gz".format(self.input_prefix))
 
-        affine = np.loadtxt(self.affine)
+        affine = np.loadtxt(affine)
 
         HaeberlenConvention(
             self.n_fascicles, self.input_prefix, self.output_prefix,

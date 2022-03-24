@@ -14,12 +14,12 @@ class SphericalDeconvAlgorithm(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    name = Unicode()
-    responses = List(Unicode)
+    cli_name = Unicode()
+    responses = List(Unicode())
     non_neg_lambda = Float(1.).tag(config=True)
     norm_lambda = Float(1.).tag(config=True)
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         return " ".join([
             "-neg_lambda {}".format(self.non_neg_lambda),
             "-norm_lambda {}".format(self.norm_lambda)
@@ -29,16 +29,14 @@ class SphericalDeconvAlgorithm(MagicMonkeyConfigurable):
 class CSDAlgorithm(SphericalDeconvAlgorithm):
     threshold = Float(0.).tag(config=True)
     max_iter = Integer(50).tag(config=True)
+    responses = List(Unicode(), ["wm"])
+    multishell = False
 
-    @default('name')
-    def _name(self):
+    @default('cli_name')
+    def _cli_name_default(self):
         return "csd"
 
-    @default('responses')
-    def _responses_default(self):
-        return ["wm"]
-
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         return " ".join([
             super().serialize(),
             "-threshold {}".format(self.threshold),
@@ -48,9 +46,11 @@ class CSDAlgorithm(SphericalDeconvAlgorithm):
 
 class MSMTCSDAlgorithm(SphericalDeconvAlgorithm):
     predicted_signal = Bool(False).tag(config=True)
+    responses = List(Unicode(), ["wm", "gm", "csf"])
+    multishell = True
 
-    @default('name')
-    def _name(self):
+    @default('cli_name')
+    def _cli_name_default(self):
         return "msmt_csd"
 
     @default('non_neg_lambda')
@@ -61,20 +61,17 @@ class MSMTCSDAlgorithm(SphericalDeconvAlgorithm):
     def _non_neg_lambda_default(self):
         return 1E-10
 
-    @default('responses')
-    def _responses_default(self):
-        return ["wm", "gm", "csf"]
-
 
 class ResponseAlgorithm(MagicMonkeyConfigurable):
-    name = Unicode()
-    responses = List(Unicode)
+    cli_name = Unicode()
+    responses = List(Unicode())
+    multishell = False
 
     def _validate(self):
         pass
 
     @abstractmethod
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         pass
 
 
@@ -88,27 +85,29 @@ class DhollanderResponseAlgorithm(ResponseAlgorithm):
         ["fa", "tax", "tournier", None], None, allow_none=True
     ).tag(config=True)
 
-    @default('name')
-    def _name(self):
+    multishell = True
+
+    @default('cli_name')
+    def _cli_name_default(self):
         return "dhollander"
 
     @default('responses')
     def _responses_default(self):
         return ["wm", "gm", "csf"]
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.wm_alg:
             optionals.append("-wm_algo {}".format(self.wm_alg))
 
-        return " ".join([
+        return [
             "-erode {}".format(self.erode_iters),
             "-fa {}".format(self.fa_threshold),
             "-sfwm {}".format(self.p_sf_wm_voxels),
             "-gm {}".format(self.p_gm_voxels),
             "-csf {}".format(self.p_csf_voxels)
-        ] + optionals)
+        ] + optionals
 
 
 class FAResponseAlgorithm(ResponseAlgorithm):
@@ -116,20 +115,20 @@ class FAResponseAlgorithm(ResponseAlgorithm):
     n_voxels = Integer().tag(config=True)
     fa_threshold = Float().tag(config=True)
 
-    @default('name')
-    def _name(self):
+    @default('cli_name')
+    def _cli_name_default(self):
         return "fa"
 
     @default('responses')
     def _responses_default(self):
         return ["wm"]
 
-    def serialize(self):
-        return " ".join([
+    def serialize(self, *args, **kwargs):
+        return [
             "-erode {}".format(self.erode_iters),
             "-number {}".format(self.n_voxels),
             "-threshold {}".format(self.fa_threshold)
-        ])
+        ]
 
 
 class MSMT5TTResponseAlgorithm(ResponseAlgorithm):
@@ -138,15 +137,17 @@ class MSMT5TTResponseAlgorithm(ResponseAlgorithm):
     wm_alg = Enum(["fa", "tax", "tournier"], "tournier").tag(config=True)
     sfwm_fa_threshold = Float().tag(config=True)
 
-    @default('name')
-    def _name(self):
+    multishell = True
+
+    @default('cli_name')
+    def _cli_name_default(self):
         return "msmt_5tt"
 
     @default('responses')
     def _responses_default(self):
         return ["wm", "gm", "csf"]
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.sfwm_fa_threshold:
@@ -154,11 +155,11 @@ class MSMT5TTResponseAlgorithm(ResponseAlgorithm):
                 "-sfwm_fa_threshold {}".format(self.sfwm_fa_threshold)
             )
 
-        return " ".join([
+        return [
             "-fa {}".format(self.fa_threshold),
             "-pvf {}".format(self.pvf_threshold),
             "-wm_algo {}".format(self.wm_alg)
-        ] + optionals)
+        ] + optionals
 
 
 class TaxResponseAlgorithm(ResponseAlgorithm):
@@ -166,15 +167,15 @@ class TaxResponseAlgorithm(ResponseAlgorithm):
     max_iters = Integer().tag(config=True)
     convergence = Float().tag(config=True)
 
-    @default('name')
-    def _name(self):
+    @default('cli_name')
+    def _cli_name_default(self):
         return "tax"
 
     @default('responses')
     def _responses_default(self):
         return ["wm"]
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.peak_ratio_thr:
@@ -184,7 +185,7 @@ class TaxResponseAlgorithm(ResponseAlgorithm):
         if self.convergence:
             optionals.append("-convergence {}".format(self.convergence))
 
-        return " ".join(optionals)
+        return optionals
 
 
 class TournierResponseAlgorithm(ResponseAlgorithm):
@@ -193,15 +194,15 @@ class TournierResponseAlgorithm(ResponseAlgorithm):
     dilate_iters = Integer().tag(config=True)
     max_iter = Integer().tag(config=True)
 
-    @default('name')
-    def _name(self):
+    @default('cli_name')
+    def _cli_name_default(self):
         return "tournier"
 
     @default('responses')
     def _responses_default(self):
         return ["wm"]
 
-    def serialize(self):
+    def serialize(self, *args, **kwargs):
         optionals = []
 
         if self.n_voxels:
@@ -213,4 +214,4 @@ class TournierResponseAlgorithm(ResponseAlgorithm):
         if self.max_iter:
             optionals.append("-max_iters {}".format(self.max_iter))
 
-        return " ".join(optionals)
+        return optionals

@@ -141,3 +141,17 @@ venv*/
 /documentation/_cache/**/generated/
 /documentation/_cache/source/config/options/
 !/documentation/_cache/source/config/options/index.rst
+
+# Nextflow specific
+.nextflow.log*
+.nextflow/
+
+# No archives
+*.tar.gz
+
+# Singularity
+*.sif
+*.simg
+
+# Remove the dev-scripts from the repo for now
+dev_scripts/

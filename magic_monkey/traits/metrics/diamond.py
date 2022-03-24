@@ -5,9 +5,9 @@ import nibabel as nib
 from numpy import (absolute,
                    array,
                    cbrt,
-                   count_nonzero,
                    einsum,
                    float32,
+                   indices,
                    isclose,
                    moveaxis,
                    prod,
@@ -16,7 +16,9 @@ from numpy import (absolute,
                    sqrt,
                    sum,
                    ubyte,
-                   zeros)
+                   zeros,
+                   any as npany)
+
 from numpy.ma import array as masked
 
 from magic_monkey.traits.metrics.base import (BaseMetric,
@@ -39,7 +41,7 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
         super().__init__(
             in_prefix, out_prefix, cache, affine, mask, shape, colors
         )
-        self.n = n
+        self.n = min(self._max_n_from_model_selection(), n)
         self.fw = with_fw
         self.res = with_res
         self.hin = with_hind
@@ -56,9 +58,9 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
             ["t{}".format(i) for i in range(self.n)],
             [self._get_fascicle_mask(i, add_keys) for i in range(self.n)],
             self.cache,
-            lambda f: nib.load(
+            lambda f: self._load_image(
                 "{}_{}.nii.gz".format(self.prefix, f)
-            ).get_fdata().squeeze(),
+            ).squeeze(),
             add_keys
         )
 
@@ -66,9 +68,9 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
         return [load_from_cache(
             self.cache,
             add_keys + ("t{}".format(i),),
-            lambda f: nib.load(
+            lambda f: self._load_image(
                 "{}_{}.nii.gz".format(self.prefix, f)
-            ).get_fdata().squeeze()
+            ).squeeze()
         ) for i in range(self.n)]
 
     def _weighted(self, volumes, alt_w=None, add_keys=(), mask=None, axis=0):
@@ -120,12 +122,14 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
                 "{}_{}.nii.gz".format(self.output, metric)
             )
 
+    def _max_n_from_model_selection(self):
+        ms = self._get_model_selection()
+        return int(ms.max())
+
     def _get_model_selection(self, add_keys=()):
         return self.load_from_cache(
             add_keys + ("mosemap",),
-            lambda _: nib.load(
-                "{}_mosemap.nii.gz".format(self.prefix)
-            ).get_fdata()
+            lambda _: self._load_image("{}_mosemap.nii.gz".format(self.prefix))
         )
 
     def _get_fascicle_mask(self, i, add_keys=()):
@@ -138,13 +142,13 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
     def _get_fascicle_fractions(self, add_keys=()):
         fractions = self._get_fractions(add_keys)
 
-        return fractions[..., :-1] if self.fw else fractions
+        return fractions[..., :self.n]
 
     def _get_fractions(self, add_keys=()):
         fractions = self.load_from_cache(
-            add_keys + ("fractions",), lambda _: nib.load(
+            add_keys + ("fractions",), lambda _: self._load_image(
                 "{}_fractions.nii.gz".format(self.prefix)
-            ).get_fdata().squeeze()
+            ).squeeze()
         )
         return fractions
 
@@ -234,6 +238,21 @@ class FfaMetric(DiamondMetric):
         self._weight_over_tensors("fa")
         self._color("fa")
 
+        ffa = array([self.cache["t{}_fa".format(i)] for i in range(self.n)])
+        maxidxs = ffa.argmax(0)
+        x, y, z = indices(ffa.shape[1:])
+        ffa = ffa[maxidxs, x, y, z]
+        evecs = array([e[1] for e in self._get_eigs()])
+        nib.save(
+            nib.Nifti1Image(ffa, self.affine),
+            "{}_max_ffa.nii.gz".format(self.output)
+        )
+        self.cache["max_ffa"] = ffa
+        if self.colors:
+            BaseMetric._color_metric(
+                self, "max_ffa", evecs[maxidxs, x, y, z, ...]
+            )
+
 
 class FfMetric(DiamondMetric):
     def measure(self):
@@ -245,9 +264,11 @@ class FfMetric(DiamondMetric):
                 "{}_t{}_fraction.nii.gz".format(self.output, i)
             )
 
-        img = nib.load("{}_fractions.nii.gz".format(self.prefix))
         nib.save(
-            nib.Nifti1Image(img.get_fdata(), self.affine),
+            nib.Nifti1Image(
+                self._load_image("{}_fractions.nii.gz".format(self.prefix)),
+                self.affine
+            ),
             "{}_fractions.nii.gz".format(self.output)
         )
 
@@ -256,9 +277,9 @@ class RfMetric(DiamondMetric):
     def measure(self):
         if self.res:
             fraction = self.load_from_cache(
-                "rf", lambda _: nib.load(
+                "rf", lambda _: self._load_image(
                     "{}_isotropic2Fraction.nii.gz".format(self.prefix)
-                ).get_fdata()
+                )
             )
 
             nib.save(
@@ -273,10 +294,10 @@ class HfMetric(DiamondMetric):
             if any(
                 "t{}_hf".format(i) not in self.cache for i in range(self.n)
             ):
-                fractions = nib.load("{}_icvf.nii.gz".format(self.prefix))
-                for i, fraction in enumerate(
-                    moveaxis(fractions.get_fdata(), -1, 0)
-                ):
+                fractions = self._load_image(
+                    "{}_icvf.nii.gz".format(self.prefix)
+                )
+                for i, fraction in enumerate(moveaxis(fractions, -1, 0)):
                     self.cache["t{}_hf".format(i)] = fraction.squeeze()
                     nib.save(
                         nib.Nifti1Image(fraction.squeeze(), self.affine),
@@ -302,20 +323,14 @@ class PeaksMetric(DiamondMetric):
         if "peaks" in self.cache:
             peaks = self.cache["peaks"]
         else:
-            eigs = array([e[1] for e in self._get_eigs()])
+            evecs = array([e[1] for e in self._get_eigs()])
 
             n = self.n if self.n <= 5 else 5
 
             peaks = zeros((5,) + self._get_shape() + (3,))
             f_mask = self._get_fascicles_mask()
-            in_mask_vox = count_nonzero(f_mask[:n])
 
-            peaks[:n][f_mask] = eigs[f_mask[:n], 0, :].swapaxes(
-                0, 1
-            ).reshape((in_mask_vox, -1))
-
-            weights = self._get_fascicle_fractions()
-            peaks[:n] = moveaxis(weights, -1, 0)[..., None] * peaks[:n]
+            peaks[:n][f_mask] = evecs[f_mask[:n], 0, :]
 
             peaks = moveaxis(peaks, 0, -2).reshape(
                 self._get_shape() + (-1,)
@@ -547,7 +562,7 @@ def get_eigs(fascicles, mask, cache, alternative=None, add_keys=()):
         else:
             f_mask = mask
 
-        eigs = compute_eigenvalues(f, f_mask)
+        eigs = compute_eigenvalues(f, f_mask) if npany(f_mask) else None
         sub_cache = cache
         for key in add_keys:
             sub_cache = sub_cache[key]

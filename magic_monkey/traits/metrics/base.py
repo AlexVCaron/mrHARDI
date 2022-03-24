@@ -2,7 +2,11 @@ from abc import abstractmethod
 from typing import Generator
 
 import nibabel as nib
-from numpy import loadtxt, ones, ubyte, absolute, zeros
+from numpy import loadtxt, ones, ubyte, sign, array
+from numpy.linalg import eigh
+
+from magic_monkey.compute.math.linalg import color
+from magic_monkey.compute.math.tensor import compute_eigenvalues
 
 
 def load_from_cache(cache, keys, alternative=None):
@@ -37,6 +41,11 @@ def _load_mask(path, shape):
         return ones(shape)
 
 
+def eigs_with_strides(strides, *args):
+    evals, evecs = compute_eigenvalues(*args)
+    return evals, evecs * strides
+
+
 class BaseMetric:
     def __init__(
         self, prefix, output, cache, affine, mask=None,
@@ -48,10 +57,15 @@ class BaseMetric:
         self.affine = affine
         self.mask = mask
         self.shape = shape
+        self.strides = self._strides_from_affine(self.affine)
         self.colors = colors
 
     def load_from_cache(self, key, alternative=None):
         return load_from_cache(self.cache, key, alternative)
+
+    def _strides_from_affine(self, affine):
+        evals, evecs = eigh(array(affine)[:3, :3])
+        return [sign(ev) for ev in evals]
 
     def _get_shape(self):
         return self.shape
@@ -70,16 +84,20 @@ class BaseMetric:
     def _get_bvecs(self, add_keys=()):
         return load_from_cache(
             self.cache,
-            add_keys + ("bvecs",),
-            lambda f: loadtxt("{}.bvecs".format(self.prefix))
+            add_keys + ("bvec",),
+            lambda f: loadtxt("{}.bvec".format(self.prefix))
         )
 
     def _get_bvals(self, add_keys=()):
         return load_from_cache(
             self.cache,
-            add_keys + ("bvals",),
-            lambda f: loadtxt("{}.bvals".format(self.prefix))
+            add_keys + ("bval",),
+            lambda f: loadtxt("{}.bval".format(self.prefix))
         )
+
+    def _load_image(self, name):
+        img = nib.load(name)
+        return img.get_fdata().astype(img.get_data_dtype())
 
     def _color(self, name, evecs, add_keys=()):
         if self.colors:
@@ -93,9 +111,8 @@ class BaseMetric:
 
         mask = self.get_mask()
         metric = self.load_from_cache(add_keys + (name,))
-        cmetric = zeros(self._get_shape() + (3,))
 
-        cmetric[mask] = absolute(metric[mask, None] * evecs[mask, 0, :])
+        cmetric = color(metric, evecs, mask)
         self.cache[cname] = cmetric
 
         nib.save(
