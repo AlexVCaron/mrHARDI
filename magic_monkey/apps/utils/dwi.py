@@ -584,7 +584,6 @@ class CheckDuplicatedBvecsInShell(MagicMonkeyBaseApplication):
                     distances = 1. - bvecs[shell_mask] @ bvecs[i]
                     close_idxs = np.where(shell_mask)[0][np.isclose(distances, 0.)]
                     processed_vols[close_idxs] = True
-
                     if len(close_idxs) == 1:
                         odwi.append(data[..., i, None])
                     else:
