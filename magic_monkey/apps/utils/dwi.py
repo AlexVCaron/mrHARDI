@@ -13,17 +13,17 @@ from traitlets import (Instance,
 from traitlets.config import Config
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
-                                           required_arg,
                                            MultipleArguments,
                                            output_prefix_argument,
+                                           required_arg,
                                            required_file)
 from magic_monkey.base.dwi import (AcquisitionType,
                                    Direction,
+                                   DwiMetadata,
+                                   DwiMismatchError,
                                    load_metadata_file,
                                    load_metadata,
-                                   save_metadata,
-                                   DwiMetadata,
-                                   DwiMismatchError)
+                                   save_metadata)
 from magic_monkey.config.utils import DwiMetadataUtilsConfiguration
 
 _mb_aliases = {
@@ -515,3 +515,84 @@ class FlipGradientsOnReference(MagicMonkeyBaseApplication):
         bvecs[flips, :] *= -1.
 
         np.savetxt("{}.bvec".format(self.output), bvecs)
+
+
+_duplicates_aliases = {
+    "in": "CheckDuplicatedBvecsInShell.dwi",
+    "bvals": "CheckDuplicatedBvecsInShell.bvals",
+    "bvecs": "CheckDuplicatedBvecsInShell.bvecs",
+    "out": "CheckDuplicatedBvecsInShell.output",
+    "merge": "CheckDuplicatedBvecsInShell.merging",
+    "abs-thr": "CheckDuplicatedBvecsInShell.abs_threshold"
+}
+
+
+class CheckDuplicatedBvecsInShell(MagicMonkeyBaseApplication):
+    dwi = required_file(description="Input dwi file")
+    bvals = required_file(description="Input b-values file")
+    bvecs = required_file(description="Input b-vectors file")
+
+    merging = Enum(
+        ["first", "mean", "median"], "median",
+        help="Merge strategy of duplicates"
+    ).tag(config=True)
+
+    abs_threshold = Float(
+        1E-5, help="Absolute threshold on distance between directions"
+    ).tag(config=True)
+
+    output = output_prefix_argument()
+
+    aliases = Dict(default_value=_duplicates_aliases)
+
+    _mergers = {
+        "first": lambda dt: dt[..., 0],
+        "mean": lambda dt: np.mean(dt, -1),
+        "median": lambda dt: np.median(dt, -1)
+    }
+
+    def execute(self):
+        bvals = np.loadtxt(self.bvals)
+        bvecs = np.loadtxt(self.bvecs).T
+        dwi = nib.load(self.dwi)
+        data = dwi.get_fdata().astype(dwi.get_data_dtype())
+
+        merge_fn = self._mergers[self.merging]
+
+        odwi = []
+        obvals = []
+        obvecs = []
+        processed_vols = np.array([False] * data.shape[-1])
+
+        b0_mask = np.isclose(bvals, 0.)
+
+        for i in range(data.shape[-1]):
+            if not processed_vols[i]:
+                processed_vols[i] = True
+                obvals.append(bvals[i])
+                obvecs.append(bvecs[i])
+                if b0_mask[i]:
+                    odwi.append(data[..., i, None])
+                else:
+                    shell_mask = np.isclose(bvals, bvals[i])
+                    shell_mask[processed_vols] = False
+                    distances = 1. - bvecs[shell_mask] @ bvecs[i]
+                    close_idxs = np.where(shell_mask)[0][np.isclose(distances, 0.)]
+                    processed_vols[close_idxs] = True
+                    
+                    if len(close_idxs) == 1:
+                        odwi.append(data[..., i, None])
+                    else:
+                        close_idxs = np.concatenate((close_idxs, [i]))
+                        odwi.append(merge_fn(data[..., close_idxs])[..., None])
+
+        np.savetxt("{}.bval".format(self.output), obvals, fmt="%d", newline=" ")
+        np.savetxt(
+            "{}.bvec".format(self.output), np.array(obvecs).T, fmt="%.6f"
+        )
+        nib.save(
+            nib.Nifti1Image(
+                np.concatenate(odwi, axis=-1), dwi.affine, dwi.header
+            ),
+            "{}.nii.gz".format(self.output)
+        )
