@@ -88,6 +88,10 @@ class MagicMonkeyApplication(MagicMonkeyBaseApplication):
             "magic_monkey.apps.measure.TensorMetrics",
             'Compute DTI metrics'
         ),
+        duplicates=(
+            "magic_monkey.apps.utils.CheckDuplicatedBvecsInShell",
+            'Check and handles duplicated directions in DWI shells'
+        ),
         eddy=("magic_monkey.apps.denoise.Eddy", 'Execute eddy correction'),
         eddy_viz=(
             "magic_monkey.apps.visualize.VisualizeEddyParameters",
