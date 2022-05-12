@@ -8,17 +8,19 @@ WORKDIR /
 RUN mkdir -p /scilpy
 RUN git clone https://github.com/boiteaclou/scilpy.git /scilpy
 WORKDIR /scilpy
-RUN git fetch && git checkout --track origin/develop
+ARG scilpy_ver=develop
+RUN git fetch && git checkout --track origin/$scilpy_ver
 
-FROM git_cloner as mmy_cloner
+FROM git_cloner as mrhardi_cloner
 
 WORKDIR /
-RUN mkdir -p /mmy
-RUN git clone https://avcaron@bitbucket.org/avcaron/magic-monkey.git /mmy
-WORKDIR /mmy
-RUN git fetch && git checkout --track origin/devflow
+RUN mkdir -p /mrhardi
+RUN git clone https://avcaron@bitbucket.org/avcaron/magic-monkey.git /mrhardi
+WORKDIR /mrhardi
+ARG mrhardi_ver=develop
+RUN git fetch && git checkout --track origin/$mrhardi_ver
 
-FROM avcaron/magic-monkey:base-latest
+FROM avcaron/mrhardi:base-nogpu
 
 ENV MATPLOTLIBRC="/usr/local/lib/python3.7/dist-packages/matplotlib/mpl-data/"
 ENV LC_ALL=en_US.utf8
@@ -30,17 +32,18 @@ RUN apt-get update && apt-get -y install \
 
 RUN python3 -m pip install Cython
 RUN python3 -m pip install numpy
+RUN python3 -m pip install setuptools==57.5.0
 
 WORKDIR /
-RUN mkdir -p /mms/dev/scilpy
-COPY --from=scilpy_cloner /scilpy /mms/dev/scilpy
-WORKDIR /mms/dev/scilpy
+RUN mkdir -p /mrhs/dev/scilpy
+COPY --from=scilpy_cloner /scilpy /mrhs/dev/scilpy
+WORKDIR /mrhs/dev/scilpy
 RUN python3 -m pip install -e .
 
 WORKDIR /
-RUN mkdir -p /mms/dev/magic-monkey
-COPY --from=mmy_cloner /mmy /mms/dev/magic-monkey
-WORKDIR /mms/dev/magic-monkey
+RUN mkdir -p /mrhs/dev/mrhardi
+COPY --from=mrhardi_cloner /mrhardi /mrhs/dev/mrhardi
+WORKDIR /mrhs/dev/mrhardi
 RUN python3 -m pip install -r requirements.txt
 RUN python3 -m pip install -e .
 
@@ -51,5 +54,5 @@ RUN apt-get -y remove \
     build-essential \
     gfortran \
     g++ \
-    g++-5 \
-    gfortran-5
+    g++-7 \
+    gfortran-7

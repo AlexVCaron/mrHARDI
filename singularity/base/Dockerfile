@@ -1,9 +1,9 @@
-FROM ubuntu:16.04 AS base
+FROM ubuntu:18.04 AS base
 
 RUN apt-get update && apt-get -y install --no-install-recommends \
     apt-transport-https \
     ca-certificates \
-    gnupg-curl \
+    curl \
     locales \
     libc6 \
     libc6-dev \
@@ -16,53 +16,21 @@ ENV LC_ALL=en_US.utf8
 ENV LANG=en_US.utf8
 ENV LANGUAGE=en_US.utf8
 
-RUN NVIDIA_GPGKEY_SUM=d1be581509378368edeec8c1eb2958702feedf3bc3d17011adbf24efacce4ab5 && \
-    NVIDIA_GPGKEY_FPR=ae09fe4bbd223a84b2ccfce3f60f4b3d7fa2af80 && \
-    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64/7fa2af80.pub && \
-    apt-key adv --export --no-emit-version -a $NVIDIA_GPGKEY_FPR | tail -n +5 > cudasign.pub && \
-    echo "$NVIDIA_GPGKEY_SUM  cudasign.pub" | sha256sum -c --strict - && \
-    rm cudasign.pub && \
-    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1604/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
-    echo "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1604/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list && \
-    apt-get purge --auto-remove -y gnupg-curl
-
-ENV CUDA_VERSION=9.1.85
-ENV CUDA_PKG_VERSION=9-1=9.1.85-1
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    cuda-cudart-$CUDA_PKG_VERSION && \
-    ln -s cuda-9.1 /usr/local/cuda && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf && \
-    echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
-
-ENV PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
-ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
-ENV NVIDIA_DISABLE_REQUIRE=true
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    cuda-libraries-$CUDA_PKG_VERSION \
-    cuda-npp-$CUDA_PKG_VERSION \
-    cuda-cublas-9-1=9.1.85.3-1 && \
-    rm -rf /var/lib/apt/lists/*
-
 # Build Cmake base
 FROM base AS cmake_base
 
-ENV CMAKE_version=3.10
-ENV CMAKE_build=2
-
 RUN apt-get update && apt-get -y install \
     build-essential \
+    libssl-dev \
     linux-headers-generic \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp
 RUN mkdir -p cmake
+
+ENV CMAKE_version=3.16
+ENV CMAKE_build=3
 
 WORKDIR /tmp/cmake
 RUN wget https://cmake.org/files/v${CMAKE_version}/cmake-${CMAKE_version}.${CMAKE_build}.tar.gz
@@ -83,14 +51,14 @@ RUN apt-get update && apt-get -y install \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
-RUN mkdir -p /mms/dev
+RUN mkdir -p /mrhs/dev
 WORKDIR /tmp
 RUN mkdir -p fsl_sources
 
 WORKDIR /tmp/fsl_sources
 RUN wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py
-RUN python fslinstaller.py -d /mms/dev/fsl -D
-WORKDIR /mms/dev/fsl
+RUN python fslinstaller.py -d /mrhs/dev/fsl -D
+WORKDIR /mrhs/dev/fsl
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -100,7 +68,7 @@ RUN find . -maxdepth 1 -not \( \
         -name extras -or \
         -name data \
     \) -exec rm -rf "{}" \;
-WORKDIR /mms/dev/fsl/bin
+WORKDIR /mrhs/dev/fsl/bin
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -128,14 +96,14 @@ RUN find . -maxdepth 1 -not \( \
         -name standard_space_roi -or \
         -name topup \
     \) -exec rm -rf "{}" \;
-WORKDIR /mms/dev/fsl/extras
+WORKDIR /mrhs/dev/fsl/extras
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
         -name bin -or \
         -name lib \
     \) -exec rm -rf "{}" \;
-WORKDIR /mms/dev/fsl/etc
+WORKDIR /mrhs/dev/fsl/etc
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -164,10 +132,10 @@ RUN apt-get update && apt-get -y install \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
-RUN mkdir -p /mms/dev/mrtrix
-WORKDIR /mms/dev
+RUN mkdir -p /mrhs/dev/mrtrix
+WORKDIR /mrhs/dev
 RUN git clone https://github.com/MRtrix3/mrtrix3.git mrtrix
-WORKDIR /mms/dev/mrtrix
+WORKDIR /mrhs/dev/mrtrix
 RUN ./configure -nogui -openmp
 RUN ./build
 RUN find . -maxdepth 1 -not \( \
@@ -178,7 +146,7 @@ RUN find . -maxdepth 1 -not \( \
         -wholename './lib' -or \
         -wholename './lib/libmrtrix*' \
     \) -exec rm -rf "{}" \;
-WORKDIR /mms/dev/mrtrix/bin
+WORKDIR /mrhs/dev/mrtrix/bin
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -199,17 +167,18 @@ RUN apt-get update && apt-get -y install \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
-RUN mkdir -p /mms/dev/diamond
+RUN mkdir -p /mrhs/dev/diamond
 COPY diamond_package.tar.gz /tmp/
 WORKDIR /tmp
 RUN mkdir -p diamond
 RUN tar -xzf /tmp/diamond_package.tar.gz -C /tmp/diamond
 
 WORKDIR /tmp/diamond
-RUN ./build.sh --buildfolder /mms/dev/diamond --nthreads $(nproc --all)
-WORKDIR /mms/dev/diamond/bin
+
+RUN bash build.sh --buildfolder /mrhs/dev/diamond --nthreads $(nproc --all)
+WORKDIR /mrhs/dev/diamond/bin
 RUN chmod 111 crlDCIEstimate
-WORKDIR /mms/dev/diamond
+WORKDIR /mrhs/dev/diamond
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -226,16 +195,16 @@ RUN apt-get update && apt-get -y install \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
-RUN mkdir -p /mms/dev
-WORKDIR /mms/dev
+RUN mkdir -p /mrhs/dev
+WORKDIR /mrhs/dev
 RUN git clone https://github.com/cookpa/antsInstallExample.git ants
-WORKDIR /mms/dev/ants
+WORKDIR /mrhs/dev/ants
 RUN chmod 777 installANTs.sh
 RUN ./installANTs.sh
 RUN rm -rf ANTs/ build/ LICENSE README.md installANTs.sh
 RUN mv install/* .
 RUN rm -rf install
-WORKDIR /mms/dev/ants/bin
+WORKDIR /mrhs/dev/ants/bin
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -262,15 +231,15 @@ RUN tar -xf NMT_v2.0_asym.tgz
 # Build final image
 FROM base
 WORKDIR /
-RUN mkdir -p /mms/dev/fsl
-RUN mkdir -p /mms/dev/mrtrix
-RUN mkdir -p /mms/dev/diamond
-RUN mkdir -p /mms/dev/ants
+RUN mkdir -p /mrhs/dev/fsl
+RUN mkdir -p /mrhs/dev/mrtrix
+RUN mkdir -p /mrhs/dev/diamond
+RUN mkdir -p /mrhs/dev/ants
 RUN mkdir -p /nmt
-COPY --from=fsl_builder /mms/dev/fsl /mms/dev/fsl
-COPY --from=mrtrix_builder /mms/dev/mrtrix /mms/dev/mrtrix
-COPY --from=diamond_builder /mms/dev/diamond /mms/dev/diamond
-COPY --from=ants_builder /mms/dev/ants /mms/dev/ants
+COPY --from=fsl_builder /mrhs/dev/fsl /mrhs/dev/fsl
+COPY --from=mrtrix_builder /mrhs/dev/mrtrix /mrhs/dev/mrtrix
+COPY --from=diamond_builder /mrhs/dev/diamond /mrhs/dev/diamond
+COPY --from=ants_builder /mrhs/dev/ants /mrhs/dev/ants
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_SS.nii.gz /nmt/NMT_v2.0_asym_SS.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_segmentation.nii.gz /nmt/NMT_v2.0_asym_segmentation.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_GM_cortical_mask.nii.gz /nmt/NMT_v2.0_asym_GM_cortical_mask.nii.gz
@@ -279,21 +248,21 @@ COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/CHARM_in_NMT_v2.0_asym.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/D99_atlas_in_NMT_v2.0_asym.nii.gz /nmt/D99_atlas_in_NMT_v2.0_asym.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_brainmask.nii.gz /nmt/NMT_v2.0_asym_brainmask.nii.gz
 
-ENV FSLDIR=/mms/dev/fsl
+ENV FSLDIR=/mrhs/dev/fsl
 ENV FSLOUTPUTTYPE=NIFTI_GZ
 
-ENV FSL_BIN=/mms/dev/fsl/bin
-ENV MRTRIX_BIN=/mms/dev/mrtrix/bin
-ENV DIAMOND_BIN=/mms/dev/diamond/bin
-ENV ANTS_BIN=/mms/dev/ants/bin
+ENV FSL_BIN=/mrhs/dev/fsl/bin
+ENV MRTRIX_BIN=/mrhs/dev/mrtrix/bin
+ENV DIAMOND_BIN=/mrhs/dev/diamond/bin
+ENV ANTS_BIN=/mrhs/dev/ants/bin
 ENV PATH=$ANTS_BIN:$DIAMOND_BIN:$MRTRIX_BIN:$FSL_BIN:$PATH
 ENV ANTSPATH=$ANTS_BIN
 
 RUN apt-get update && apt-get -y install \
     software-properties-common \
     && rm -rf /var/lib/apt/lists/*
-RUN add-apt-repository ppa:deadsnakes/ppa
 
+RUN add-apt-repository ppa:deadsnakes/ppa
 RUN apt-get update && apt-get -y install \
     bc \
     dc \
@@ -318,7 +287,7 @@ RUN update-alternatives --set python3 /usr/bin/python3.7
 RUN python3 -m pip install pip
 RUN pip3 install --upgrade pip
 
-RUN apt-get update && apt-get -y install \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install \
     python3.7-dev \
     python3.7-tk \
     && rm -rf /var/lib/apt/lists/*
