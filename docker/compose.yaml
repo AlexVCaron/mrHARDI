@@ -1,0 +1,162 @@
+services:
+  build-image:
+    build:
+      context: ./builders
+      dockerfile: ../base.dockerfile
+      target: build-image
+      cache_to:
+        - type=local,dest=./.cache/build_image
+  light-image:
+    build:
+      context: ./builders
+      dockerfile: ../base.dockerfile
+      target: light-image
+      cache_to:
+        - type=local,dest=./.cache/light_image
+  deploy-nogpu:
+    build:
+      context: ./deploy
+      dockerfile: ../base.dockerfile
+      target: deploy-nogpu
+      cache_to:
+        - type=local,dest=./.cache/deploy_nogpu
+  deploy-gpu:
+    build:
+      context: ./deploy
+      dockerfile: ../base.dockerfile
+      target: deploy-gpu
+      cache_from:
+        - type=local,src=./.cache/deploy_nogpu
+      cache_to:
+        - type=local,dest=./.cache/deploy_gpu
+  file-getter:
+    build:
+      context: ./builders
+      dockerfile: ../builders.dockerfile
+      target: file-getter
+      cache_from:
+        - type=local,src=./.cache/light_image
+      cache_to:
+        - type=local,dest=./.cache/file_getter
+  cmake-builder:
+    build:
+      context: ./builders
+      dockerfile: ../builders.dockerfile
+      target: cmake-builder
+      cache_from:
+        - type=local,dsrc=./.cache/file_getter
+      cache_to:
+        - type=local,dest=./.cache/cmake_builder
+  nvidia-builder:
+    build:
+      context: ./builders
+      dockerfile: ../builders.dockerfile
+      target: nvidia-builder
+      cache_from:
+        - type=local,dsrc=./.cache/build_image
+      cache_to:
+        - type=local,dest=./.cache/nvidia_builder
+  ants:
+    build:
+      context: ./dependencies
+      dockerfile: ../dependencies.dockerfile
+      target: ants
+      cache_from:
+        - type=local,src=./.cache/cmake_builder
+      cache_to:
+        - type=local,dest=./.cache/ants
+  mrtrix:
+    build:
+      context: ./dependencies
+      dockerfile: ../dependencies.dockerfile
+      target: mrtrix
+      cache_from:
+        - type=local,dsrc=./.cache/build_image
+      cache_to:
+        - type=local,dest=./.cache/mrtrix
+  fsl-nogpu:
+    build:
+      context: ./dependencies
+      dockerfile: ../dependencies.dockerfile
+      target: fsl-nogpu
+      cache_from:
+        - type=local,dsrc=./.cache/build_image
+      cache_to:
+        - type=local,dest=./.cache/fsl_nogpu
+  fsl-gpu:
+    build:
+      context: ./dependencies
+      dockerfile: ../dependencies.dockerfile
+      target: fsl-gpu
+      cache_from:
+        - type=local,src=./.cache/nvidia_builder
+      cache_to:
+        - type=local,dest=./.cache/fsl_gpu
+  diamond:
+    build:
+      context: ./dependencies
+      dockerfile: ../dependencies.dockerfile
+      target: diamond
+      cache_from:
+        - type=local,src=./.cache/cmake_builder
+      cache_to:
+        - type=local,dest=./.cache/diamond
+  git-scilpy:
+    build:
+      context: ./dependencies
+      dockerfile: ../dependencies.dockerfile
+      target: git-scilpy
+      cache_from:
+        - type=local,src=./.cache/file_getter
+      cache_to:
+        - type=local,dest=./.cache/git_scilpy
+  git-mrhardi:
+    build:
+      context: ./dependencies
+      dockerfile: ../dependencies.dockerfile
+      target: git-mrhardi
+      cache_from:
+        - type=local,src=./.cache/file_getter
+      cache_to:
+        - type=local,dest=./.cache/git_mrhardi
+  wget-nmt-atlas:
+    build:
+      context: ./dependencies
+      dockerfile: ../dependencies.dockerfile
+      target: wget-nmt-atlas
+      cache_from:
+        - type=local,src=./.cache/file_getter
+      cache_to:
+        - type=local,dest=./.cache/wget_nmt_atlas
+  mrhardi-nogpu:
+    build:
+      context: ./deploy
+      dockerfile: ../deploy.dockerfile
+      target: mrhardi-nogpu
+      cache_from:
+        - type=local,src=./.cache/deploy_nogpu
+        - type=local,src=./.cache/ants
+        - type=local,src=./.cache/mrtrix
+        - type=local,src=./.cache/fsl_nogpu
+        - type=local,src=./.cache/diamond
+        - type=local,src=./.cache/git_scilpy
+        - type=local,src=./.cache/git_mrhardi
+        - type=local,src=./.cache/wget_nmt_atlas
+      cache_to:
+        - avcaron/mrhardi:nogpu
+  mrhardi-nvidia:
+    build:
+      context: ./deploy
+      dockerfile: ../deploy.dockerfile
+      target: mrhardi-nvidia
+      cache_from:
+        - type=local,src=./.cache/deploy_gpu
+        - type=local,src=./.cache/ants
+        - type=local,src=./.cache/mrtrix
+        - type=local,src=./.cache/fsl_gpu
+        - type=local,src=./.cache/diamond
+        - type=local,src=./.cache/git_scilpy
+        - type=local,src=./.cache/git_mrhardi
+        - type=local,src=./.cache/wget_nmt_atlas
+      cache_to:
+        - avcaron/mrhardi:latest
