@@ -169,9 +169,12 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             for ki in idxs
         ]
 
+    def _shape_at_least_4D(self, image):
+        return 1 if len(image.shape) < 4 else image.shape[-1]
+
     def _expand_to_slices(self, directions, images):
         return [
-            np.repeat([direction], img["data"].shape[-1], 0)
+            np.repeat([direction], self._shape_at_least_4D(img["data"]), 0)
             for img, direction in zip(images, directions)
         ]
 
@@ -203,12 +206,12 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             d = self.configuration.direction[0]
             return [{
                 "dir": val_extractor(Direction[d]),
-                "range": (0, i["data"].shape[-1])
+                "range": (0, self._shape_at_least_4D(i["data"]))
             } for i in images]
         elif len(self.configuration.direction) == len(images):
             return [{
                 "dir": val_extractor(Direction[d]),
-                "range": (0, i["data"].shape[-1])
+                "range": (0, self._shape_at_least_4D(i["data"]))
             } for d, i in zip(self.configuration.direction, images)]
         else:
             return []
