@@ -168,14 +168,16 @@ RUN apt-get update && apt-get -y install \
 
 WORKDIR /
 RUN mkdir -p /mrhs/dev/diamond
-COPY diamond_package.tar.gz /tmp/
+
 WORKDIR /tmp
-RUN mkdir -p diamond
-RUN tar -xzf /tmp/diamond_package.tar.gz -C /tmp/diamond
+RUN git clone https://avcaron@bitbucket.org/avcaron/magic-diamond.git /tmp/magic-diamond
 
-WORKDIR /tmp/diamond
-
-RUN bash build.sh --buildfolder /mrhs/dev/diamond --nthreads $(nproc --all)
+WORKDIR /tmp/magic-diamond
+RUN bash build.sh \
+    --buildfolder /mrhs/dev/diamond \
+    --nthreads $(nproc --all) \
+    --magic \
+    --dev
 WORKDIR /mrhs/dev/diamond/bin
 RUN chmod 111 crlDCIEstimate
 WORKDIR /mrhs/dev/diamond
