@@ -1,6 +1,9 @@
-FROM nvidia/cuda:9.1-runtime-ubuntu16.04 AS base
+FROM ubuntu:18.04 AS base
 
-RUN apt-get update && apt-get -y install \
+RUN apt-get update && apt-get -y install --no-install-recommends \
+    apt-transport-https \
+    ca-certificates \
+    curl \
     locales \
     libc6 \
     libc6-dev \
@@ -16,17 +19,18 @@ ENV LANGUAGE=en_US.utf8
 # Build Cmake base
 FROM base AS cmake_base
 
-ENV CMAKE_version=3.10
-ENV CMAKE_build=2
-
 RUN apt-get update && apt-get -y install \
     build-essential \
+    libssl-dev \
     linux-headers-generic \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp
 RUN mkdir -p cmake
+
+ENV CMAKE_version=3.16
+ENV CMAKE_build=3
 
 WORKDIR /tmp/cmake
 RUN wget https://cmake.org/files/v${CMAKE_version}/cmake-${CMAKE_version}.${CMAKE_build}.tar.gz
@@ -47,14 +51,14 @@ RUN apt-get update && apt-get -y install \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
-RUN mkdir -p /mms/dev
+RUN mkdir -p /mrhs/dev
 WORKDIR /tmp
 RUN mkdir -p fsl_sources
 
 WORKDIR /tmp/fsl_sources
 RUN wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py
-RUN python fslinstaller.py -d /mms/dev/fsl -D
-WORKDIR /mms/dev/fsl
+RUN python fslinstaller.py -d /mrhs/dev/fsl -D
+WORKDIR /mrhs/dev/fsl
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -64,7 +68,7 @@ RUN find . -maxdepth 1 -not \( \
         -name extras -or \
         -name data \
     \) -exec rm -rf "{}" \;
-WORKDIR /mms/dev/fsl/bin
+WORKDIR /mrhs/dev/fsl/bin
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -92,14 +96,14 @@ RUN find . -maxdepth 1 -not \( \
         -name standard_space_roi -or \
         -name topup \
     \) -exec rm -rf "{}" \;
-WORKDIR /mms/dev/fsl/extras
+WORKDIR /mrhs/dev/fsl/extras
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
         -name bin -or \
         -name lib \
     \) -exec rm -rf "{}" \;
-WORKDIR /mms/dev/fsl/etc
+WORKDIR /mrhs/dev/fsl/etc
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -128,10 +132,10 @@ RUN apt-get update && apt-get -y install \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
-RUN mkdir -p /mms/dev/mrtrix
-WORKDIR /mms/dev
+RUN mkdir -p /mrhs/dev/mrtrix
+WORKDIR /mrhs/dev
 RUN git clone https://github.com/MRtrix3/mrtrix3.git mrtrix
-WORKDIR /mms/dev/mrtrix
+WORKDIR /mrhs/dev/mrtrix
 RUN ./configure -nogui -openmp
 RUN ./build
 RUN find . -maxdepth 1 -not \( \
@@ -142,7 +146,7 @@ RUN find . -maxdepth 1 -not \( \
         -wholename './lib' -or \
         -wholename './lib/libmrtrix*' \
     \) -exec rm -rf "{}" \;
-WORKDIR /mms/dev/mrtrix/bin
+WORKDIR /mrhs/dev/mrtrix/bin
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -163,17 +167,20 @@ RUN apt-get update && apt-get -y install \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
-RUN mkdir -p /mms/dev/diamond
-COPY diamond_package.tar.gz /tmp/
-WORKDIR /tmp
-RUN mkdir -p diamond
-RUN tar -xzf /tmp/diamond_package.tar.gz -C /tmp/diamond
+RUN mkdir -p /mrhs/dev/diamond
 
-WORKDIR /tmp/diamond
-RUN ./build.sh --buildfolder /mms/dev/diamond --nthreads $(nproc --all)
-WORKDIR /mms/dev/diamond/bin
+WORKDIR /tmp
+RUN git clone https://avcaron@bitbucket.org/avcaron/magic-diamond.git /tmp/magic-diamond
+
+WORKDIR /tmp/magic-diamond
+RUN bash build.sh \
+    --buildfolder /mrhs/dev/diamond \
+    --nthreads $(nproc --all) \
+    --magic \
+    --dev
+WORKDIR /mrhs/dev/diamond/bin
 RUN chmod 111 crlDCIEstimate
-WORKDIR /mms/dev/diamond
+WORKDIR /mrhs/dev/diamond
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -190,16 +197,16 @@ RUN apt-get update && apt-get -y install \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
-RUN mkdir -p /mms/dev
-WORKDIR /mms/dev
+RUN mkdir -p /mrhs/dev
+WORKDIR /mrhs/dev
 RUN git clone https://github.com/cookpa/antsInstallExample.git ants
-WORKDIR /mms/dev/ants
+WORKDIR /mrhs/dev/ants
 RUN chmod 777 installANTs.sh
 RUN ./installANTs.sh
 RUN rm -rf ANTs/ build/ LICENSE README.md installANTs.sh
 RUN mv install/* .
 RUN rm -rf install
-WORKDIR /mms/dev/ants/bin
+WORKDIR /mrhs/dev/ants/bin
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -209,7 +216,10 @@ RUN find . -maxdepth 1 -not \( \
         -name antsApplyTransforms -or \
         -name antsMotionCorr -or \
         -name antsMotionCorrDiffusionDirection -or \
-        -name DenoiseImage \
+        -name DenoiseImage -or \
+        -name Atropos -or \
+        -name ImageMath -or \
+        -name 'antsAtroposN4*' \
     \) -exec rm -rf "{}" \;
 
 FROM alpine:latest AS file_wget
@@ -223,36 +233,38 @@ RUN tar -xf NMT_v2.0_asym.tgz
 # Build final image
 FROM base
 WORKDIR /
-RUN mkdir -p /mms/dev/fsl
-RUN mkdir -p /mms/dev/mrtrix
-RUN mkdir -p /mms/dev/diamond
-RUN mkdir -p /mms/dev/ants
+RUN mkdir -p /mrhs/dev/fsl
+RUN mkdir -p /mrhs/dev/mrtrix
+RUN mkdir -p /mrhs/dev/diamond
+RUN mkdir -p /mrhs/dev/ants
 RUN mkdir -p /nmt
-COPY --from=fsl_builder /mms/dev/fsl /mms/dev/fsl
-COPY --from=mrtrix_builder /mms/dev/mrtrix /mms/dev/mrtrix
-COPY --from=diamond_builder /mms/dev/diamond /mms/dev/diamond
-COPY --from=ants_builder /mms/dev/ants /mms/dev/ants
+COPY --from=fsl_builder /mrhs/dev/fsl /mrhs/dev/fsl
+COPY --from=mrtrix_builder /mrhs/dev/mrtrix /mrhs/dev/mrtrix
+COPY --from=diamond_builder /mrhs/dev/diamond /mrhs/dev/diamond
+COPY --from=ants_builder /mrhs/dev/ants /mrhs/dev/ants
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_SS.nii.gz /nmt/NMT_v2.0_asym_SS.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_segmentation.nii.gz /nmt/NMT_v2.0_asym_segmentation.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_GM_cortical_mask.nii.gz /nmt/NMT_v2.0_asym_GM_cortical_mask.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/SARM_in_NMT_v2.0_asym.nii.gz /nmt/SARM_in_NMT_v2.0_asym.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/CHARM_in_NMT_v2.0_asym.nii.gz /nmt/CHARM_in_NMT_v2.0_asym.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/D99_atlas_in_NMT_v2.0_asym.nii.gz /nmt/D99_atlas_in_NMT_v2.0_asym.nii.gz
+COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_brainmask.nii.gz /nmt/NMT_v2.0_asym_brainmask.nii.gz
 
-ENV FSLDIR=/mms/dev/fsl
+ENV FSLDIR=/mrhs/dev/fsl
 ENV FSLOUTPUTTYPE=NIFTI_GZ
 
-ENV FSL_BIN=/mms/dev/fsl/bin
-ENV MRTRIX_BIN=/mms/dev/mrtrix/bin
-ENV DIAMOND_BIN=/mms/dev/diamond/bin
-ENV ANTS_BIN=/mms/dev/ants/bin
+ENV FSL_BIN=/mrhs/dev/fsl/bin
+ENV MRTRIX_BIN=/mrhs/dev/mrtrix/bin
+ENV DIAMOND_BIN=/mrhs/dev/diamond/bin
+ENV ANTS_BIN=/mrhs/dev/ants/bin
 ENV PATH=$ANTS_BIN:$DIAMOND_BIN:$MRTRIX_BIN:$FSL_BIN:$PATH
+ENV ANTSPATH=$ANTS_BIN
 
 RUN apt-get update && apt-get -y install \
     software-properties-common \
     && rm -rf /var/lib/apt/lists/*
-RUN add-apt-repository ppa:deadsnakes/ppa
 
+RUN add-apt-repository ppa:deadsnakes/ppa
 RUN apt-get update && apt-get -y install \
     bc \
     dc \
@@ -277,7 +289,7 @@ RUN update-alternatives --set python3 /usr/bin/python3.7
 RUN python3 -m pip install pip
 RUN pip3 install --upgrade pip
 
-RUN apt-get update && apt-get -y install \
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install \
     python3.7-dev \
     python3.7-tk \
     && rm -rf /var/lib/apt/lists/*
