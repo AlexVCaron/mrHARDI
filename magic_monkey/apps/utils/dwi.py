@@ -568,10 +568,12 @@ class CheckDuplicatedBvecsInShell(MagicMonkeyBaseApplication):
         processed_vols = np.array([False] * data.shape[-1])
 
         b0_mask = np.isclose(bvals, 0.)
+        meta_mask = np.zeros((len(bvals),),  dtype=bool)
 
         for i in range(data.shape[-1]):
             if not processed_vols[i]:
                 processed_vols[i] = True
+                meta_mask[i] = True
                 obvals.append(bvals[i])
                 obvecs.append(bvecs[i])
                 if b0_mask[i]:
@@ -582,7 +584,7 @@ class CheckDuplicatedBvecsInShell(MagicMonkeyBaseApplication):
                     distances = 1. - bvecs[shell_mask] @ bvecs[i]
                     close_idxs = np.where(shell_mask)[0][np.isclose(distances, 0.)]
                     processed_vols[close_idxs] = True
-                    
+
                     if len(close_idxs) == 1:
                         odwi.append(data[..., i, None])
                     else:
@@ -599,3 +601,12 @@ class CheckDuplicatedBvecsInShell(MagicMonkeyBaseApplication):
             ),
             "{}.nii.gz".format(self.output)
         )
+
+        metadata = load_metadata(self.dwi)
+        if metadata:
+            acq_types = np.array(metadata.acquisition_slices_to_list())[meta_mask]
+            directions = np.array(metadata.directions)[meta_mask, :]
+            metadata.update_acquisition_from_list(acq_types.tolist())
+            metadata.directions = directions.tolist()
+            metadata.n = int(meta_mask.sum())
+            save_metadata(self.output, metadata)
