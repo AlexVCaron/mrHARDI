@@ -5,7 +5,7 @@ from pathlib import Path
 
 import nibabel as nib
 import numpy as np
-from traitlets import Bool, Dict, Integer
+from traitlets import Bool, Dict, Integer, Unicode
 from traitlets.config import ArgumentError
 from traitlets.config.loader import ConfigError
 
@@ -15,6 +15,7 @@ from magic_monkey.base.application import (ChoiceEnum,
                                            output_prefix_argument,
                                            required_file,
                                            required_number)
+from magic_monkey.base.config import DiamondConfigLoader
 
 # fmd = fascicle md --check
 # fad = fascicle ad --check
@@ -76,9 +77,12 @@ _aliases = {
     'metrics': 'DiamondMetrics.metrics',
     'magic-metrics': 'DiamondMetrics.mmetrics',
     'opt-metrics': 'DiamondMetrics.opt_metrics',
+    'mose': 'DiamondMetrics.model_selection',
+    'mask': 'DiamondMetrics.mask',
     'in': 'DiamondMetrics.input_prefix',
     'out': 'DiamondMetrics.output_prefix',
-    'n': 'DiamondMetrics.n_fascicles'
+    'n': 'DiamondMetrics.n_fascicles',
+    'xml-config': 'DiamondMetrics.from_xml'
 }
 
 
@@ -173,12 +177,30 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
         False, help="Save the final data cache of the metrics computing"
     ).tag(config=True)
 
+    model_selection = Unicode(
+        None, allow_none=True, help="Model selection outputed by Diamond"
+    ).tag(config=True)
+
+    mask = Unicode(
+        help="Mask image inside of which to compute the metrics. "
+             "If not provided, the app will try to find one using "
+             "the input prefix provided for the other data."
+    ).tag(config=True)
+
+    from_xml = Unicode(
+        help="Diamond outputed .xml file from which to "
+             "load the metrics generation parameters"
+    ).tag(config=True)
+
     cache = Dict(default_value={})
 
     aliases = Dict(default_value=_aliases)
     flags = Dict(default_value=_flags)
 
     def _validate_required(self):
+        if self.from_xml:
+            DiamondConfigLoader(self).read_config(self.from_xml)
+
         super()._validate_required()
 
         if len(self.mmetrics) > 0:
@@ -196,15 +218,44 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
     def execute(self):
         import magic_monkey.traits.metrics.diamond as metrics_module
 
-        mask = None
+        mask, affine = None, None
         if exists("{}_mask.nii.gz".format(self.input_prefix)):
             mask = nib.load("{}_mask.nii.gz".format(self.input_prefix))
+            affine = mask.affine
+        elif self.mask and exists(self.mask):
+            mask = nib.load(self.mask)
+            affine = mask.affine
 
         metadata = load_metadata(self.input_prefix)
         if metadata is None:
-            raise ConfigError(
-                "Need a metadata file for {}".format(self.input_prefix)
-            )
+            if affine is None:
+                try:
+                    img = nib.load("{}_t0.nii.gz".format(self.input_prefix))
+                    affine = img.affine
+                except Exception:
+                    raise ConfigError(
+                        "Could not load a file with an affine. Check the "
+                        "names of the files in your diamond output path "
+                        "and/or provide a metadata file for {}".format(
+                            self.input_prefix
+                        )
+                    )
+        else:
+            affine = metadata.affine
+
+        if mask is None:
+            try:
+                img = nib.load("{}_t0.nii.gz".format(self.input_prefix))
+                mask = np.ones(img.shape[:3], dtype=bool)
+            except Exception:
+                raise ConfigError(
+                    "Could not load a valid mask to fit data. Either provide "
+                    "one using --mask or make one available at : "
+                    "{}_mask.nii.gz".format(self.input_prefix)
+                )
+        else:
+            mask = mask.get_fdata().astype(bool)
+
 
         for metric in self.metrics + self.mmetrics + self.opt_metrics:
             klass = getattr(
@@ -214,9 +265,10 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
             klass(
                 self.n_fascicles, self.input_prefix,
                 self.output_prefix, self.cache, metadata.affine,
-                mask=mask.get_fdata().astype(bool), shape=mask.shape,
+                mask=mask, shape=mask.shape,
                 colors=self.output_colors, with_fw=self.free_water,
                 with_res=self.restricted, with_hind=self.hindered,
+                mosemap=self.model_selection
             ).measure()
 
         if self.output_haeberlen:

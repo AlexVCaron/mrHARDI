@@ -14,13 +14,10 @@ from magic_monkey.traits.metrics.diamond import (DiamondMetric,
 class MagicDiamondMetric(DiamondMetric, metaclass=ABCMeta):
     def __init__(
         self, n, in_prefix, out_prefix, cache, affine, linear_path,
-        spherical_path, planar_path=None, mask=None, shape=None,
-        colors=False, with_fw=False, with_res=False, with_hind=False,
-        **kwargs
+        spherical_path, planar_path=None, **kwargs
     ):
         super().__init__(
-            n, in_prefix, out_prefix, cache, affine, mask,
-            shape, colors, with_fw, with_res, with_hind, **kwargs
+            n, in_prefix, out_prefix, cache, affine, **kwargs
         )
 
         self.paths = {

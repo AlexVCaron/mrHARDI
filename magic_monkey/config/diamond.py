@@ -2,6 +2,7 @@ from os import cpu_count
 
 from traitlets import Float, Integer
 from traitlets.config import Bool, Enum, default
+from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import MagicMonkeyConfigurable
 from magic_monkey.traits.diamond import BoundingBox, Stick
@@ -26,6 +27,11 @@ _flags = {
     "res-tensor": (
         {'DiamondConfiguration': {'restriction_tensor': True}},
         "Use tensor distribution to estimate restricted compartment"
+    ),
+    "hindered": (
+        {'DiamondConfiguration': {'estimate_hindered': True}},
+        "Estimate additional hindered diffusion compartment "
+        "per fascicle using a tortuosity model"
     ),
     "b0": (
         {'DiamondConfiguration': {'estimate_b0': True}},
@@ -81,6 +87,7 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
     water_diff = Float(3E-3).tag(config=True)
     estimate_restriction = Bool(False).tag(config=True)
     restriction_tensor = Bool(False).tag(config=True)
+    estimate_hindered = Bool(False).tag(config=True)
 
     max_evals = Integer(600).tag(config=True)
     max_passes = Integer(10).tag(config=True)
@@ -109,6 +116,44 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
 
     def _validate(self):
         pass
+
+    def get_model_n_params(self):
+        n_fascicle_params = 8 if "NC" in self.fascicle else 6
+
+        n_add_params = 0
+        if self.estimate_water:
+            n_add_params += 2 if not self.water_tensor else 6
+
+        if self.estimate_restriction:
+            n_add_params += 2 if not self.restriction_tensor else 6
+
+        if self.estimate_hindered:
+            n_fascicle_params += 2
+
+        return n_fascicle_params * self.n_tensors + n_add_params
+
+    def optimize_n_params(self, max_n_params):
+        while self.get_model_n_params() > max_n_params:
+            if self.n_tensors > 4:
+                self.n_tensors -= 1
+            elif self.estimate_hindered:
+                self.estimate_hindered = False
+            elif self.estimate_restriction and self.restriction_tensor:
+                self.restriction_tensor = False
+            elif self.estimate_water and self.water_tensor:
+                self.water_tensor = False
+            elif self.estimate_restriction:
+                self.estimate_restriction = False
+            elif self.estimate_water:
+                self.estimate_water = False
+            elif self.n_tensors > 1:
+                self.n_tensors -= 1
+            else:
+                raise ConfigError(
+                    "Impossible to fit the number of parameters to the max "
+                    "required. Either supply a DWI volume with more directions "
+                    "or consider changing the fascicle model."    
+                )
 
     def serialize(self, *args, **kwargs):
         optionals = []
@@ -149,6 +194,7 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
             "--waterDiff {}".format(self.water_diff),
             "--isorfraction {}".format(int(self.estimate_restriction)),
             "--isorDiamond {}".format(int(self.restriction_tensor)),
+            "--hinderedicvf {}".format(int(self.estimate_hindered)),
             "--maxevals {}".format(self.max_evals),
             "--maxpasses {}".format(self.max_passes),
             "--initMD {}".format(self.md_higher_bound),
