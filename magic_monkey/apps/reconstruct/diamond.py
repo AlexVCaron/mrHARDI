@@ -1,9 +1,7 @@
 from os import getcwd
 from os.path import basename, join
 
-import numpy as np
-from traitlets import Bool, Dict, Instance, Unicode, Int
-from traitlets.config.loader import ArgumentError, ConfigError
+from traitlets import Bool, Dict, Instance, Unicode
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            mask_arg,
@@ -76,10 +74,6 @@ class Diamond(MagicMonkeyBaseApplication):
 
     n_threads = nthreads_arg(ignore_write=True)
 
-    b0_threshold = Int(
-        0, help="Upper b-value threshold for b0 volumes"
-    ).tag(config=True)
-
     verbose = Bool(
         False, help="Enables output of additional maps for debugging purposes"
     ).tag(config=True)
@@ -95,21 +89,6 @@ class Diamond(MagicMonkeyBaseApplication):
 
         if self.initial_dti:
             self.configuration.traits()["initial_stick"].tag(required=True)
-
-        data_name = self.image.split(".")[0]
-        bvals = np.loadtxt("{}.bval".format(data_name))
-        n_directions = np.sum(bvals > self.b0_threshold)
-        n_params = self.configuration.get_model_n_params()
-        if n_directions < n_params:
-            if self.configuration.strict_n_tensors:
-                raise ConfigError(
-                    "Number of parameters for the diamond model ({}) higher "
-                    "than the number of DWI directions provided ({})".format(
-                        n_params, n_directions
-                    )
-                )
-            else:
-                self.configuration.optimize_n_params(n_directions)
 
         super()._validate_required()
 
