@@ -2,7 +2,6 @@ from os import cpu_count
 
 from traitlets import Float, Integer
 from traitlets.config import Bool, Enum, default
-from traitlets.config.loader import ConfigError
 
 from magic_monkey.base.application import MagicMonkeyConfigurable
 from magic_monkey.traits.diamond import BoundingBox, Stick
@@ -36,11 +35,6 @@ _flags = {
         {'DiamondConfiguration': {'sum_fractions_to_1': False}},
         "Disable check on unitary compartment "
         "fractions vector inside each voxels"
-    ),
-    "lenient-n-tensors": (
-        {'DiamondConfiguration': {'strict_n_tensors': False}},
-        "Compute the number of parameters (tensors) that can "
-        "be estimated from the input DWI volume (up to n)"
     )
 }
 
@@ -113,50 +107,8 @@ class DiamondConfiguration(MagicMonkeyConfigurable):
 
     little_angles = Bool(False).tag(config=True)
 
-    strict_n_tensors = Bool(True).tag(config=True)
-
     def _validate(self):
         pass
-
-    def optimize_n_params(self, max_n_params):
-        n_fascicle_params = 8 if "NC" in self.fascicle else 6
-
-        n_add_params = 0
-        if self.estimate_water:
-            n_fw_params = 2 if not self.water_tensor else 6
-            n_add_params += n_fw_params
-
-        if self.estimate_restriction:
-            n_res_params = 2 if not self.restriction_tensor else 6
-            n_add_params += n_res_params
-
-        n_params = n_fascicle_params * self.n_tensors + n_add_params
-        while n_params > max_n_params:
-            if self.n_tensors > 4:
-                self.n_tensors -= 1
-            elif self.estimate_restriction and self.restriction_tensor:
-                self.restriction_tensor = False
-                n_add_params -= 4
-            elif self.estimate_water and self.water_tensor:
-                self.water_tensor = False
-                n_add_params -= 4
-            elif self.estimate_restriction:
-                self.estimate_restriction = False
-                n_add_params -= 2
-            elif self.estimate_water:
-                self.estimate_water = False
-                n_add_params -= 2
-            elif self.n_tensors > 1:
-                self.n_tensors -= 1
-            else:
-                raise ConfigError(
-                    "Impossible to fit the number of parameters to the max "
-                    "required. Either supply a DWI volume with more directions "
-                    "or consider changing the fascicle model."    
-                )
-
-            n_params = n_fascicle_params * self.n_tensors + n_add_params
-
 
     def serialize(self, *args, **kwargs):
         optionals = []
