@@ -20,19 +20,10 @@ WORKDIR /mrhardi
 ARG mrhardi_ver=develop
 RUN git fetch && git checkout --track origin/$mrhardi_ver
 
-FROM avcaron/mrhardi:base-nogpu
+FROM avcaron/mrhardi:dependencies
 
 ENV MATPLOTLIBRC="/usr/local/lib/python3.7/dist-packages/matplotlib/mpl-data/"
 ENV LC_ALL=en_US.utf8
-
-RUN apt-get update && apt-get -y install \
-    build-essential \
-    gfortran \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN python3 -m pip install Cython
-RUN python3 -m pip install numpy
-RUN python3 -m pip install setuptools==57.5.0
 
 WORKDIR /
 RUN mkdir -p /mrhs/dev/scilpy
