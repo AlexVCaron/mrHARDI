@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory, mkdtemp
 import numpy as np
 from scipy.io import loadmat
 from traitlets import Dict, Instance, Unicode, Bool
+from traitlets.config.loader import ArgumentError
 
 import nibabel as nib
 
@@ -135,6 +136,7 @@ _tr_aliases = {
     'out': 'AntsTransform.output',
     'ref': 'AntsTransform.transformation_ref',
     'trans': 'AntsTransform.transformations',
+    'inv': 'AntsTransform.invert',
     'bvecs': 'AntsTransform.bvecs'
 }
 
@@ -163,6 +165,11 @@ class AntsTransform(MagicMonkeyBaseApplication):
     transformations = MultipleArguments(
         Unicode(), help="List of transformations to "
                         "apply, following ANTs ordering."
+    ).tag(config=True, ignore_write=True)
+
+    invert = MultipleArguments(
+        Unicode(), help="List of boolean indicating if a "
+                        "transformation needs to be reversed"
     ).tag(config=True, ignore_write=True)
 
     output = output_prefix_argument()
@@ -199,8 +206,20 @@ class AntsTransform(MagicMonkeyBaseApplication):
         args = "-e {} -r {}".format(trans_type, self.transformation_ref)
 
         if self.transformations and len(self.transformations) > 0:
+            if not self.invert or len(self.invert) == 0:
+                invert = [False for _ in range(len(self.transformations))]
+            elif len(self.transformations) == len(self.invert):
+                invert = [i == "true" for i in self.invert]
+            else:
+                ArgumentError(
+                    "Number of invert flags doesn't "
+                    "match number of transformations"
+                )
+
             args += "".join(
-                " -t {}".format(t) for t in self.transformations
+                " -t [{},{}]".format(t, int(i)) for t, i in zip(
+                    self.transformations, invert
+                )
             )
 
         command = "antsApplyTransforms {}".format(
