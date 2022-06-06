@@ -289,7 +289,16 @@ RUN update-alternatives --set python3 /usr/bin/python3.7
 RUN python3 -m pip install pip
 RUN pip3 install --upgrade pip
 
+ENV MATPLOTLIBRC="/usr/local/lib/python3.7/dist-packages/matplotlib/mpl-data/"
+ENV LC_ALL=en_US.utf8
+
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install \
     python3.7-dev \
     python3.7-tk \
+    build-essential \
+    gfortran \
     && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install Cython
+RUN python3 -m pip install numpy
+RUN python3 -m pip install setuptools==57.5.0
