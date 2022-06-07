@@ -197,16 +197,25 @@ RUN apt-get update && apt-get -y install \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
-RUN mkdir -p /mrhs/dev
-WORKDIR /mrhs/dev
-RUN git clone https://github.com/cookpa/antsInstallExample.git ants
-WORKDIR /mrhs/dev/ants
-RUN chmod 777 installANTs.sh
-RUN ./installANTs.sh
-RUN rm -rf ANTs/ build/ LICENSE README.md installANTs.sh
-RUN mv install/* .
-RUN rm -rf install
-WORKDIR /mrhs/dev/ants/bin
+RUN mkdir ants_build &&\
+    git clone https://github.com/ANTsX/ANTs.git
+WORKDIR /ANTs
+RUN git fetch --tags &&\
+    git checkout tags/v2.3.4 -b v2.3.4
+WORKDIR /ants_build
+RUN cmake \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DUSE_VTK=OFF \
+    -DSuperBuild_ANTS_USE_GIT_PROTOCOL=OFF \
+    -DBUILD_TESTING=OFF \
+    -DRUN_LONG_TESTS=OFF \
+    -DRUN_SHORT_TESTS=OFF \
+    -DCMAKE_INSTALL_PREFIX=/mrhs/dev \
+    ../ANTs && \
+    make -j 2
+WORKDIR /ants_build/ANTS-build
+RUN make install
+WORKDIR /mrhs/dev/ANTs/bin
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
@@ -236,12 +245,12 @@ WORKDIR /
 RUN mkdir -p /mrhs/dev/fsl
 RUN mkdir -p /mrhs/dev/mrtrix
 RUN mkdir -p /mrhs/dev/diamond
-RUN mkdir -p /mrhs/dev/ants
+RUN mkdir -p /mrhs/dev/ANTs
 RUN mkdir -p /nmt
 COPY --from=fsl_builder /mrhs/dev/fsl /mrhs/dev/fsl
 COPY --from=mrtrix_builder /mrhs/dev/mrtrix /mrhs/dev/mrtrix
 COPY --from=diamond_builder /mrhs/dev/diamond /mrhs/dev/diamond
-COPY --from=ants_builder /mrhs/dev/ants /mrhs/dev/ants
+COPY --from=ants_builder /mrhs/dev/ANTs /mrhs/dev/ants
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_SS.nii.gz /nmt/NMT_v2.0_asym_SS.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_segmentation.nii.gz /nmt/NMT_v2.0_asym_segmentation.nii.gz
 COPY --from=file_wget /NMT_v2.0_asym/NMT_v2.0_asym/NMT_v2.0_asym_GM_cortical_mask.nii.gz /nmt/NMT_v2.0_asym_GM_cortical_mask.nii.gz
