@@ -4,7 +4,7 @@ from tempfile import TemporaryDirectory, mkdtemp
 
 import numpy as np
 from scipy.io import loadmat
-from traitlets import Dict, Instance, Unicode, Bool
+from traitlets import Dict, Instance, Unicode, Bool, Enum
 from traitlets.config.loader import ArgumentError
 
 import nibabel as nib
@@ -134,6 +134,7 @@ class AntsRegistration(MagicMonkeyBaseApplication):
 _tr_aliases = {
     'in': 'AntsTransform.image',
     'out': 'AntsTransform.output',
+    'dtype': 'AntsTransform.out_type',
     'ref': 'AntsTransform.transformation_ref',
     'trans': 'AntsTransform.transformations',
     'inv': 'AntsTransform.invert',
@@ -172,6 +173,13 @@ class AntsTransform(MagicMonkeyBaseApplication):
                         "transformation needs to be reversed"
     ).tag(config=True, ignore_write=True)
 
+    out_type = Enum(
+        ["char", "uchar", "short", "int", "float", "double"],
+        None,
+        allow_none=True,
+        help="Output datatype for the transformed image"
+    ).tag(config=True)
+
     output = output_prefix_argument()
 
     aliases = Dict(default_value=_tr_aliases)
@@ -204,6 +212,9 @@ class AntsTransform(MagicMonkeyBaseApplication):
             trans_type = ImageType.VECTOR.value
 
         args = "-e {} -r {}".format(trans_type, self.transformation_ref)
+
+        if self.out_type:
+            args += " -u {}".format(self.out_type)
 
         if self.transformations and len(self.transformations) > 0:
             if not self.invert or len(self.invert) == 0:
