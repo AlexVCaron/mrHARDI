@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 FROM avcaron/mrhardi:nogpu
 
 RUN apt-get update && apt-get install -y \

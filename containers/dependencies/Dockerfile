@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 FROM ubuntu:18.04 AS base
 
 RUN apt-get update && apt-get -y install --no-install-recommends \
@@ -212,7 +213,7 @@ RUN cmake \
     -DRUN_SHORT_TESTS=OFF \
     -DCMAKE_INSTALL_PREFIX=/mrhs/dev \
     ../ANTs && \
-    make -j 2
+    make -j $(nproc --all)
 WORKDIR /ants_build/ANTS-build
 RUN make install
 WORKDIR /mrhs/dev/ANTs/bin
