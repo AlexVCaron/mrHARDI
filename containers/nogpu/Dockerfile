@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.4
+
 FROM alpine:latest AS git_cloner
 
 RUN apk add --no-cache git
