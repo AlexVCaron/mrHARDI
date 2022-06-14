@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1.4
-FROM avcaron/mrhardi:nogpu
+
+FROM nogpu as nvidia
 
 RUN apt-get update && apt-get install -y \
     build-essential \
