@@ -41,8 +41,8 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
         super().__init__(
             in_prefix, out_prefix, cache, affine, mask, shape, colors
         )
-        self.n = min(self._max_n_from_model_selection(), n)
         self.mose = mosemap
+        self.n = min(self._max_n_from_model_selection(), n)
         self.fw = with_fw
         self.res = with_res
         self.hin = with_hind
