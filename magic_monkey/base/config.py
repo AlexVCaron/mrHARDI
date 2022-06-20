@@ -244,18 +244,15 @@ class DiamondConfigLoader:
         xml_config = xml_parser.parse(xml_filename).getroot()
 
         metadata = xml_config.find("MetaData")
-        self._target_app.n_fascicles = int(
-            metadata.find("NTensors").get("value")
-        )
-        self._target_app.free_water = bool(
-            metadata.find("EstimateFreeWaterDiffusivity").get("value")
-        )
-        self._target_app.restricted = bool(
-            metadata.find("EstimateIsotropic2Diffusivity").get("value")
-        )
-        self._target_app.hindered = bool(
-            metadata.find("HinderedICVF").get("value")
-        )
+        n_fascicles = metadata.find("NTensors").get("value")
+        free_water = metadata.find("EstimateFreeWaterDiffusivity").get("value")
+        restricted = metadata.find("EstimateIsotropic2Diffusivity").get("value")
+        hindered = metadata.find("HinderedICVF").get("value")
+
+        self._target_app.n_fascicles = int(n_fascicles)
+        self._target_app.free_water = free_water.lower() == "true"
+        self._target_app.restricted = restricted.lower() == "true"
+        self._target_app.hindered = hindered.lower() == "true"
 
         if metadata.find("AutoModelSelection").get("value") == "none":
             self._target_app.traits()["model_selection"].tag(required=True)
