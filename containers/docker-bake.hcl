@@ -14,6 +14,7 @@ group "nogpu" {
 
 target "base" {
     dockerfile = "base/base_image.Dockerfile"
+    output = ["type=cacheonly"]
 }
 
 target "cmake" {
@@ -21,10 +22,12 @@ target "cmake" {
         base_image = "target:base"
     }
     dockerfile = "base/cmake_builder.Dockerfile"
+    output = ["type=cacheonly"]
 }
 
 target "web_fetcher" {
     dockerfile = "base/web_fetcher.Dockerfile"
+    output = ["type=cacheonly"]
 }
 
 target "fsl" {
@@ -32,6 +35,7 @@ target "fsl" {
         base_image = "target:base"
     }
     dockerfile = "dependencies/builders/fsl.Dockerfile"
+    output = ["type=cacheonly"]
 }
 
 target "mrtrix" {
@@ -39,6 +43,7 @@ target "mrtrix" {
         base_image = "target:base"
     }
     dockerfile = "dependencies/builders/mrtrix.Dockerfile"
+    output = ["type=cacheonly"]
 }
 
 target "diamond" {
@@ -46,6 +51,7 @@ target "diamond" {
         cmake_builder = "target:cmake"
     }
     dockerfile = "dependencies/builders/diamond.Dockerfile"
+    output = ["type=cacheonly"]
 }
 
 target "ants" {
@@ -53,6 +59,7 @@ target "ants" {
         cmake_builder = "target:cmake"
     }
     dockerfile = "dependencies/builders/ants.Dockerfile"
+    output = ["type=cacheonly"]
 }
 
 target "dependencies" {
@@ -66,6 +73,8 @@ target "dependencies" {
     }
     dockerfile = "dependencies/Dockerfile"
     tags = ["docker.io/avcaron/mrhardi:dependencies"]
+    cache-from = ["avcaron/mrhardi:dependencies"]
+    pull = true
 }
 
 target "scilpy" {
@@ -74,6 +83,7 @@ target "scilpy" {
         dependencies = "target:dependencies"
     }
     dockerfile = "nogpu/builders/scilpy.Dockerfile"
+    output = ["type=cacheonly"]
 }
 
 target "nogpu" {
