@@ -6,18 +6,6 @@ definitions:
       image: docker:dind
 
 pipelines:
-  default:
-    - step:
-        name: Build and Test
-        image: avcaron/bitbuilder:latest
-        runs-on: self.hosted
-        script:
-          - export DOCKER_BUILDKIT=1
-          - cd containers
-          - docker buildx bake --pull
-        services:
-          - docker
-
   branches:
     master:
       - step:
