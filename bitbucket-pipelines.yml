@@ -9,6 +9,7 @@ pipelines:
   default:
     - step:
         name: Build and Test
+        image: avcaron/bitbuilder:latest
         runs-on: self.hosted
         script:
           - export DOCKER_BUILDKIT=1
@@ -20,6 +21,7 @@ pipelines:
     master:
       - step:
           name: Build and publish to dockerhub
+          image: avcaron/bitbuilder:latest
           runs-on: self.hosted
           script:
             - export DOCKER_BUILDKIT=1
@@ -30,6 +32,7 @@ pipelines:
     develop:
       - step:
           name: Build and publish to dockerhub
+          image: avcaron/bitbuilder:latest
           runs-on: self.hosted
           deployment: Production
           script:
