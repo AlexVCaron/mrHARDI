@@ -1,0 +1,37 @@
+image: atlassian/default-image:3
+
+pipelines:
+  default:
+    - step:
+        name: Build and Test
+        script:
+          - docker buildx bake -f containers/docker-bake.hcl --pull
+        services:
+          - docker
+        caches:
+          - docker
+
+  branches:
+    master:
+      - step:
+          name: Build and publish to dockerhub
+          script:
+            - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+            - docker buildx bake -f containers/docker-bake.hcl --pull --push
+          services:
+            - docker
+    develop:
+      - step:
+          name: Build and publish to dockerhub
+          deployment: Production
+          script:
+            - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+            - docker buildx bake -f containers/docker-bake.hcl --pull
+            - docker tag avcaron/mrhardi:latest avcaron/mrhardi:dev-latest
+            - docker tag avcaron/mrhardi:nogpu avcaron/mrhardi:dev-nogpu
+            - docker tag avcaron/mrhardi:gpu avcaron/mrhardi:dev-gpu
+            - docker push avcaron/mrhardi:dev-latest
+            - docker push avcaron/mrhardi:dev-nogpu
+            - docker push avcaron/mrhardi:dev-gpu
+          services:
+            - docker
