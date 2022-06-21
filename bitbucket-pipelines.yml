@@ -13,7 +13,8 @@ pipelines:
         runs-on: self.hosted
         script:
           - export DOCKER_BUILDKIT=1
-          - docker buildx bake -f containers/docker-bake.hcl --pull
+          - cd containers
+          - docker buildx bake --pull
         services:
           - docker
 
@@ -26,7 +27,8 @@ pipelines:
           script:
             - export DOCKER_BUILDKIT=1
             - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
-            - docker buildx bake -f containers/docker-bake.hcl --pull --push
+            - cd containers
+            - docker buildx bake --pull --push
           services:
             - docker
     develop:
@@ -38,7 +40,8 @@ pipelines:
           script:
             - export DOCKER_BUILDKIT=1
             - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
-            - docker buildx bake -f containers/docker-bake.hcl --pull
+            - cd containers
+            - docker buildx bake --pull
             - docker tag avcaron/mrhardi:latest avcaron/mrhardi:dev-latest
             - docker tag avcaron/mrhardi:nogpu avcaron/mrhardi:dev-nogpu
             - docker tag avcaron/mrhardi:gpu avcaron/mrhardi:dev-gpu
