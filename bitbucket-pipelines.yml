@@ -6,30 +6,36 @@ definitions:
       image: docker:dind
 
 pipelines:
+  default:
+    - step:
+        name: Build and Test
+        runs-on: self.hosted
+        script:
+          - export DOCKER_BUILDKIT=1
+          - docker buildx bake -f containers/docker-bake.hcl --pull
+        services:
+          - docker
+
   branches:
     master:
       - step:
           name: Build and publish to dockerhub
-          image: avcaron/bitbuilder:latest
           runs-on: self.hosted
           script:
             - export DOCKER_BUILDKIT=1
             - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
-            - cd containers
-            - docker buildx bake --pull --push
+            - docker buildx bake -f containers/docker-bake.hcl --pull --push
           services:
             - docker
     develop:
       - step:
           name: Build and publish to dockerhub
-          image: avcaron/bitbuilder:latest
           runs-on: self.hosted
           deployment: Production
           script:
             - export DOCKER_BUILDKIT=1
             - echo ${DOCKERHUB_PASSWORD} | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
-            - cd containers
-            - docker buildx bake --pull
+            - docker buildx bake -f containers/docker-bake.hcl --pull
             - docker tag avcaron/mrhardi:latest avcaron/mrhardi:dev-latest
             - docker tag avcaron/mrhardi:nogpu avcaron/mrhardi:dev-nogpu
             - docker tag avcaron/mrhardi:gpu avcaron/mrhardi:dev-gpu
