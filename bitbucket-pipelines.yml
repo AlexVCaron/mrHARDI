@@ -19,6 +19,8 @@ pipelines:
             - docker buildx bake --pull --push
           services:
             - docker
+          caches:
+            - docker
     develop:
       - step:
           name: Build and publish to dockerhub
@@ -37,4 +39,6 @@ pipelines:
             - docker push avcaron/mrhardi:dev-nogpu
             - docker push avcaron/mrhardi:dev-gpu
           services:
+            - docker
+          caches:
             - docker
