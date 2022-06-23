@@ -28,16 +28,11 @@ def pick_b0(b0_mask, b0_strides):
     return b0_mask
 
 
-def mean_b0_clusters(dwi_img, mask, output_shape):
-    b0_clusters = np.ma.notmasked_contiguous(mask, axis=0)
-    output_vol = np.zeros(output_shape + (0,))
-    for cluster in b0_clusters:
-        output_vol = np.concatenate((
-            output_vol,
-            np.mean(dwi_img.dataobj[..., cluster].reshape(
-                output_shape + (-1,)), axis=-1
-            )[..., None]
-        ), axis=-1)
+def mean_b0_clusters(dwi_img, b0_mask, output_shape):
+    b0_clusters = np.ma.notmasked_contiguous(b0_mask, axis=0)
+    output_vol = np.zeros(output_shape + (len(b0_clusters),))
+    for i, cluster in enumerate(b0_clusters):
+        output_vol[..., i] = np.mean(dwi_img.dataobj[..., cluster], axis=-1)
 
     return output_vol
 
@@ -62,8 +57,8 @@ def extract_b0(
         print("Applying mean to b0 in batch")
         mask = np.ma.masked_array(b0_mask)
         mask[~b0_mask] = np.ma.masked
-        b0_vol = mean_b0_clusters(dwi_img, mask, dwi_img.shape[:-1])
-        print("Found {} mean b0 volumes in dataset".format(b0_vol.shape[-1]))
+        b0_vols = mean_b0_clusters(dwi_img, mask, dwi_img.shape[:-1])
+        print("Found {} mean b0 volumes in dataset".format(b0_vols.shape[-1]))
 
         if metadata:
             clusters = np.ma.notmasked_contiguous(mask, axis=0)
@@ -73,7 +68,7 @@ def extract_b0(
                 acquisition[cluster.start] for cluster in clusters
             ])
 
-            metadata.n = b0_vol.shape[-1]
+            metadata.n = b0_vols.shape[-1]
 
             directions = []
             for i, cl in enumerate(clusters):
@@ -97,12 +92,11 @@ def extract_b0(
             metadata.directions = dd
     else:
         b0_clusters = np.ma.notmasked_contiguous(mask, axis=0)
-        b0_vol = np.zeros(dwi_img.shape[:-1] + (0,))
+        idx, b0_vols = 0, np.zeros(dwi_img.shape[:-1] + (np.sum(mask),))
         for cluster in b0_clusters:
-            b0_vol = np.concatenate((
-                b0_vol,
-                dwi_img.dataobj[..., cluster]
-            ), axis=-1)
+            len_cluster = cluster.stop - cluster.start
+            b0_vols[..., idx:idx + len_cluster] = dwi_img.dataobj[..., cluster]
+            idx += len_cluster
 
         if metadata:
             print(metadata.acquisition_slices_to_list())
@@ -141,13 +135,13 @@ def extract_b0(
 
             metadata.directions = dd
 
-            metadata.n = b0_vol.shape[-1]
+            metadata.n = b0_vols.shape[-1]
 
-        print("Found {} b0 volumes in dataset".format(b0_vol.shape[-1]))
+        print("Found {} b0 volumes in dataset".format(b0_vols.shape[-1]))
 
         if mean is B0PostProcess.whole:
             print("Applying mean to whole b0 volume")
-            b0_vol = np.mean(b0_vol, axis=-1)[..., None]
+            b0_vols = np.mean(b0_vols, axis=-1)[..., None]
 
             if metadata:
                 metadata.n = 1
@@ -158,7 +152,7 @@ def extract_b0(
                     "range": (0, 1)
                 }]
 
-    return b0_vol.astype(dtype)
+    return b0_vols.astype(dtype)
 
 
 def squash_b0(
@@ -168,6 +162,7 @@ def squash_b0(
     b0_mask = b0_comp(bvals, ceil)
     mask = np.ma.masked_array(b0_mask)
     mask[~b0_mask] = np.ma.masked
+
     b0_clusters = list(np.ma.notmasked_contiguous(mask, axis=0))
     dwi_clusters = list(np.ma.clump_masked(mask))
 
@@ -175,10 +170,12 @@ def squash_b0(
 
     if mean is B0PostProcess.whole:
         meta_b0 = metadata.copy() if metadata else None
-        b0 = extract_b0(
+        output = np.zeros(dwi_img.shape[:3] + (1 + np.sum(~b0_mask),))
+        output[..., 0] = extract_b0(
             dwi_img, bvals, mean=mean, ceil=ceil,
             b0_comp=b0_comp, metadata=meta_b0, dtype=dtype
         )
+
         if metadata:
             for cl in b0_clusters:
                 curr_cl = deepcopy(cl)
@@ -202,14 +199,14 @@ def squash_b0(
             meta_b0.extend(metadata)
             metadata.becomes(meta_b0)
 
+        idx = 1
         for cluster in dwi_clusters:
-            b0 = np.concatenate((
-                b0,
-                dwi_img.dataobj[..., cluster]
-            ), axis=-1)
+            len_cluster = cluster.stop - cluster.start
+            output[..., idx:idx + len_cluster] = dwi_img.dataobj[..., cluster]
+            idx += len_cluster
 
         ret_tuple = (
-            b0.astype(dtype), np.hstack(([0], bvals[~b0_mask]))[None, :]
+            output.astype(dtype), np.hstack(([0], bvals[~b0_mask]))[None, :]
         )
 
         if bvecs is not None:
@@ -326,9 +323,10 @@ def normalize_to_b0(
             mean_val = np.mean(data[..., b0_clusters[-1]])
         else:
             mean_val = np.mean(data[..., b0_clusters[-1].start])
-        modif = ref_mean if np.isclose(mean_val, 0) else ref_mean / mean_val
 
-        data[..., dwi_clusters[-1]] *= modif
+        if not np.isclose(mean_val, 0):
+            data[..., dwi_clusters[-1]] *= ref_mean / mean_val
+
         dwi_clusters = dwi_clusters[:-1]
 
     for i in range(len(dwi_clusters)):
@@ -337,10 +335,10 @@ def normalize_to_b0(
         if mean == B0PostProcess.batch:
             mean_val = np.mean(data[..., b0_clusters[i]])
         else:
-            mean_val = np.mean(data[..., b0_clusters[i].end - 1])
+            mean_val = np.mean(data[..., b0_clusters[i].stop - 1])
 
         if ref_strategy == B0Reference.linear:
-            weight = np.arange(len_cl).astype(float) / (len_cl - 1)
+            weight = np.arange(len_cl).astype(float) / (len_cl - 1.)
             if mean == B0PostProcess.batch:
                 mean_val_p1 = np.mean(data[..., b0_clusters[i + 1]])
             else:
@@ -349,11 +347,14 @@ def normalize_to_b0(
         else:
             modif = mean_val
 
-        data[..., dwi_clusters[i]] *= ref_mean / modif
+        for mod, cl in zip(modif, dwi_clusters[i]):
+            if not np.isclose(mod, 0.):
+                data[..., cl] *= ref_mean / mod
 
     for i in range(len(b0_clusters)):
         mean_cluster = np.mean(data[..., b0_clusters[i]])
-        data[..., b0_clusters[i]] *= ref_mean / mean_cluster
+        if not np.isclose(mean_cluster, 0.):
+            data[..., b0_clusters[i]] *= ref_mean / mean_cluster
 
     if reference_last:
         data = data[..., ::-1]
