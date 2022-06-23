@@ -1,7 +1,9 @@
 from os import getcwd
 from os.path import basename, join
 
-from traitlets import Bool, Dict, Instance, Unicode
+import numpy as np
+from traitlets import Bool, Dict, Instance, Unicode, Int
+from traitlets.config.loader import ArgumentError, ConfigError
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            mask_arg,
@@ -23,6 +25,12 @@ _flags = {
     "verbose": (
         {'Diamond': {'verbose': True}},
         "Enables output of additional maps for debugging purposes"
+    ),
+    "lenient-params": (
+        {'Diamond': {'strict_params': False}},
+        "In the case the number of directions provided in the DWI volume "
+        "is under the requirements for the configuration, reduce the "
+        "complexity of the model until the requirements are met"
     )
 }
 
@@ -74,6 +82,16 @@ class Diamond(MagicMonkeyBaseApplication):
 
     n_threads = nthreads_arg(ignore_write=True)
 
+    strict_params = Bool(
+        True, help="Force the estimation to run even if the number "
+                   "of directions is under the requirements. If false, "
+                   "the number of parameters will be reduced gradually"
+    ).tag(config=True)
+
+    b0_threshold = Int(
+        0, help="Upper b-value threshold for b0 volumes"
+    ).tag(config=True)
+
     verbose = Bool(
         False, help="Enables output of additional maps for debugging purposes"
     ).tag(config=True)
@@ -89,6 +107,21 @@ class Diamond(MagicMonkeyBaseApplication):
 
         if self.initial_dti:
             self.configuration.traits()["initial_stick"].tag(required=True)
+
+        data_name = self.image.split(".")[0]
+        bvals = np.loadtxt("{}.bval".format(data_name))
+        n_directions = np.sum(bvals > self.b0_threshold)
+        n_params = self.configuration.get_model_n_params()
+        if n_directions < n_params:
+            if self.strict_params:
+                raise ConfigError(
+                    "Number of parameters for the diamond model ({}) higher "
+                    "than the number of DWI directions provided ({})".format(
+                        n_params, n_directions
+                    )
+                )
+            else:
+                self.configuration.optimize_n_params(n_directions)
 
         super()._validate_required()
 

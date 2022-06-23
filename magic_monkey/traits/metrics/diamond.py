@@ -36,11 +36,12 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
     def __init__(
         self, n, in_prefix, out_prefix, cache, affine,
         mask=None, shape=None, colors=False, with_fw=False,
-        with_res=False, with_hind=False, **kwargs
+        with_res=False, with_hind=False, mosemap=None, **kwargs
     ):
         super().__init__(
             in_prefix, out_prefix, cache, affine, mask, shape, colors
         )
+        self.mose = mosemap
         self.n = min(self._max_n_from_model_selection(), n)
         self.fw = with_fw
         self.res = with_res
@@ -127,9 +128,11 @@ class DiamondMetric(BaseMetric, metaclass=ABCMeta):
         return int(ms.max())
 
     def _get_model_selection(self, add_keys=()):
+        mosemap = self.mose if self.mose else "{}_mosemap.nii.gz".format(
+            self.prefix
+        )
         return self.load_from_cache(
-            add_keys + ("mosemap",),
-            lambda _: self._load_image("{}_mosemap.nii.gz".format(self.prefix))
+            add_keys + ("mosemap",), lambda _: self._load_image(mosemap)
         )
 
     def _get_fascicle_mask(self, i, add_keys=()):

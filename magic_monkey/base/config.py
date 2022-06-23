@@ -1,3 +1,5 @@
+from xml.etree import ElementTree as xml_parser
+
 from ipython_genutils.text import wrap_paragraphs
 from traitlets.config import (Configurable,
                               HasTraits,
@@ -232,3 +234,25 @@ class ConfigurationWriter:
             lines.append('')
 
         return '\n'.join(lines)
+
+
+class DiamondConfigLoader:
+    def __init__(self, diamond_metrics_app):
+        self._target_app = diamond_metrics_app
+
+    def read_config(self, xml_filename):
+        xml_config = xml_parser.parse(xml_filename).getroot()
+
+        metadata = xml_config.find("MetaData")
+        n_fascicles = metadata.find("NTensors").get("value")
+        free_water = metadata.find("EstimateFreeWaterDiffusivity").get("value")
+        restricted = metadata.find("EstimateIsotropic2Diffusivity").get("value")
+        hindered = metadata.find("HinderedICVF").get("value")
+
+        self._target_app.n_fascicles = int(n_fascicles)
+        self._target_app.free_water = free_water.lower() == "true"
+        self._target_app.restricted = restricted.lower() == "true"
+        self._target_app.hindered = hindered.lower() == "true"
+
+        if metadata.find("AutoModelSelection").get("value") == "none":
+            self._target_app.traits()["model_selection"].tag(required=True)

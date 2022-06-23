@@ -4,7 +4,8 @@ from tempfile import TemporaryDirectory, mkdtemp
 
 import numpy as np
 from scipy.io import loadmat
-from traitlets import Dict, Instance, Unicode, Bool
+from traitlets import Dict, Instance, Unicode, Bool, Enum
+from traitlets.config.loader import ArgumentError
 
 import nibabel as nib
 
@@ -133,8 +134,10 @@ class AntsRegistration(MagicMonkeyBaseApplication):
 _tr_aliases = {
     'in': 'AntsTransform.image',
     'out': 'AntsTransform.output',
+    'dtype': 'AntsTransform.out_type',
     'ref': 'AntsTransform.transformation_ref',
     'trans': 'AntsTransform.transformations',
+    'inv': 'AntsTransform.invert',
     'bvecs': 'AntsTransform.bvecs'
 }
 
@@ -164,6 +167,18 @@ class AntsTransform(MagicMonkeyBaseApplication):
         Unicode(), help="List of transformations to "
                         "apply, following ANTs ordering."
     ).tag(config=True, ignore_write=True)
+
+    invert = MultipleArguments(
+        Unicode(), help="List of boolean indicating if a "
+                        "transformation needs to be reversed"
+    ).tag(config=True, ignore_write=True)
+
+    out_type = Enum(
+        ["char", "uchar", "short", "int", "float", "double"],
+        None,
+        allow_none=True,
+        help="Output datatype for the transformed image"
+    ).tag(config=True)
 
     output = output_prefix_argument()
 
@@ -198,9 +213,24 @@ class AntsTransform(MagicMonkeyBaseApplication):
 
         args = "-e {} -r {}".format(trans_type, self.transformation_ref)
 
+        if self.out_type:
+            args += " -u {}".format(self.out_type)
+
         if self.transformations and len(self.transformations) > 0:
+            if not self.invert or len(self.invert) == 0:
+                invert = [False for _ in range(len(self.transformations))]
+            elif len(self.transformations) == len(self.invert):
+                invert = [i == "true" for i in self.invert]
+            else:
+                ArgumentError(
+                    "Number of invert flags doesn't "
+                    "match number of transformations"
+                )
+
             args += "".join(
-                " -t {}".format(t) for t in self.transformations
+                " -t [{},{}]".format(t, int(i)) for t, i in zip(
+                    self.transformations, invert
+                )
             )
 
         command = "antsApplyTransforms {}".format(

@@ -66,7 +66,7 @@ then
     bargs="$bargs --mask=$mask"
 fi
 
-{executable} $bargs $args {more_args} --out=$output --very_verbose {debug_args}
+{executable} $bargs $args {more_args} --out=$output {debug_args}
 """
 
 _description = """
@@ -218,6 +218,7 @@ class Eddy(MagicMonkeyBaseApplication):
 
             debug_args = ""
             if self.debug:
+                debug_args = "--very_verbose "
                 dargs = [
                     "fields", "dfields", "cnr_maps", "range_cnr_maps",
                     "residuals", "history", "write_predictions"
@@ -235,7 +236,7 @@ class Eddy(MagicMonkeyBaseApplication):
                 ):
                     dargs.extend(["with_outliers"])
 
-                debug_args = " ".join("--{}=True".format(d) for d in dargs)
+                debug_args += " ".join("--{}=True".format(d) for d in dargs)
 
             if self.eddy_on_rev:
                 bvals = np.loadtxt("{}.bval".format(self.image), ndmin=1)
