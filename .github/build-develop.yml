@@ -3,7 +3,7 @@ name: Build mrHARDI docker
 on:
   push:
     branches:
-      - 'master'
+      - 'develop'
 
 jobs:
   buildx_bake:
@@ -24,9 +24,9 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
-        name: Build image stack and push
+        name: Build image stack
         uses: docker/bake-action@v2.1.0
         working-directory: ./containers
         with:
           pull: true
-          push: true
+          push: false
