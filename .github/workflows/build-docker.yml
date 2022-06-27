@@ -25,8 +25,8 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
         name: Build image stack and push
-        uses: docker/bake-action@v2.1.0
-        working-directory: ./containers
+        uses: docker/bake-action@78e325fad8b5b74acf4be76f371e8e7577e527d7
         with:
+          working-directory: ./containers
           pull: true
           push: true
