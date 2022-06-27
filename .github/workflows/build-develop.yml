@@ -36,8 +36,8 @@ jobs:
         name : Save docker artifacts
         run: |
           mkdir -p mrhardi/docker
-          docker save avcaron/mrhardi:nogpu -o mrhardi/docker/nogpu.tar
-          docker save avcaron/mrhardi:gpu -o mrhardi/docker/gpu.tar
+          docker save -o mrhardi/docker/nogpu.tar avcaron/mrhardi:nogpu
+          docker save -o mrhardi/docker/gpu.tar avcaron/mrhardi:gpu
       - 
         name: Setup singularity
         uses: eWaterCycle/setup-singularity@v7
