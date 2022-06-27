@@ -8,7 +8,7 @@ setup(
         ".nextflow/", ".vagrant/", "nextflow/"
     ]),
     url='',
-    license='MIT',
+    license='',
     author='Alex Valcourt Caron',
     author_email='alex.valcourt.caron@usherbrooke.ca',
     description='',
@@ -18,12 +18,5 @@ setup(
         ],
         'distutils.commands': ['document=magic_monkey.setup:Document']
     },
-    python_requires='>=3.7,<3.10',
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Development Status :: 3 - Alpha",
-        "Intended Audience :: Science/Research",
-        "Operating System :: POSIX :: Linux"
-    ]
+    python_requires='>=3.7'
 )
