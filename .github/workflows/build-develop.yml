@@ -32,3 +32,26 @@ jobs:
           working-directory: ./containers
           pull: true
           push: false
+      -
+        name : Save docker artifacts
+        run: |
+          mkdir -p mrhardi/docker
+          docker save avcaron/mrhardi:nogpu -o mrhardi/docker/nogpu.tar
+          docker save avcaron/mrhardi:gpu -o mrhardi/docker/gpu.tar
+      - 
+        name: Setup singularity
+        uses: eWaterCycle/setup-singularity@v7
+        with:
+          singularity-version: 3.8.3
+      -
+        name: Build singularity images
+        run: |
+          mkdir -p mrhardi/singularity
+          sudo singularity build mrhardi/singularity/nogpu.sif docker-archive://mrhardi/docker/nogpu.tar
+          sudo singularity build mrhardi/singularity/gpu.sif docker-archive://mrhardi/docker/gpu.tar
+      -
+        name : Upload docker artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: mrhardi_develop
+          path: mrhardi/
