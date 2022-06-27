@@ -26,12 +26,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
-        name: Build image stack
+        name: Build docker image stack
         uses: docker/bake-action@78e325fad8b5b74acf4be76f371e8e7577e527d7
         with:
           working-directory: ./containers
           pull: true
-          load: true
+          set: |
+            nogpu.output=type=docker
+            latest.output=type=docker
       -
         name : Save docker artifacts
         run: |
@@ -51,7 +53,7 @@ jobs:
           sudo singularity build mrhardi/singularity/nogpu.sif docker-archive://mrhardi/docker/nogpu.tar
           sudo singularity build mrhardi/singularity/gpu.sif docker-archive://mrhardi/docker/gpu.tar
       -
-        name : Upload docker artifacts
+        name : Upload workflow artifacts
         uses: actions/upload-artifact@v3
         with:
           name: mrhardi_develop
