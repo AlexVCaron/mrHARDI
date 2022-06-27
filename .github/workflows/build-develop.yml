@@ -36,6 +36,7 @@ jobs:
         with:
           working-directory: ./containers
           pull: true
+          load: true
           set: |
             nogpu.output=type=docker
             latest.output=type=docker
