@@ -36,6 +36,7 @@ jobs:
         name : Save docker artifacts
         run: |
           mkdir -p mrhardi/docker
+          docker image list
           docker save -o mrhardi/docker/nogpu.tar avcaron/mrhardi:nogpu
           docker save -o mrhardi/docker/gpu.tar avcaron/mrhardi:gpu
       - 
@@ -55,3 +56,5 @@ jobs:
         with:
           name: mrhardi_develop
           path: mrhardi/
+          retention-days: 14
+          if-no-files-found: warn
