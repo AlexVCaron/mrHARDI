@@ -7,11 +7,20 @@ on:
       - 'feat/github_ci'
 
 jobs:
-  buildx_bake:
+  mrhardi-creative-bakery:
     runs-on: ubuntu-latest
     environment: CI
 
     steps:
+      -
+        name: Maximize disk usage
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 4096
+          temp-reserve-mb: 4096
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
       -
         name: Checkout
         uses: actions/checkout@v3
