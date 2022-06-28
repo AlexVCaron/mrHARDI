@@ -83,9 +83,9 @@ jobs:
           export SINGULARITY_TMPDIR="$(pwd)/sif_tmp"
           export SINGULARITY_CACHEDIR="$(pwd)/sif_cache"
           echo "Caching and temping singularity at : $SINGULARITY_CACHEDIR and $SINGULARITY_TMPDIR"
-          singularity build mrhardi/singularity/gpu.sif docker://avcaron/mrhardi-dev:gpu
-          oras login mrhardi.azurecr.io --username ${{ secrets.ACR_USERNAME }} --password ${{ secrets.ACR_TOKEN }}
-          singularity push mrhardi/singularity/gpu.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi-dev:gpu
+          singularity build mrhardi_dev_gpu.sif docker://avcaron/mrhardi-dev:gpu
+          echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
+          singularity push mrhardi_dev_gpu.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi-dev:gpu
       -
         name: Write artifacts manifest
         run: |
