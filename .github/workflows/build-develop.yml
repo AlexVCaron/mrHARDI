@@ -19,11 +19,6 @@ jobs:
         name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@v2
-      - 
-        name: Enable docker cache resolution
-        uses: satackey/action-docker-layer-caching@v0.0.11
-        # Ignore the failure of a step and avoid terminating the job.
-        continue-on-error: true
       -
         name: Login to DockerHub
         uses: docker/login-action@v2
@@ -36,28 +31,20 @@ jobs:
         with:
           working-directory: ./containers
           pull: true
-          load: true
+          push: true
           set: |
-            nogpu.output=type=docker
-            latest.output=type=docker
-      -
-        name : Save docker artifacts
-        run: |
-          mkdir -p mrhardi/docker
-          docker image list
-          docker save -o mrhardi/docker/nogpu.tar avcaron/mrhardi:nogpu
-          docker save -o mrhardi/docker/gpu.tar avcaron/mrhardi:gpu
+            nogpu.tags=docker.io/avcaron/mrhardi-dev:nogpu
+            latest.tags=docker.io/avcaron/mrhardi-dev:gpu
       - 
         name: Setup singularity
         uses: eWaterCycle/setup-singularity@v7
         with:
-          singularity-version: 3.8.3
+          singularity-version: 3.7.1
       -
-        name: Build singularity images
+        name: Build singularity
         run: |
           mkdir -p mrhardi/singularity
-          sudo singularity build mrhardi/singularity/nogpu.sif docker-archive://mrhardi/docker/nogpu.tar
-          sudo singularity build mrhardi/singularity/gpu.sif docker-archive://mrhardi/docker/gpu.tar
+          singularity build mrhardi/singularity/gpu.sif docker://avcaron/mrhardi-dev:gpu
       -
         name : Upload workflow artifacts
         uses: actions/upload-artifact@v3
