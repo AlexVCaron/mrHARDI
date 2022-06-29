@@ -1,0 +1,109 @@
+name: Build mrHARDI docker
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  mrhardi-bakery:
+      runs-on: ubuntu-latest
+      environment: CI
+
+      steps:
+        -
+          name: Checkout
+          uses: actions/checkout@v3
+        -
+          name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@v2
+        -
+          name: Login to DockerHub
+          uses: docker/login-action@v2
+          with:
+            username: ${{ secrets.DOCKERHUB_USERNAME }}
+            password: ${{ secrets.DOCKERHUB_TOKEN }}
+        - 
+          name: Configure docker tags for the GPU release
+          id: docker_tags_gpu
+          uses: docker/metadata-action@v4
+          with:
+            images: |
+              docker.io/avcaron/mrhardi
+              docker.io/avcaron/mrhardi-gpu
+            tags: |
+              type=semver,pattern={{raw}}
+              type=ref,event=branch
+            bake-target: gpu-release-tagging
+        - 
+          name: Configure docker tags for the CPU release
+          id: docker_tags_cpu
+          uses: docker/metadata-action@v4
+          with:
+            images: |
+              docker.io/avcaron/mrhardi-nogpu
+            tags: |
+              type=semver,pattern={{raw}}
+              type=ref,event=branch
+            bake-target: cpu-release-tagging
+        -
+          name: Merge tag baking files for buildx
+          id: release_tags
+          run: |
+            jq -s '.[0] * .[1]' ${{ steps.docker_tags_gpu.outputs.bake-file }} ${{ steps.docker_tags_cpu.outputs.bake-file }} > tag_baking.json
+            echo "::set-output name=bake-file::$(pwd)/tag_baking.json"
+        - 
+          uses: actions/upload-artifact@v3
+          with:
+            name: tag-baking-recipe
+            path: tag_baking.json
+        -
+          name: Rebuild complete docker image stack with dependencies
+          uses: docker/bake-action@78e325fad8b5b74acf4be76f371e8e7577e527d7
+          with:
+            working-directory: ./containers
+            files: |
+              ./docker-bake.hcl
+              ${{ steps.release_tags.outputs.bake-file }}
+            pull: true
+            push: true
+            no-cache: true
+
+  mrhardi-packaging:
+    needs: mrhardi-bakery
+    runs-on: ubuntu-latest
+    environment: CI
+
+    steps:
+      -
+        name: Maximize disk usage
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 4096
+          temp-reserve-mb: 4096
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+      - 
+        name: Setup singularity
+        uses: eWaterCycle/setup-singularity@v7
+        with:
+          singularity-version: 3.7.1
+      - 
+        name: Azure Container Registry Login
+        uses: Azure/docker-login@v1
+        with:
+          login-server: mrhardi.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_TOKEN }}
+      -
+        name: Build and push singularity
+        run: |
+          mkdir -p mrhardi/singularity
+          mkdir sif_tmp sif_cache
+          export SINGULARITY_TMPDIR="$(pwd)/sif_tmp"
+          export SINGULARITY_CACHEDIR="$(pwd)/sif_cache"
+          echo "Caching and temping singularity at : $SINGULARITY_CACHEDIR and $SINGULARITY_TMPDIR"
+          singularity build mrhardi.sif docker://avcaron/mrhardi:latest
+          echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
+          singularity push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:latest
+          singularity push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:${{ github.event.release.tag_name }}
