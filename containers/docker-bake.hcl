@@ -12,7 +12,16 @@ group "full" {
     targets = ["dependencies", "nogpu-full", "latest-full"]
 }
 
-target "docker-metadata-action" {} 
+target "gpu-release-tagging" {
+    tags = [
+        "docker.io/avcaron/mrhardi-gpu:latest",
+        "docker.io/avcaron/mrhardi:latest"
+    ]
+}
+
+target "cpu-release-tagging" {
+    tags = ["docker.io/avcaron/mrhardi-nogpu:latest"]
+} 
 
 target "base" {
     context = "base/."
@@ -108,7 +117,7 @@ target "scilpy" {
 }
 
 target "nogpu" {
-    inherits = ["docker-metadata-action"]
+    inherits = ["cpu-release-tagging"]
     context = "nogpu/."
     contexts = {
         web_fetcher = "target:web_fetcher"
@@ -116,22 +125,17 @@ target "nogpu" {
     }
     dockerfile = "Dockerfile"
     target = "nogpu"
-    tags = ["docker.io/avcaron/mrhardi:nogpu"]
     no-cache = true
     output = ["type=image"]
 }
 
 target "latest" {
-    inherits = ["docker-metadata-action"]
+    inherits = ["gpu-release-tagging"]
     contexts = {
         nogpu = "target:nogpu"
     }
     dockerfile = "nvidia/Dockerfile"
     target = "nvidia"
-    tags = [
-        "docker.io/avcaron/mrhardi:gpu",
-        "docker.io/avcaron/mrhardi:latest"
-    ]
     output = ["type=image"]
 }
 
@@ -147,7 +151,7 @@ target "scilpy-full" {
 }
 
 target "nogpu-full" {
-    inherits = ["docker-metadata-action"]
+    inherits = ["cpu-release-tagging"]
     context = "nogpu/."
     contexts = {
         web_fetcher = "target:web_fetcher"
@@ -155,21 +159,16 @@ target "nogpu-full" {
     }
     dockerfile = "Dockerfile"
     target = "nogpu"
-    tags = ["docker.io/avcaron/mrhardi-nogpu:latest"]
     no-cache = true
     output = ["type=image"]
 }
 
 target "latest-full" {
-    inherits = ["docker-metadata-action"]
+    inherits = ["gpu-release-tagging"]
     contexts = {
         nogpu = "target:nogpu-full"
     }
     dockerfile = "nvidia/Dockerfile"
     target = "nvidia"
-    tags = [
-        "docker.io/avcaron/mrhardi-gpu:latest",
-        "docker.io/avcaron/mrhardi:latest"
-    ]
     output = ["type=image"]
 }

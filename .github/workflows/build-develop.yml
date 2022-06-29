@@ -24,6 +24,7 @@ jobs:
             containers/
             magic_monkey/**/*.py
             setup.py
+            .github/
       -
         name: Set up Docker Buildx
         if: steps.git-diff.count > 0
