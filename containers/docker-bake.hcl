@@ -150,7 +150,7 @@ target "nogpu-full" {
     }
     dockerfile = "Dockerfile"
     target = "nogpu"
-    tags = ["docker.io/avcaron/mrhardi:nogpu"]
+    tags = ["docker.io/avcaron/mrhardi-nogpu:latest"]
     no-cache = true
     output = ["type=image"]
 }
@@ -162,7 +162,7 @@ target "latest-full" {
     dockerfile = "nvidia/Dockerfile"
     target = "nvidia"
     tags = [
-        "docker.io/avcaron/mrhardi:gpu",
+        "docker.io/avcaron/mrhardi-gpu:latest",
         "docker.io/avcaron/mrhardi:latest"
     ]
     output = ["type=image"]
