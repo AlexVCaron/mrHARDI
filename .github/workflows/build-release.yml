@@ -79,17 +79,3 @@ jobs:
           echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
           singularity push mrhardi.sif mrhardi.azurecr.io/mrHARDI/mrhardi:latest
           singularity push mrhardi.sif mrhardi.azurecr.io/mrHARDI/mrhardi:${{ steps.release.version }}
-      -
-        name: Write artifacts manifest
-        run: |
-          echo "Artifacts pull commands:" >> artifacts.MANIFEST
-          echo "docker pull avcaron/mrhardi-dev:nogpu" >> artifacts.MANIFEST
-          echo "docker pull avcaron/mrhardi-dev:gpu" >> artifacts.MANIFEST
-          echo "singularity pull oras://mrhardi.azurecr.io/mrHARDI/mrhardi-dev:gpu" >> artifacts.MANIFEST
-      -
-        name: Upload workflow artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: artifacts_manifest
-          path: artifacts.MANIFEST
-          if-no-files-found: warn

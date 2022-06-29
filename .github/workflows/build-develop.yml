@@ -45,8 +45,8 @@ jobs:
           pull: true
           push: true
           set: |
-            nogpu.tags=docker.io/avcaron/mrhardi-dev:nogpu
-            latest.tags=docker.io/avcaron/mrhardi-dev:gpu
+            nogpu.tags=docker.io/avcaron/mrhardi-nogpu:dev
+            latest.tags=docker.io/avcaron/mrhardi-gpu:dev
 
   mrhardi-creative-packaging:
     needs: mrhardi-creative-bakery
@@ -83,16 +83,16 @@ jobs:
           export SINGULARITY_TMPDIR="$(pwd)/sif_tmp"
           export SINGULARITY_CACHEDIR="$(pwd)/sif_cache"
           echo "Caching and temping singularity at : $SINGULARITY_CACHEDIR and $SINGULARITY_TMPDIR"
-          singularity build mrhardi_dev_gpu.sif docker://avcaron/mrhardi-dev:gpu
+          singularity build mrhardi_dev_gpu.sif docker://avcaron/mrhardi-gpu:dev
           echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
-          singularity push mrhardi_dev_gpu.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi-dev:gpu
+          singularity push mrhardi_dev_gpu.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
       -
         name: Write artifacts manifest
         run: |
           echo "Artifacts pull commands:" >> artifacts.MANIFEST
-          echo "docker pull avcaron/mrhardi-dev:nogpu" >> artifacts.MANIFEST
-          echo "docker pull avcaron/mrhardi-dev:gpu" >> artifacts.MANIFEST
-          echo "singularity pull oras://mrhardi.azurecr.io/mrHARDI/mrhardi-dev:gpu" >> artifacts.MANIFEST
+          echo "docker pull avcaron/mrhardi-nogpu:dev" >> artifacts.MANIFEST
+          echo "docker pull avcaron/mrhardi-gpu:dev" >> artifacts.MANIFEST
+          echo "singularity pull oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev" >> artifacts.MANIFEST
       -
         name: Upload workflow artifacts
         uses: actions/upload-artifact@v3
