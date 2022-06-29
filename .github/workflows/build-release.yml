@@ -1,9 +1,6 @@
 name: Build mrHARDI docker
 
 on:
-  push:
-    branches:
-      - 'feat/github_ci'
   release:
     types: [created]
 
