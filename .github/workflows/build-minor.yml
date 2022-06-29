@@ -45,9 +45,7 @@ jobs:
             files: |
               ./docker-bake.hcl
               ${{ steps.docker_tags.outputs.bake-file }}
-            targets: |
-              full
-              docker-metadata-action
+            targets: full
             pull: true
             push: true
 
