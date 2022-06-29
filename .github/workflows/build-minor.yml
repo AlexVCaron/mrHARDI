@@ -26,25 +26,39 @@ jobs:
             username: ${{ secrets.DOCKERHUB_USERNAME }}
             password: ${{ secrets.DOCKERHUB_TOKEN }}
         - 
-          name: Configure docker tags for the current release
-          id: docker_tags
+          name: Configure docker tags for the GPU release
+          id: docker_tags_gpu
           uses: docker/metadata-action@v4
           with:
             images: |
-              mrhardi/mrhardi
-              mrhardi/mrhardi-gpu
-              mrhardi/mrhardi-nogpu
+              docker.io/avcaron/mrhardi
+              docker.io/avcaron/mrhardi-gpu
             tags: |
               type=semver,pattern={{raw}}
               type=ref,event=branch
+            bake-target: gpu-release-tagging
+        - 
+          name: Configure docker tags for the CPU release
+          id: docker_tags_cpu
+          uses: docker/metadata-action@v4
+          with:
+            images: |
+              docker.io/avcaron/mrhardi-nogpu
+            tags: |
+              type=semver,pattern={{raw}}
+              type=ref,event=branch
+            bake-target: cpu-release-tagging
         -
-          name: Write tag baking to artifacts
-          run: echo "${{ steps.docker_tags.outputs.bake-file }}" >> tag_baking.hcl
+          name: Merge tag baking files for buildx
+          id: release_tags
+          run: |
+            jq -s '.[0] * .[1]' ${{ steps.docker_tags_gpu.outputs.bake-file }} ${{ steps.docker_tags_cpu.outputs.bake-file }} > tag_baking.json
+            echo "::set-output name=bake-file::$(pwd)/tag_baking.json"
         - 
           uses: actions/upload-artifact@v3
           with:
             name: tag-baking-recipe
-            path: tag_baking.hcl
+            path: tag_baking.json
         -
           name: Rebuild complete docker image stack with dependencies
           uses: docker/bake-action@78e325fad8b5b74acf4be76f371e8e7577e527d7
@@ -52,7 +66,7 @@ jobs:
             working-directory: ./containers
             files: |
               ./docker-bake.hcl
-              ${{ steps.docker_tags.outputs.bake-file }}
+              ${{ steps.release_tags.outputs.bake-file }}
             pull: true
             push: true
             no-cache: true
@@ -94,5 +108,5 @@ jobs:
           echo "Caching and temping singularity at : $SINGULARITY_CACHEDIR and $SINGULARITY_TMPDIR"
           singularity build mrhardi.sif docker://avcaron/mrhardi:latest
           echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
-          singularity push mrhardi.sif mrhardi.azurecr.io/mrHARDI/mrhardi:latest
-          singularity push mrhardi.sif mrhardi.azurecr.io/mrHARDI/mrhardi:${{ github.event.release.tag_name }}
+          singularity push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:latest
+          singularity push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:${{ github.event.release.tag_name }}
