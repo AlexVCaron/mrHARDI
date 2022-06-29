@@ -12,6 +12,8 @@ group "full" {
     targets = ["dependencies", "nogpu-full", "latest-full"]
 }
 
+target "docker-metadata-action" {} 
+
 target "base" {
     context = "base/."
     dockerfile = "base_image.Dockerfile"
@@ -106,6 +108,7 @@ target "scilpy" {
 }
 
 target "nogpu" {
+    inherits = ["docker-metadata-action"]
     context = "nogpu/."
     contexts = {
         web_fetcher = "target:web_fetcher"
@@ -119,6 +122,7 @@ target "nogpu" {
 }
 
 target "latest" {
+    inherits = ["docker-metadata-action"]
     contexts = {
         nogpu = "target:nogpu"
     }
@@ -143,6 +147,7 @@ target "scilpy-full" {
 }
 
 target "nogpu-full" {
+    inherits = ["docker-metadata-action"]
     context = "nogpu/."
     contexts = {
         web_fetcher = "target:web_fetcher"
@@ -156,6 +161,7 @@ target "nogpu-full" {
 }
 
 target "latest-full" {
+    inherits = ["docker-metadata-action"]
     contexts = {
         nogpu = "target:nogpu-full"
     }
