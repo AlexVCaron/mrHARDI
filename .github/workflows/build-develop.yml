@@ -1,10 +1,9 @@
 name: Build mrHARDI docker
 
 on:
-  push:
+  pull_request:
     branches:
-      - 'develop'
-      - 'feat/github_ci'
+      - develop
 
 jobs:
   mrhardi-creative-bakery:
