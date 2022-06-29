@@ -1,3 +1,6 @@
+![Release build](https://github.com/AlexVCaron/mrHARDI/actions/workflows/build-release/badge.svg)
+![Dev build](https://github.com/AlexVCaron/mrHARDI/actions/workflows/build-develop/badge.svg)
+
 # Magic Monkey
 
 Magic Monkey is a pipelining code base focused at processing and computing 

@@ -1,0 +1,7 @@
+How to contribute
+
+
+- Release model :
+  - On push master  : increment minor, create release
+  - On push develop : increment patch, create release
+  - Major release are incremented manually
