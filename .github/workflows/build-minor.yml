@@ -38,6 +38,14 @@ jobs:
               type=semver,pattern={{raw}}
               type=ref,event=branch
         -
+          name: Write tag baking to artifacts
+          run: echo "${{ steps.docker_tags.outputs.bake-file }}" >> tag_baking.hcl
+        - 
+          uses: actions/upload-artifact@v3
+          with:
+            name: tag-baking-recipe
+            path: tag_baking.hcl
+        -
           name: Rebuild complete docker image stack with dependencies
           uses: docker/bake-action@78e325fad8b5b74acf4be76f371e8e7577e527d7
           with:
@@ -45,9 +53,9 @@ jobs:
             files: |
               ./docker-bake.hcl
               ${{ steps.docker_tags.outputs.bake-file }}
-            targets: full
             pull: true
             push: true
+            no-cache: true
 
   mrhardi-packaging:
     needs: mrhardi-bakery
