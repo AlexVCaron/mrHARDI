@@ -1,0 +1,3 @@
+# This file is left intentionally empty for now. Once develop becomes more stable
+# or another branch is chosen, this workflow will increment the patch of the release
+# based on a push event to the branch (see push-master.yml)
