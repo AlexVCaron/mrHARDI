@@ -55,7 +55,18 @@ jobs:
 
     steps:
       -
+        name: Get git diff for the current modifications
+        uses: technote-space/get-diff-action@v4.0.1
+        id: git_diff
+        with:
+          PATTERNS: |
+            containers/**/*
+            magic_monkey/**/*.py
+            setup.py
+            .github/workflows/build-develop.yml
+      -
         name: Maximize disk usage
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
         uses: easimon/maximize-build-space@master
         with:
           root-reserve-mb: 4096
@@ -65,11 +76,13 @@ jobs:
           remove-haskell: 'true'
       - 
         name: Setup singularity
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
         uses: eWaterCycle/setup-singularity@v7
         with:
           singularity-version: 3.7.1
       - 
         name: Azure Container Registry Login
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
         uses: Azure/docker-login@v1
         with:
           login-server: mrhardi.azurecr.io
@@ -77,6 +90,7 @@ jobs:
           password: ${{ secrets.ACR_TOKEN }}
       -
         name: Build and push singularity
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
         run: |
           mkdir -p mrhardi/singularity
           mkdir sif_tmp sif_cache
