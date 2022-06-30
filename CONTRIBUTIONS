@@ -3,5 +3,7 @@ How to contribute
 
 - Release model :
   - On push master  : increment minor, create release
+    - Add norelease to PR labels to skip release
   - On push develop : increment patch, create release
+    - Add norelease to PR labels to skip release
   - Major release are incremented manually
