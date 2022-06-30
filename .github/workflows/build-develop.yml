@@ -4,6 +4,12 @@ on:
   pull_request:
     branches:
       - develop
+    types: [opened,reopened,synchronize]
+    paths:
+      - magic_monkey/**/*.py
+      - setup.py
+      - .github/workflows/build-develop.yml
+      - containers/**/*
 
 jobs:
   mrhardi-creative-bakery:
@@ -20,10 +26,10 @@ jobs:
         id: git_diff
         with:
           PATTERNS: |
-            containers/**/*
             magic_monkey/**/*.py
             setup.py
             .github/workflows/build-develop.yml
+            containers/**/*
       -
         name: Set up Docker Buildx
         if: ${{ steps.git_diff.outputs.lines > 0 }}
@@ -60,10 +66,10 @@ jobs:
         id: git_diff
         with:
           PATTERNS: |
-            containers/**/*
             magic_monkey/**/*.py
             setup.py
             .github/workflows/build-develop.yml
+            containers/**/*
       -
         name: Maximize disk usage
         if: ${{ steps.git_diff.outputs.lines > 0 }}
