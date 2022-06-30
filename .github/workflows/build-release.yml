@@ -1,4 +1,4 @@
-name: Build mrHARDI docker
+name: Release build
 
 on:
   release:
