@@ -1,12 +1,14 @@
 name: Build mrHARDI docker
 
 on:
-  push:
+  pull_request:
     branches:
       - master
+    types: [closed]
 
 jobs:
   create_release:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:

@@ -3,5 +3,8 @@ updates:
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "develop"
+    labels:
+      - "Github Actions Update"
     schedule:
       interval: "daily"
