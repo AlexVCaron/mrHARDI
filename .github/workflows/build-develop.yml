@@ -1,4 +1,4 @@
-name: Build mrHARDI docker
+name: Development build
 
 on:
   pull_request:

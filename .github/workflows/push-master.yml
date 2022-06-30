@@ -1,4 +1,4 @@
-name: Build mrHARDI docker
+name: Create master release
 
 on:
   pull_request:
