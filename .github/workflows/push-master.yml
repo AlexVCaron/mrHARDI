@@ -1,4 +1,4 @@
-name: Build mrHARDI docker
+name: Create master release
 
 on:
   pull_request:
@@ -10,6 +10,8 @@ jobs:
   create_release:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       -
