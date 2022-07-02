@@ -16,7 +16,7 @@ source = pjoin(here, 'source')
 
 #*****************************************************************************
 if __name__ == '__main__':
-    package = 'magic_monkey'
+    package = 'mrHARDI'
     outdir = pjoin(source, 'api', 'generated')
     docwriter = ApiDocWriter(package, rst_extension='.rst')
     # You have to escape the . here because . is a special char for regexps.

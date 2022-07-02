@@ -109,16 +109,16 @@
   when: py_bin_installed is not skipped and py_absent is succeeded
 
 - name: Check if python profile.d file has been created already
-  shell: test -f /etc/profile.d/mmy_python3.sh && echo 1 || echo 0
+  shell: test -f /etc/profile.d/mrh_python3.sh && echo 1 || echo 0
   register: python_lenv
 
 - name: Add python3 and pip3 switch to login shells
   blockinfile:
     create: true
-    path: /etc/profile.d/mmy_python3.sh
+    path: /etc/profile.d/mrh_python3.sh
     mode: a+r
     block: |
-      # Python 3 and Pip system wide overrides for Magic Monkey
+      # Python 3 and Pip system wide overrides for mrHARDI
       update-alternatives --set python{{ pysrc_ver_major }} {{ pydest_dir }}/bin/python{{ pysrc_ver_s }}m --force
       update-alternatives --set pip{{ pysrc_ver_major }} {{ pydest_dir }}/bin/pip{{ pysrc_ver_s }} --force
       export PATH="$PATH:{{ pydest_dir }}/bin"
@@ -134,7 +134,7 @@
     path: /etc/bash.bashrc
     block: |
 
-      # Python 3 and Pip system wide overrides for Magic Monkey
+      # Python 3 and Pip system wide overrides for mrHARDI
       update-alternatives --set python{{ pysrc_ver_major }} {{ pydest_dir }}/bin/python{{ pysrc_ver_s }}m --force
       update-alternatives --set pip{{ pysrc_ver_major }} {{ pydest_dir }}/bin/pip{{ pysrc_ver_s }} --force
       export PATH="$PATH:{{ pydest_dir }}/bin"

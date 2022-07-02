@@ -1,18 +1,18 @@
 ==========================================
-Introduction to Magic Monkey configuration
+Introduction to mrHARDI configuration
 ==========================================
 
 .. important:: This page is a slightly modified copy of the IPython
-               documentation fitted to Magic Monkey. It covers the
-               configuration system used by Magic Monkey. It will change once
-               the modifications made by Magic Monkey to it become documented.
+               documentation fitted to mrHARDI. It covers the
+               configuration system used by mrHARDI. It will change once
+               the modifications made by mrHARDI to it become documented.
 
 .. _setting_config:
 
 Setting configurable options
 ============================
 
-Many of Magic Monkey's classes have configurable attributes (see
+Many of mrHARDI's classes have configurable attributes (see
 :doc:`options/index` for the list). These can be
 configured in several ways.
 
@@ -21,7 +21,7 @@ Python configuration files
 
 To create the blank configuration files for an application, run::
 
-    magic-monkey <application> --out-config <filename>
+    mrHARDI <application> --out-config <filename>
 
 By default, configuration files are fully featured Python scripts that can
 execute arbitrary code, the main usage is to set value on the configuration
@@ -52,7 +52,7 @@ Example configuration file
 
 ::
 
-    # Configuration file for Magic Monkey.
+    # Configuration file for mrHARDI.
 
     c = get_config()
 
@@ -60,7 +60,7 @@ Example configuration file
     # PftTracking(MagicMonkeyBaseApplication) configuration
     #
     # Description :
-    #  Magic Monkey configuration manager
+    #  mrHARDI configuration manager
     # -----------------------------------------------------------------------------
 
     c.PftTracking.pve_threshold = 0.5
@@ -92,7 +92,7 @@ JSON Configuration files
 ------------------------
 
 In case where executability of configuration can be problematic, or
-configurations need to be modified programmatically, Magic Monkey also support
+configurations need to be modified programmatically, mrHARDI also support
 a limited set of functionalities via ``.json`` configuration files.
 
 You can defined most of the configuration options via a json object which
@@ -132,7 +132,7 @@ Command line arguments
 Every configurable value can be set from the command line, using this
 syntax::
 
-    magic-monkey --ClassName.attribute=value
+    mrHARDI --ClassName.attribute=value
 
 Many frequently used options have short aliases and flags, such as
 ``--in`` or ``--out`` (when defining input or output files) or
@@ -140,8 +140,8 @@ Many frequently used options have short aliases and flags, such as
 
 To see all of these abbreviated options, run::
 
-    magic-monkey --help
-    magic-monkey <application> --help
+    mrHARDI --help
+    mrHARDI <application> --help
     # etc.
 
 Options specified at the command line, in either format, override
