@@ -20,7 +20,7 @@ RUN bash build.sh \
     --magic \
     --dev
 WORKDIR /mrhs/dev/diamond/bin
-RUN chmod 111 crlDCIEstimate
+RUN chmod 555 crlDCIEstimate
 WORKDIR /mrhs/dev/diamond
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
