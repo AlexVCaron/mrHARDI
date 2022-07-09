@@ -54,6 +54,7 @@ RUN apt-get update && apt-get -y install \
     libtiff5-dev \
     linux-headers-generic \
     zlib1g-dev \
+    python \
     python3-pip \
     python3.7 \
     && rm -rf /var/lib/apt/lists/*
@@ -62,11 +63,16 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.7 1
 RUN update-alternatives --config python3
 RUN update-alternatives --set python3 /usr/bin/python3.7
 
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.7 1
+RUN update-alternatives --config python
+RUN update-alternatives --set python /usr/bin/python3.7
+
 RUN python3 -m pip install pip
 RUN pip3 install --upgrade pip
 
 ENV MATPLOTLIBRC="/usr/local/lib/python3.7/dist-packages/matplotlib/mpl-data/"
 ENV LC_ALL=en_US.utf8
+ENV PYTHONPATH="/mrhs/dev/mrtrix/lib:$PYTHONPATH"
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install \
     python3.7-dev \
