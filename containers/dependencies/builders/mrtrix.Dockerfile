@@ -50,6 +50,7 @@ RUN find . -maxdepth 1 -not \( \
         -name dwidenoise -or \
         -name dwiextract -or \
         -name fixel2peaks -or \
+        -name fixel2voxel -or \
         -name fod2fixel -or \
         -name maskfilter -or \
         -name mrcalc -or \
