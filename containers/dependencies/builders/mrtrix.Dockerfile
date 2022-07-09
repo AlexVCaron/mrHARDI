@@ -56,7 +56,9 @@ RUN find . -maxdepth 1 -not \( \
         -name mrcat -or \
         -name mrconvert -or \
         -name mrdegibbs -or \
+        -name mrinfo -or \
         -name mrmath -or \
+        -name mrstats -or \
         -name mrthreshold -or \
         -name peaks2amp -or \
         -name sh2peaks -or \
