@@ -1,7 +1,7 @@
-Magic Monkey Documentation
+mrHARDI Documentation
 --------------------------
 
-This directory contains the majority of the documentation for Magic Monkey. It
+This directory contains the majority of the documentation for mrHARDI. It
 is a fork of the documentation script from IPython, since the whole
 application stack is built on traitlets (from IPython).
 
@@ -20,7 +20,7 @@ the following tools are needed to build the documentation:
 
 In a Python 3 ``venv``, you should be able to run::
 
- cd magic_monkey
+ cd mrHARDI
  pip3 install -U -r docs/requirements.txt
 
 

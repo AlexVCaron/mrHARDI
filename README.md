@@ -2,9 +2,9 @@
 [![Actions Status](https://github.com/AlexVCaron/mrHARDI/workflows/Development%20build/badge.svg)](https://github.com/AlexVCaron/mrHARDI/workflows/actions)
 [![Latest Stable Version](https://img.shields.io/github/v/release/AlexVCaron/mrHARDI)](https://github.com/AlexVCaron/mrHARDI/releases)
 
-# Magic Monkey
+# mrHARDI
 
-Magic Monkey is a pipelining code base focused at processing and computing 
+mrHARDI is a pipelining code base focused at processing and computing 
 denoised images and metrics on MRI volumes of monkey, macaque and chimpanzee
 brains. It takes as inputs diffusion weighted acquisitions, as well as 
 anatomical images, masks, and others images when available.
@@ -16,7 +16,7 @@ Tensor-Valued encoding, and can output DIAMOND and ODF metrics using those.
 
 ## Installation
 
-Magic Monkey uses a load of different dependencies to compute the different 
+mrHARDI uses a load of different dependencies to compute the different 
 metrics and carry out some pre-processing computations. Those have all been 
 wrapped inside a singularity, to ease out and shorten the installation process.
 
@@ -24,8 +24,7 @@ wrapped inside a singularity, to ease out and shorten the installation process.
 
 #### Requirements
 
-- [Singularity 3](https://sylabs.io/guides/3.0/user-guide/installation.html)
-- [Nextflow 20](https://www.nextflow.io/) or higher
+- [Singularity](https://docs.sylabs.io/guides/3.0/user-guide/installation.html) 3.7.1 or higher, or [Docker](https://docs.docker.com/engine/install/)
 - Python 3.7
 
 #### Installation
@@ -48,19 +47,19 @@ the tests on a Mac OSX operating system, the user should try using Vagrant.
 ## Usage
 
 The code base is accessible via numerous points. The whole python library can 
-be imported using the package **magic_monkey**. Most of the logic of the code 
-base can be found under **magic_monkey.compute** and **magic_monkey.traits**.
+be imported using the package **mrHARDI**. Most of the logic of the code 
+base can be found under **mrHARDI.compute** and **mrHARDI.traits**.
 
 Also, the various applications and configuration options are accessible by 
 command-line. Once the project is setup, built and installed, they can be 
-called using the alias **magic-monkey**, followed by the name of the 
-application to open. For more information, call *magic-monkey --help*.
+called using the alias **mrhardi**, followed by the name of the 
+application to open. For more information, call *mrhardi --help*.
 
-Finally, a collection of *Nextflow* modules and workflows can be found under 
-the nextflow directory. In addition of the fully implemented pipelines and 
-workflows of *Magic Monkey*, can be found modules and workflows that 
-inferfaces fluently with Mri processing libraries as well as with this code 
-base.
+Finally, a collection of *Nextflow* modules and workflows have been developed 
+for usage with mrHARDI. They automate the processing of large volumes of images 
+and handle the spreading of computing tasks on multiple scales of processing 
+hardware. This library can be found in the 
+[mrHARDIflow](https://github.com/AlexVCaron/mrHARDIflow) repository.
 
 This duality of entry points allows for a better and faster prototyping from 
 the developer, since all configuration of the applications is done via python 
@@ -72,7 +71,7 @@ when it isn't required to test the actual pipeline structure.
 
 The Vagrant VM allows for an easy installation of the whole stack of the 
 project. It includes *singularity*, *nextflow* and a standalone version of 
-*python 3* preloaded with the *Magic Monkey* project.
+*python 3* preloaded with the *mrHARDI* project.
 
 #### Requirements
 
@@ -108,19 +107,19 @@ To raise a new instance, simply call
 > vagrant up
 
 This will create a new virtual machine with the specifications defined in the 
-Vagrantfile at the root of the library, provisioned with all Magic Monkey's 
+Vagrantfile at the root of the library, provisioned with all mrHARDI's 
 dependencies and libraries.
 
 ### Running code
 
 Once the virtual machine up and running, the pipelines can be run using ssh and 
-the right python interpreter containing Magic Monkey.
+the right python interpreter containing mrHARDI.
 
 It can be found in a folder located alongside this Readme, *vm/python*, related 
 to the folder */shared_python* on the virtual machine itself.
 
 In addition to this folder, the folder of the project is also made available on 
-the virtual machine, at */home/vagrant/magic_monkey*.
+the virtual machine, at */home/vagrant/mrHARDI*.
 
 A direct ssh connection can be made running the following command inside the 
 project's directory

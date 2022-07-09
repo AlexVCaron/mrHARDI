@@ -271,7 +271,7 @@ class ApiDocWriter(object):
             mod = ast.parse(f.read())
             if "__init__" not in filename:  # Skip package init, not module
                 mod.import_string = re.findall(
-                    r'\\(magic_monkey\\(?:(?!.*magic_monkey).*)*)$', filename
+                    r'\\(mrHARDI\\(?:(?!.*mrHARDI).*)*)$', filename
                 )[0].split('.')[0].replace("\\\\", "\\").replace("\\", ".")
         return FuncClsScanner().scan(mod)
 

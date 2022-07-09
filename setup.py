@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='magic-monkey',
+    name='mrHARDI',
     version='0.1.0',
     packages=find_packages(exclude=[
         "vm/", "test", "test/", "test.*",
@@ -14,9 +14,9 @@ setup(
     description='',
     entry_points={
         'console_scripts': [
-            'magic-monkey=magic_monkey.main_app:launch_new_instance'
+            'mrhardi=mrHARDI.main_app:launch_new_instance'
         ],
-        'distutils.commands': ['document=magic_monkey.setup:Document']
+        'distutils.commands': ['document=mrHARDI.setup:Document']
     },
     python_requires='>=3.7,<3.10',
     classifiers=[
