@@ -54,7 +54,6 @@ RUN apt-get update && apt-get -y install \
     libtiff5-dev \
     linux-headers-generic \
     zlib1g-dev \
-    python \
     python3-pip \
     python3.7 \
     && rm -rf /var/lib/apt/lists/*
