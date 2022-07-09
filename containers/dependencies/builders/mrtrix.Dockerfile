@@ -41,10 +41,24 @@ WORKDIR /mrhs/dev/mrtrix/bin
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
+        -name 5ttcheck -or \
+        -name amp2response -or \
         -name dwi2fod -or \
+        -name dwi2mask -or \
         -name dwi2response -or \
         -name dwi2tensor -or \
         -name dwidenoise -or \
+        -name dwiextract -or \
+        -name fixel2peaks -or \
+        -name fod2fixel -or \
+        -name maskfilter -or \
+        -name mrcalc -or \
+        -name mrcat -or \
         -name mrconvert -or \
-        -name mrdegibbs \
+        -name mrdegibbs -or \
+        -name mrmath -or \
+        -name mrthreshold -or \
+        -name peaks2amp -or \
+        -name sh2peaks -or \
+        -name tensor2metric \
     \) -exec rm -rf "{}" \;
