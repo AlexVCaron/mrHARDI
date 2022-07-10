@@ -53,6 +53,7 @@ jobs:
           set: |
             nogpu.tags=docker.io/avcaron/mrhardi-nogpu:dev
             latest.tags=docker.io/avcaron/mrhardi-gpu:dev
+            *.args.mrhardi_ver=${{ github.head_ref }}
 
   mrhardi-creative-packaging:
     needs: mrhardi-creative-bakery
