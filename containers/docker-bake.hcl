@@ -117,6 +117,10 @@ target "scilpy" {
 }
 
 target "mrhardi_cloner" {
+    context = "nogpu/."
+    contexts = {
+        web_fetcher = "target:web_fetcher"
+    }
     dockerfile = "Dockerfile"
     target = "mrhardi_cloner"
     no-cache = true
