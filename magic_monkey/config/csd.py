@@ -39,7 +39,7 @@ class CSDConfiguration(MagicMonkeyConfigurable):
         if self.lmax:
             optionals.append(
                 "-lmax {}".format(",".join([
-                    self.lmax for _ in range(len(self.algorithm.responses))
+                    str(self.lmax) for _ in range(len(self.algorithm.responses))
                 ]))
             )
 
