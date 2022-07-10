@@ -68,7 +68,7 @@ jobs:
             push: true
             no-cache: true
             set: |
-              *.args.mrhardi_ver=${{ github.event.release.tag_name }}
+              mrhardi_cloner.args.mrhardi_ver=${{ github.event.release.tag_name }}
 
   mrhardi-packaging:
     needs: mrhardi-bakery
