@@ -264,7 +264,7 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
 
             klass(
                 self.n_fascicles, self.input_prefix,
-                self.output_prefix, self.cache, metadata.affine,
+                self.output_prefix, self.cache, affine,
                 mask=mask, shape=mask.shape,
                 colors=self.output_colors, with_fw=self.free_water,
                 with_res=self.restricted, with_hind=self.hindered,
@@ -272,7 +272,7 @@ class DiamondMetrics(MagicMonkeyBaseApplication):
             ).measure()
 
         if self.output_haeberlen:
-            self._output_haeberlen(metadata.affine)
+            self._output_haeberlen(affine)
 
         if self.save_cache:
             self._save_cache()

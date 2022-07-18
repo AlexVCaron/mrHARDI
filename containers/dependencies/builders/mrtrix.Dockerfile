@@ -24,6 +24,7 @@ RUN mkdir -p /mrhs/dev/mrtrix
 WORKDIR /mrhs/dev
 RUN git clone https://github.com/MRtrix3/mrtrix3.git mrtrix
 WORKDIR /mrhs/dev/mrtrix
+RUN git fetch --all --tags && git checkout tags/3.0.3 -b mrtrix3.0.3-branch
 RUN ./configure -nogui -openmp
 RUN ./build
 RUN find . -maxdepth 1 -not \( \
@@ -32,16 +33,35 @@ RUN find . -maxdepth 1 -not \( \
         -wholename './bin' -or \
         -wholename './bin/*' -or \
         -wholename './lib' -or \
-        -wholename './lib/libmrtrix*' \
+        -wholename './lib/*' \
+        -wholename './share/' \
+        -wholename './share/*' \
     \) -exec rm -rf "{}" \;
 WORKDIR /mrhs/dev/mrtrix/bin
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
+        -name 5ttcheck -or \
+        -name amp2response -or \
         -name dwi2fod -or \
+        -name dwi2mask -or \
         -name dwi2response -or \
         -name dwi2tensor -or \
         -name dwidenoise -or \
+        -name dwiextract -or \
+        -name fixel2peaks -or \
+        -name fixel2voxel -or \
+        -name fod2fixel -or \
+        -name maskfilter -or \
+        -name mrcalc -or \
+        -name mrcat -or \
         -name mrconvert -or \
-        -name mrdegibbs \
+        -name mrdegibbs -or \
+        -name mrinfo -or \
+        -name mrmath -or \
+        -name mrstats -or \
+        -name mrthreshold -or \
+        -name peaks2amp -or \
+        -name sh2peaks -or \
+        -name tensor2metric \
     \) -exec rm -rf "{}" \;
