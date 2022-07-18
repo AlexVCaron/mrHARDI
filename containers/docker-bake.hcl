@@ -116,16 +116,27 @@ target "scilpy" {
     output = ["type=cacheonly"]
 }
 
+target "mrhardi_cloner" {
+    context = "nogpu/."
+    contexts = {
+        web_fetcher = "target:web_fetcher"
+    }
+    dockerfile = "Dockerfile"
+    target = "mrhardi_cloner"
+    no-cache = true
+    output = ["type=cacheonly"]
+}
+
 target "nogpu" {
     inherits = ["cpu-release-tagging"]
     context = "nogpu/."
     contexts = {
         web_fetcher = "target:web_fetcher"
         scilpy_installed = "target:scilpy"
+        mrhardi_cloner = "target:mrhardi_cloner"
     }
     dockerfile = "Dockerfile"
     target = "nogpu"
-    no-cache = true
     output = ["type=image"]
 }
 
@@ -156,11 +167,11 @@ target "nogpu-full" {
     contexts = {
         web_fetcher = "target:web_fetcher"
         scilpy_installed = "target:scilpy-full"
+        mrhardi_cloner = "target:mrhardi_cloner"
     }
     dockerfile = "Dockerfile"
     target = "nogpu"
-    no-cache = true
-    output = ["type=image"]
+    output = ["typ=image"]
 }
 
 target "latest-full" {

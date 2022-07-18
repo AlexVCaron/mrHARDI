@@ -169,52 +169,57 @@ def squash_b0(
     dtype = dtype if dtype else dwi_img.get_data_dtype()
 
     if mean is B0PostProcess.whole:
-        meta_b0 = metadata.copy() if metadata else None
-        output = np.zeros(dwi_img.shape[:3] + (1 + np.sum(~b0_mask),))
-        output[..., 0] = extract_b0(
-            dwi_img, bvals, mean=mean, ceil=ceil,
-            b0_comp=b0_comp, metadata=meta_b0, dtype=dtype
-        )
-
-        if metadata:
-            for cl in b0_clusters:
-                curr_cl = deepcopy(cl)
-                for i, d in enumerate(metadata.directions):
-                    if d["range"][1] > curr_cl.start >= d["range"][0]:
-                        n = min(curr_cl.stop, d["range"][1]) - curr_cl.start
-                        lg = curr_cl.stop > d["range"][1]
-                        d["range"] = (d["range"][0], d["range"][1] - n)
-                        if lg:
-                            curr_cl = slice(d["range"][1], curr_cl.stop)
-                        else:
-                            break
-
-            acquisition = metadata.acquisition_slices_to_list()
-            metadata.update_acquisition_from_list(
-                (np.array(acquisition)[~b0_mask]).tolist()
+        if np.sum(b0_mask) == 1:
+            return (dwi_img.get_fdata().astype(dtype), bvals, bvecs)
+        else:
+            meta_b0 = metadata.copy() if metadata else None
+            output = np.zeros(dwi_img.shape[:3] + (1 + np.sum(~b0_mask),))
+            output[..., 0] = extract_b0(
+                dwi_img, bvals, mean=mean, ceil=ceil,
+                b0_comp=b0_comp, metadata=meta_b0, dtype=dtype
             )
 
-            metadata.n = int(np.sum(~b0_mask))
+            if metadata:
+                for cl in b0_clusters:
+                    curr_cl = deepcopy(cl)
+                    for i, d in enumerate(metadata.directions):
+                        if d["range"][1] > curr_cl.start >= d["range"][0]:
+                            n = min(curr_cl.stop, d["range"][1]) - curr_cl.start
+                            lg = curr_cl.stop > d["range"][1]
+                            d["range"] = (d["range"][0], d["range"][1] - n)
+                            if lg:
+                                curr_cl = slice(d["range"][1], curr_cl.stop)
+                            else:
+                                break
 
-            meta_b0.extend(metadata)
-            metadata.becomes(meta_b0)
+                acquisition = metadata.acquisition_slices_to_list()
+                metadata.update_acquisition_from_list(
+                    (np.array(acquisition)[~b0_mask]).tolist()
+                )
 
-        idx = 1
-        for cluster in dwi_clusters:
-            len_cluster = cluster.stop - cluster.start
-            output[..., idx:idx + len_cluster] = dwi_img.dataobj[..., cluster]
-            idx += len_cluster
+                metadata.n = int(np.sum(~b0_mask))
 
-        ret_tuple = (
-            output.astype(dtype), np.hstack(([0], bvals[~b0_mask]))[None, :]
-        )
+                meta_b0.extend(metadata)
+                metadata.becomes(meta_b0)
 
-        if bvecs is not None:
-            ret_tuple += (np.hstack(([[0], [0], [0]], bvecs[:, ~b0_mask])),)
-        else:
-            ret_tuple += (None,)
+            idx = 1
+            for cluster in dwi_clusters:
+                len_cluster = cluster.stop - cluster.start
+                output[..., idx:idx + len_cluster] = dwi_img.dataobj[..., cluster]
+                idx += len_cluster
 
-        return ret_tuple
+            ret_tuple = (
+                output.astype(dtype), np.hstack(([0], bvals[~b0_mask]))[None, :]
+            )
+
+            if bvecs is not None:
+                ret_tuple += (np.hstack(([[0], [0], [0]], bvecs[:, ~b0_mask])),)
+            else:
+                ret_tuple += (None,)
+
+            return ret_tuple
+    elif all(cl.stop - cl.start == 1 for cl in b0_clusters):
+        return (dwi_img.get_fdata().astype(dtype), bvals, bvecs)
 
     if metadata:
         for cl in b0_clusters:
