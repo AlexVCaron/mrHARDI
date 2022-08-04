@@ -4,7 +4,6 @@ from magic_monkey.base.application import MagicMonkeyConfigurable, BoundedInt
 
 
 _aliases = dict(
-    spacing="N4BiasCorrectionConfiguration.spacing",
     seed="N4BiasCorrectionConfiguration.seed"
 )
 
@@ -24,7 +23,7 @@ class N4BiasCorrectionConfiguration(MagicMonkeyConfigurable):
     ).tag(config=True)
     threshold = Float(0.01).tag(config=True)
     spline_order = BoundedInt(None, 2, 3, allow_none=True).tag(config=True)
-    spacing = List(Float()).tag(config=True, required=True)
+    knot_distance = Float(1.).tag(config=True, required=True)
     filter_width = Float(0.15).tag(config=True)
     noise = Float(0.01).tag(config=True)
     bins = Integer(200).tag(config=True)
@@ -41,20 +40,16 @@ class N4BiasCorrectionConfiguration(MagicMonkeyConfigurable):
     def _validate(self):
         pass
 
-    def serialize(self, *args, **kwargs):
+    def serialize(self, voxel_size, *args, **kwargs):
         optionals = []
         if self.rescale:
             optionals.append('--rescale-intensities 1')
 
         if self.spline_order:
-            if len(self.spacing) == 1:
-                spacing = str(self.spacing[0])
-            else:
-                spacing = "x".join(
-                    str(s * self.spline_order) for s in self.spacing)
-
             optionals.append(
-                "--bspline-fitting [{},{}]".format(spacing, self.spline_order)
+                "--bspline-fitting [{},{}]".format(
+                    self.knot_distance * voxel_size, self.spline_order
+                )
             )
 
         return " ".join([
@@ -63,7 +58,7 @@ class N4BiasCorrectionConfiguration(MagicMonkeyConfigurable):
                 "x".join(str(it) for it in self.iterations), self.threshold
             ),
             "--histogram-sharpening [{},{},{}]".format(
-                self.filter_width, self.noise, self.bins
+                self.filter_width * voxel_size, self.noise, self.bins
             ),
             "--verbose 1"
         ] + optionals)

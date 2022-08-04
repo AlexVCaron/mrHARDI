@@ -1,6 +1,7 @@
 from os import chmod
 from os.path import exists
 
+import nibabel as nib
 import numpy as np
 from GPUtil import GPUtil
 from traitlets import Dict, Instance, Unicode, Bool, Enum
@@ -266,10 +267,14 @@ class Eddy(MagicMonkeyBaseApplication):
                     metadata.n_excitations
                 )
 
+            max_spacing = np.max(
+                nib.load("{}.nii.gz".format(self.image)).header.get_zooms()[:3]
+            )
+
             script = build_script(
                 _eddy_script.format(
                     executable=eddy_exec,
-                    more_args=self.configuration.serialize(),
+                    more_args=self.configuration.serialize(max_spacing),
                     debug_args=debug_args
                 ),
                 [

@@ -2,8 +2,8 @@ from os import chmod, getcwd
 from os.path import join, basename
 from shutil import copyfile
 
-import numpy as np
 import nibabel as nib
+import numpy as np
 from traitlets import Dict, Instance, Unicode, Enum, Bool
 from traitlets.config.loader import ConfigError
 

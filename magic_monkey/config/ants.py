@@ -94,7 +94,7 @@ class AntsConfiguration(MagicMonkeyConfigurable):
                 "Dimension of input images must be between 2 and 4"
             )
 
-    def serialize(self, *args, **kwargs):
+    def serialize(self, voxel_size, *args, **kwargs):
         optionals, init_i = [''], 0
 
         if self.match_histogram:
@@ -110,7 +110,7 @@ class AntsConfiguration(MagicMonkeyConfigurable):
                 ))
 
         for ants_pass in self.passes:
-            optionals.append(ants_pass.serialize())
+            optionals.append(ants_pass.serialize(voxel_size))
             if not self.register_last_dimension:
                 optionals.append("--restrict-deformation {}".format(
                     ants_pass.get_time_restriction(self.dimension)
@@ -218,11 +218,11 @@ class AntsMotionCorrectionConfiguration(MagicMonkeyConfigurable):
                 "Dimension of input images must be between 2 and 4"
             )
 
-    def serialize(self, *args, **kwargs):
+    def serialize(self, voxel_size, *args, **kwargs):
         optionals, init_i = [''], 0
 
         for ants_pass in self.passes:
-            optionals.append(ants_pass.serialize())
+            optionals.append(ants_pass.serialize(voxel_size))
 
         if self.scale_estimator:
             optionals.append("--useScalesEstimator")
