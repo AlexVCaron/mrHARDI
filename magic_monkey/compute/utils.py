@@ -53,7 +53,6 @@ def voxel_to_world(coord, affine):
     """Takes a n dimensionnal voxel coordinate and returns its 3 first
     coordinates transformed to world space from a given voxel to world affine
     transformation."""
-
     normalized_coord = row[coord[0:3], 1.0].astype(float)
     world_coord = np.dot(affine, normalized_coord)
     return world_coord[0:3]
@@ -69,3 +68,31 @@ def world_to_voxel(coord, affine):
     vox_coord = np.dot(iaffine, normalized_coord)
     vox_coord = np.round(vox_coord).astype(int)
     return vox_coord[0:3]
+
+
+def validate_affine(aff_a, aff_b, shape_b):
+    def _get_strides(_aff):
+        _val, _vec = np.linalg.eigh(_aff)
+        _sort = list(
+            np.where([np.allclose(_a, _r) for _r in _aff])[0][0]
+            for _a in _vec @ np.diag(_val) @ np.linalg.inv(_vec)
+        )
+        return _val[_sort]
+
+    same_origin = np.allclose(aff_a[:3, -1], aff_b[:3, -1])
+    same_trans = np.allclose(aff_a[:3, :3], aff_b[:3, :3])
+    if same_origin:
+        if same_trans:
+            return True, aff_a
+        return False, None
+
+    b_in_a = [b if df else nb for b, df, nb in zip(
+        aff_b[:3, -1],
+        np.equal(
+            np.sign(_get_strides(aff_a[:3, :3])),
+            np.sign(_get_strides(aff_b[:3, :3]))
+        ),
+        voxel_to_world(np.array(shape_b) - 1., aff_b)
+    )]
+
+    return np.allclose(b_in_a, aff_a[:3, -1]), aff_a
