@@ -142,7 +142,7 @@ class AntsPass(MagicMonkeyConfigurable):
     conv_win = Integer(10).tag(config=True)
     conv_max_iter = List(Integer()).tag(config=True)
     shrinks = List(Integer(), [8, 4, 2, 1]).tag(config=True)
-    smoothing = List(Integer(), [3, 2, 1, 0]).tag(config=True)
+    smoothing = List(Float(), [3, 2, 1, 0]).tag(config=True)
 
     @abstractmethod
     def get_time_restriction(self, ndim):
