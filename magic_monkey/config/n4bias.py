@@ -23,7 +23,7 @@ class N4BiasCorrectionConfiguration(MagicMonkeyConfigurable):
     ).tag(config=True)
     threshold = Float(0.01).tag(config=True)
     spline_order = BoundedInt(None, 2, 3, allow_none=True).tag(config=True)
-    knot_distance = Float(2.).tag(config=True, required=True)
+    knot_distance = Float(8.).tag(config=True, required=True)
     filter_width = Float(0.15).tag(config=True)
     noise = Float(0.01).tag(config=True)
     bins = Integer(200).tag(config=True)
