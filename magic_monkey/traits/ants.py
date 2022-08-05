@@ -174,7 +174,7 @@ class AntsPass(MagicMonkeyConfigurable):
             "--{} {}{}".format(
                 self._metrics_opts_names["smooth"],
                 "x".join(str(voxel_size * s) for s in self.smoothing),
-                "" if self._is_motion_corr else "vox"
+                "" if self._is_motion_corr else "mm"
             )
         ])
 
