@@ -145,7 +145,9 @@ class DwiMetadata(MagicMonkeyConfigurable):
         self.dataset_indexes = oth.dataset_indexes
 
     def extend(self, oth):
-        is_same, _ = validate_affine(self.affine, oth.affine, True)
+        is_same, _ = validate_affine(
+            np.array(self.affine), np.array(oth.affine), True
+        )
         assert is_same, "Affine transform for input images are not the same"
 
         d1 = self.directions if self.directions is not None else []
