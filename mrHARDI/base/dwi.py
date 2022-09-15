@@ -1,7 +1,7 @@
 from copy import deepcopy
 from enum import Enum
 from os.path import join, dirname, basename, exists
-from magic_monkey.compute.utils import validate_affine
+from mrHARDI.compute.utils import validate_affine
 
 import numpy as np
 from traitlets import Dict, List, Bool, Integer, Float, Unicode
