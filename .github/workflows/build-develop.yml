@@ -6,10 +6,11 @@ on:
       - develop
     types: [opened,reopened,synchronize]
     paths:
-      - magic_monkey/**/*.py
-      - setup.py
-      - .github/workflows/build-develop.yml
-      - containers/**/*
+      - 'magic_monkey/**/*.py'
+      - 'setup.py'
+      - '!.github/**'
+      - '.github/workflows/build-develop.yml'
+      - 'containers/**/*'
 
 jobs:
   mrhardi-creative-bakery:
