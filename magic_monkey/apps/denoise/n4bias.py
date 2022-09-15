@@ -62,6 +62,7 @@ class N4BiasCorrection(MagicMonkeyBaseApplication):
         current_path = getcwd()
 
         input_image = nib.load(self.image)
+        max_spacing = np.max(input_image.header.get_zooms()[:3])
 
         n4_output = self.output if not self.apply_to else "tmp_n4denoised"
         output_fmt = "[{}.nii.gz".format(n4_output)
@@ -81,9 +82,8 @@ class N4BiasCorrection(MagicMonkeyBaseApplication):
         if self.mask:
             mask_name = self.mask
             msk = nib.load(self.mask)
-            img = nib.load(self.image)
             if len(msk.shape) == 3 and (
-                len(msk.shape) != len(np.squeeze(img.shape))
+                len(msk.shape) != len(np.squeeze(input_image.shape))
             ):
                 mask_name = "{}_4d_mask.nii.gz".format(self.output)
                 msk_data = np.repeat(
@@ -99,16 +99,9 @@ class N4BiasCorrection(MagicMonkeyBaseApplication):
         if metadata is None and self.metadata:
             metadata = load_metadata_file(self.metadata)
 
-        if metadata is not None:
-            self.configuration.spacing = metadata.get_spacing()
-
-        if len(self.configuration.spacing) < len(input_image.shape):
-            if input_image.shape[-1] > 1:
-                self.configuration.spacing += [1.]
-
         command = [
             "N4BiasFieldCorrection {} {}".format(
-                arguments, self.configuration.serialize()
+                arguments, self.configuration.serialize(max_spacing)
             )
         ]
 

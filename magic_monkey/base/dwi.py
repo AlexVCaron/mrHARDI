@@ -1,6 +1,7 @@
 from copy import deepcopy
 from enum import Enum
 from os.path import join, dirname, basename, exists
+from magic_monkey.compute.utils import validate_affine
 
 import numpy as np
 from traitlets import Dict, List, Bool, Integer, Float, Unicode
@@ -144,7 +145,10 @@ class DwiMetadata(MagicMonkeyConfigurable):
         self.dataset_indexes = oth.dataset_indexes
 
     def extend(self, oth):
-        assert np.all(np.isclose(self.affine, oth.affine))
+        is_same, _ = validate_affine(
+            np.array(self.affine), np.array(oth.affine), True
+        )
+        assert is_same, "Affine transform for input images are not the same"
 
         d1 = self.directions if self.directions is not None else []
         d2 = oth.directions if oth.directions is not None else []

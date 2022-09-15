@@ -142,7 +142,7 @@ class AntsPass(MagicMonkeyConfigurable):
     conv_win = Integer(10).tag(config=True)
     conv_max_iter = List(Integer()).tag(config=True)
     shrinks = List(Integer(), [8, 4, 2, 1]).tag(config=True)
-    smoothing = List(Integer(), [3, 2, 1, 0]).tag(config=True)
+    smoothing = List(Float(), [3, 2, 1, 0]).tag(config=True)
 
     @abstractmethod
     def get_time_restriction(self, ndim):
@@ -160,7 +160,7 @@ class AntsPass(MagicMonkeyConfigurable):
             "x".join(str(i) for i in self.conv_max_iter)
         )
 
-    def serialize(self, with_convergence=True):
+    def serialize(self, voxel_size, with_convergence=True):
         return " ".join([
             " ".join(
                 "--metric {}".format(metric)
@@ -173,8 +173,8 @@ class AntsPass(MagicMonkeyConfigurable):
             ),
             "--{} {}{}".format(
                 self._metrics_opts_names["smooth"],
-                "x".join(str(s) for s in self.smoothing),
-                "" if self._is_motion_corr else "vox"
+                "x".join(str(voxel_size * s) for s in self.smoothing),
+                "" if self._is_motion_corr else "mm"
             )
         ])
 
@@ -190,10 +190,10 @@ class AntsRigid(AntsPass):
     def _metrics_default(self):
         return [MetricMI(0, 0)]
 
-    def serialize(self, with_convergence=True):
+    def serialize(self, voxel_size, with_convergence=True):
         return " ".join([
             "--transform Rigid[{}]".format(self.grad_step),
-            super().serialize()
+            super().serialize(voxel_size)
         ])
 
 
@@ -209,10 +209,10 @@ class AntsAffine(AntsPass):
     def _metrics_default(self):
         return [MetricMI(0, 0)]
 
-    def serialize(self, with_convergence=True):
+    def serialize(self, voxel_size, with_convergence=True):
         return " ".join([
             "--transform Affine[{}]".format(self.grad_step),
-            super().serialize()
+            super().serialize(voxel_size)
         ])
 
 
@@ -228,10 +228,10 @@ class AntsSyN(AntsPass):
     def _metrics_default(self):
         return [MetricCC(0, 0)]
 
-    def serialize(self, with_convergence=True):
+    def serialize(self, voxel_size, with_convergence=True):
         return " ".join([
             "--transform {}[{},{},{}]".format(
                 self.type, self.grad_step, self.var_penality, self.var_total
             ),
-            super().serialize()
+            super().serialize(voxel_size)
         ])

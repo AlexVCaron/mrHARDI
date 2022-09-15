@@ -2,12 +2,11 @@ from os import getcwd
 from os.path import basename, join
 from tempfile import TemporaryDirectory, mkdtemp
 
+import nibabel as nib
 import numpy as np
 from scipy.io import loadmat
 from traitlets import Dict, Instance, Unicode, Bool, Enum
 from traitlets.config.loader import ArgumentError
-
-import nibabel as nib
 
 from magic_monkey.base.application import (MagicMonkeyBaseApplication,
                                            MultipleArguments,
@@ -91,7 +90,12 @@ class AntsRegistration(MagicMonkeyBaseApplication):
     def execute(self):
         current_path = getcwd()
 
-        ants_config_fmt, config_dict = self.configuration.serialize(), {}
+        max_spacing = np.max(
+            nib.load(self.moving_images[0]).header.get_zooms()[:3]
+        )
+
+        ants_config_fmt = self.configuration.serialize(max_spacing)
+        config_dict = {}
 
         for i, target in enumerate(self.target_images):
             config_dict["t{}".format(i)] = target
@@ -114,7 +118,7 @@ class AntsRegistration(MagicMonkeyBaseApplication):
         if self.verbose:
             ants_config_fmt += " --verbose"
 
-        additional_env = None
+        additional_env = {}
         if self.configuration.seed is not None:
             additional_env["ANTS_RANDOM_SEED"] = self.configuration.seed
 
@@ -493,7 +497,12 @@ class AntsMotionCorrection(MagicMonkeyBaseApplication):
     def execute(self):
         current_path = getcwd()
 
-        ants_config_fmt, config_dict = self.configuration.serialize(), {}
+        max_spacing = np.max(
+            nib.load(self.moving_images[0]).header.get_zooms()[:3]
+        )
+
+        ants_config_fmt = self.configuration.serialize(max_spacing)
+        config_dict = {}
 
         for i, (target, moving) in enumerate(zip(
                 self.target_images, self.moving_images

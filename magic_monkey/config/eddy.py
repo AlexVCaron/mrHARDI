@@ -140,11 +140,11 @@ class EddyConfiguration(MagicMonkeyConfigurable):
                 )
             )
 
-    def serialize(self, *args, **kwargs):
+    def serialize(self, voxel_size, *args, **kwargs):
         base_arguments = serialize_fsl_args(dict(
             flm=self.field_model,
             slm=self.current_model,
-            fwhm=",".join(str(pfw) for pfw in self.pre_filter_width),
+            fwhm=",".join(str(pf * voxel_size) for pf in self.pre_filter_width),
             niter=self.n_iter,
             nvoxhp=self.n_voxels_hp,
             fep=self.fill_empty,
@@ -171,7 +171,7 @@ class EddyConfiguration(MagicMonkeyConfigurable):
 
         if self.susceptibility is not None:
             base_arguments = " ".join([
-                base_arguments, self.susceptibility.serialize()
+                base_arguments, self.susceptibility.serialize(voxel_size)
             ])
 
         return base_arguments

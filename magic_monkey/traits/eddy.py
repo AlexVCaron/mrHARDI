@@ -76,7 +76,7 @@ class IntraVolMotionCorrection(MagicDict):
 
 
 class SusceptibilityCorrection(MagicDict):
-    def __init__(self, n_iter=10, w_reg=10, knot_spacing=10):
+    def __init__(self, n_iter=10, w_reg=10, knot_spacing=5.):
         super().__init__(
             dict(
                 mbs_niter=n_iter,
@@ -91,7 +91,8 @@ class SusceptibilityCorrection(MagicDict):
             )
         )
 
-    def serialize(self):
+    def serialize(self, voxel_size):
         args = deepcopy(self)
+        args["mbs_ksp"] *= voxel_size
         args["estimate_move_by_susceptibility"] = True
         return serialize_fsl_args(args, " ", True)
