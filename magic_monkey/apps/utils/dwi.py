@@ -96,6 +96,13 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
         False, help="If True, overwrites the output file when writing"
     ).tag(config=True)
 
+    generate_md = Bool(
+        False, help="If True, will generate only the .md file required by "
+                    "Magic-Diamond, which describes the tensor type "
+                    "associated to each volume in the DWI image. The filename "
+                    "is extracted from the input DWI file supplied."
+    )
+
     aliases = Dict(default_value=_mb_aliases)
     flags = Dict(default_value=_mb_flags)
 
