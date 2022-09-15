@@ -16,4 +16,5 @@ RUN mkdir -p /mrhs/dev/mrhardi
 COPY --from=mrhardi_cloner /mrhardi /mrhs/dev/mrhardi
 WORKDIR /mrhs/dev/mrhardi
 RUN python3 -m pip install -r requirements.txt
-RUN python3 -m pip install -e .
+RUN python3 -m pip install -e . && \
+    python3 -m pip cache purge

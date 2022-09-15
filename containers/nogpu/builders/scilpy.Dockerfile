@@ -19,7 +19,8 @@ WORKDIR /
 RUN mkdir -p /mrhs/dev/scilpy
 COPY --from=scilpy_cloner /scilpy /mrhs/dev/scilpy
 WORKDIR /mrhs/dev/scilpy
-RUN python3 -m pip install -e .
+RUN python3 -m pip install -e . && \
+    python3 -m pip cache purge
 
 WORKDIR /
 RUN sed -i '41s/.*/backend : Agg/' /usr/local/lib/python3.7/dist-packages/matplotlib/mpl-data/matplotlibrc
