@@ -1,3 +1,120 @@
-# This file is left intentionally empty for now. Once develop becomes more stable
-# or another branch is chosen, this workflow will increment the patch of the release
-# based on a push event to the branch (see push-master.yml)
+name: Update development artifacts
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types: [closed]
+    paths:
+      - 'magic_monkey/**/*.py'
+      - 'setup.py'
+      - '!.github/**'
+      - '.github/workflows/*-develop.yml'
+      - 'containers/**/*'
+
+jobs:
+  create_docker_dev:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    environment: CI
+
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Get git diff for the current modifications
+        uses: technote-space/get-diff-action@v6.1.0
+        id: git_diff
+        with:
+          PATTERNS: |
+            magic_monkey/**/*.py
+            setup.py
+            .github/workflows/*-develop.yml
+            containers/**/*
+      - 
+        name: Create CPU docker dev tag from PR tag
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
+        uses: julb/action-copy-docker-tag@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          from: avcaron/mrhardi-nogpu:pr-${{ github.event.number }}
+          tags: |
+            avcaron/mrhardi-nogpu:dev
+      -
+        name: Delete CPU PR tag from dockerhub
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
+        uses: mhl787156/dockerhub-delete-tag-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_SECRET }}
+          organisation: avcaron
+          image: mrhardi-nogpu
+          tag: pr-${{ github.event.number }}
+      - 
+        name: Create GPU docker dev tag from PR tag
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
+        uses: julb/action-copy-docker-tag@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          from: avcaron/mrhardi-gpu:pr-${{ github.event.number }}
+          tags: |
+            avcaron/mrhardi-gpu:dev
+      -
+        name: Delete GPU PR tag from dockerhub
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
+        uses: mhl787156/dockerhub-delete-tag-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_SECRET }}
+          organisation: avcaron
+          image: mrhardi-gpu
+          tag: pr-${{ github.event.number }}
+
+  create_singularity_dev:
+    needs: create_docker_dev
+    runs-on: ubuntu-latest
+    environment: CI
+
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Get git diff for the current modifications
+        uses: technote-space/get-diff-action@v6.1.0
+        id: git_diff
+        with:
+          PATTERNS: |
+            magic_monkey/**/*.py
+            setup.py
+            .github/workflows/*-develop.yml
+            containers/**/*
+      - 
+        name: Setup singularity
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
+        uses: eWaterCycle/setup-singularity@v7
+        with:
+          singularity-version: 3.7.1
+      -
+        name: Azure Container Registry Login
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
+        uses: Azure/docker-login@v1
+        with:
+          login-server: mrhardi.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_TOKEN }}
+      -
+        name: Update tag of singularity image
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
+        run: |
+          mkdir sif_tmp sif_cache
+          export SINGULARITY_TMPDIR="$(pwd)/sif_tmp"
+          export SINGULARITY_CACHEDIR="$(pwd)/sif_cache"
+          echo "Caching and temping singularity at : $SINGULARITY_CACHEDIR and $SINGULARITY_TMPDIR"
+          echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
+          singularity pull oras://mrhardi.azurecr.io/mrHARDI/mrhardi:pr-${{ github.event.number }}
+          singularirty push mrhardi_pr_${{ github.event.number }}.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
+          az acr repository untag -n mrHARDI -t mrhardi:pr-${{ github.event.number }}
