@@ -1,7 +1,10 @@
 name: Update development artifacts
 
 on:
-  workflow_dispatch:
+  workflow_run:
+      workflows: ["Development PR builds"]
+      types:
+        - completed
   pull_request:
     branches:
       - develop
