@@ -1,6 +1,7 @@
 name: Update development artifacts
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - develop
