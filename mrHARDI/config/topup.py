@@ -1,7 +1,7 @@
 from enum import Enum as BaseEnum
 
 from traitlets import Float
-from traitlets.config import Bool, List, Unicode
+from traitlets.config import Bool, List, Unicode, default
 
 from mrHARDI.base.application import (DictInstantiatingInstance,
                                            mrHARDIConfigurable,
@@ -32,6 +32,30 @@ _default_passes = [
         TopupPass.Minimizer.Scaled_Conjugate_Gradient
     )
 ]
+
+
+_aliases = {
+    "reg": "TopupConfiguration.reg_model",
+    "spl": "spl_order",
+    "interp": "interpolation",
+    "b0-thr": "ceil_value"
+}
+
+
+_flags = {
+    "no-ssql": (
+        {"TopupConfiguration": {"ssq_scale_lambda": False}},
+        "Disable scaling lambda with SSQ value at current iteration."
+    ),
+    "static-internsity": (
+        {"TopupConfiguration": {"scale_intensities": False}},
+        "Disable image intensity rescaling between each iteration."
+    ),
+    "strict-eq": (
+        {"TopupConfiguration": {"strict": True}},
+        "If True, test b0 b-values with \"<\" comparator instead of \"<=\""
+    )
+}
 
 
 class TopupConfiguration(mrHARDIConfigurable):
@@ -80,6 +104,14 @@ class TopupConfiguration(mrHARDIConfigurable):
         False, help="If True, test b0 b-values with "
                     "\"<\" comparator instead of \"<=\""
     ).tag(config=True)
+
+    @default('app_aliases')
+    def _app_aliases_default(self):
+        return _aliases
+
+    @default('app_flags')
+    def _app_flags_default(self):
+        return _flags
 
     def serialize(self, voxel_size, *args, **kwargs):
         if len(self.passes) > 1:
