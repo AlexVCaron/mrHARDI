@@ -35,15 +35,23 @@ _mb_aliases = {
 _mb_flags = dict(
     overwrite=(
         {"DwiMetadataUtils": {'overwrite': True}},
-        "Force overwriting of output images if present"
+        "Force overwriting of output images if present."
     ),
     update=(
         {"DwiMetadataUtils": {'update': True}},
-        "Updates the already present metadata files"
+        "Updates the already present metadata files."
     ),
     update_affine=(
         {"DwiMetadataUtils": {'update_affine': True}},
-        "Only update affine file in metadata file"
+        "Only update affine file in metadata file."
+    ),
+    generate_md=(
+        {"DwiMetadataUtils": {'generate_md': True}},
+        "Generate .md files for each images supplied for Magic-Diamond."
+    ),
+    single_md_file=(
+        {"DwiMetadataUtils": {'single_md_file': True}},
+        "Generate a single .md file containing all images tensor types."
     )
 )
 
@@ -101,6 +109,12 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
                     "Magic-Diamond, which describes the tensor type "
                     "associated to each volume in the DWI image. The filename "
                     "is extracted from the input DWI file supplied."
+    )
+
+    single_md_file = Bool(
+        False, help="When True, will generate a single md file "
+                    "with the tensor types for all images in it, "
+                    "named tensor_types.md."
     )
 
     aliases = Dict(default_value=_mb_aliases)
@@ -233,8 +247,9 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             {"data": nib.load(name), "name": name} for name in self.dwis
         ]
 
-    def _get_file_for(self, image_name):
-        name = "{}_metadata".format(basename(image_name).split(".")[0])
+    def _get_file_for(self, image_name, ftype="metadata"):
+        name = basename(image_name).split(".")[0]
+        name = "{}_{}".format(name, ftype) if ftype else name
         name = "{}_{}".format(name, self.suffix) if self.suffix else name
         return join(
             self.output_folder if self.output_folder else dirname(image_name),
@@ -250,58 +265,90 @@ class DwiMetadataUtils(MagicMonkeyBaseApplication):
             mt.affine = img["data"].affine.tolist()
             save_metadata(img["name"].split(".")[0], mt)
 
+    def _generate_md_files(self, images):
+        base_meta = load_metadata_file(self.metadata) \
+            if self.metadata else None
+
+        tensor_types, names = [], []
+
+        for img in images:
+            mt = base_meta.copy() if base_meta else load_metadata(img["name"])
+            tensor_types.append(mt.get_tensor_types())
+            names.append("{}.md".format(self._get_file_for(img["name"], None)))
+
+        if self.single_md_file:
+            if self.output_folder:
+                out_folder = self.output_folder
+            else:
+                out_folder = dirname(images[0]["name"])
+
+            tensor_types = [np.concatenate(tensor_types).tolist()]
+            names = [join(out_folder, "tensor_types.md")]
+
+        for tt, name in zip(tensor_types, names):
+            with open(name, "w+") as f:
+                f.writelines(tt)
+
+
     def execute(self):
         images = self.preload_images()
 
         if self.update_affine:
             self._only_update_affine(images)
-
-        directions = self.get_phase_directions(images)
-
-        if self.configuration.multiband_factor in [None, 0]:
-            self.configuration.multiband_factor = 1
-
-        slice_indexes = self.configuration.slice_indexes
-        if slice_indexes is None:
-            slice_indexes = self._get_slice_indexes(images)
+        elif self.generate_md:
+            self._generate_md_files(images)
         else:
-            slice_indexes = [slice_indexes for _ in range(len(images))]
+            directions = self.get_phase_directions(images)
 
-        slice_dirs = self.configuration.slice_direction
-        if len(self.configuration.slice_direction) == 1:
-            slice_dirs = np.repeat(
-                self.configuration.slice_direction, len(images)
-            ).tolist()
+            if self.configuration.multiband_factor in [None, 0]:
+                self.configuration.multiband_factor = 1
 
-        for name, img, d, ss, sd in zip(
-            self.dwis, images, directions, slice_indexes, slice_dirs
-        ):
-            shape = img["data"].shape
-            metadata = load_metadata(name) if self.metadata else DwiMetadata()
-            metadata.n = shape[-1] if len(shape) > 3 else 1
-            metadata.n_excitations = int(shape[
-                np.argmax(np.absolute(Direction[sd].value))
-            ] / self.configuration.multiband_factor)
-            metadata.affine = img["data"].affine.tolist()
-            metadata.directions = [d]
-            metadata.readout = self.configuration.readout
+            slice_indexes = self.configuration.slice_indexes
+            if slice_indexes is None:
+                slice_indexes = self._get_slice_indexes(images)
+            else:
+                slice_indexes = [slice_indexes for _ in range(len(images))]
 
-            metadata.is_multiband = (
-                self.configuration.multiband_factor and
-                self.configuration.multiband_factor > 1
-            )
-            metadata.slice_order = ss if ss is not None else []
-            metadata.multiband_corrected = \
-                self.configuration.multiband_corrected or False
+            slice_dirs = self.configuration.slice_direction
+            if len(self.configuration.slice_direction) == 1:
+                slice_dirs = np.repeat(
+                    self.configuration.slice_direction, len(images)
+                ).tolist()
 
-            metadata.is_tensor_valued = \
-                self.configuration.tensor_valued or False
-            metadata.acquisition_types = [
-                AcquisitionType[self.configuration.acquisition].value
-            ]
-            metadata.acquisition_slices = [[0, None]]
+            for name, img, d, ss, sd in zip(
+                self.dwis, images, directions, slice_indexes, slice_dirs
+            ):
+                shape = img["data"].shape
 
-            metadata.generate_config_file(self._get_file_for(img["name"]))
+                if self.metadata:
+                    metadata = load_metadata(name)
+                else:
+                    metadata = DwiMetadata()
+
+                metadata.n = shape[-1] if len(shape) > 3 else 1
+                metadata.n_excitations = int(shape[
+                    np.argmax(np.absolute(Direction[sd].value))
+                ] / self.configuration.multiband_factor)
+                metadata.affine = img["data"].affine.tolist()
+                metadata.directions = [d]
+                metadata.readout = self.configuration.readout
+
+                metadata.is_multiband = (
+                    self.configuration.multiband_factor and
+                    self.configuration.multiband_factor > 1
+                )
+                metadata.slice_order = ss if ss is not None else []
+                metadata.multiband_corrected = \
+                    self.configuration.multiband_corrected or False
+
+                metadata.is_tensor_valued = \
+                    self.configuration.tensor_valued or False
+                metadata.acquisition_types = [
+                    AcquisitionType[self.configuration.acquisition].value
+                ]
+                metadata.acquisition_slices = [[0, None]]
+
+                metadata.generate_config_file(self._get_file_for(img["name"]))
 
 
 _assert_aliases = {
