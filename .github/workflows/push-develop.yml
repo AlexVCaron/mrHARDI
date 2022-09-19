@@ -118,5 +118,5 @@ jobs:
           echo "Caching and temping singularity at : $SINGULARITY_CACHEDIR and $SINGULARITY_TMPDIR"
           singularity pull oras://mrhardi.azurecr.io/mrHARDI/mrhardi:pr-${{ github.event.number }}
           echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
-          singularity push mrhardi_pr_${{ github.event.number }}.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
+          singularity push mrhardi_pr-${{ github.event.number }}.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
           az acr repository untag -n mrHARDI -t mrhardi:pr-${{ github.event.number }}
