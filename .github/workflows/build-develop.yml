@@ -1,4 +1,4 @@
-name: Development build
+name: Development PR builds
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ on:
       - 'magic_monkey/**/*.py'
       - 'setup.py'
       - '!.github/**'
-      - '.github/workflows/build-develop.yml'
+      - '.github/workflows/*-develop.yml'
       - 'containers/**/*'
 
 jobs:
@@ -26,10 +26,11 @@ jobs:
         uses: technote-space/get-diff-action@v6.1.0
         id: git_diff
         with:
+          GET_FILE_DIFF: true
           PATTERNS: |
             magic_monkey/**/*.py
             setup.py
-            .github/workflows/build-develop.yml
+            .github/workflows/*-develop.yml
             containers/**/*
       -
         name: Set up Docker Buildx
@@ -52,8 +53,8 @@ jobs:
           pull: true
           push: true
           set: |
-            nogpu.tags=docker.io/avcaron/mrhardi-nogpu:dev
-            latest.tags=docker.io/avcaron/mrhardi-gpu:dev
+            nogpu.tags=docker.io/avcaron/mrhardi-nogpu:pr-${{ github.event.number }}
+            latest.tags=docker.io/avcaron/mrhardi-gpu:pr-${{ github.event.number }}
             mrhardi_cloner.args.mrhardi_ver=${{ github.head_ref }}
 
   mrhardi-creative-packaging:
@@ -70,10 +71,11 @@ jobs:
         uses: technote-space/get-diff-action@v6.1.0
         id: git_diff
         with:
+          GET_FILE_DIFF: true
           PATTERNS: |
             magic_monkey/**/*.py
             setup.py
-            .github/workflows/build-develop.yml
+            .github/workflows/*-develop.yml
             containers/**/*
       -
         name: Maximize disk usage
@@ -108,16 +110,17 @@ jobs:
           export SINGULARITY_TMPDIR="$(pwd)/sif_tmp"
           export SINGULARITY_CACHEDIR="$(pwd)/sif_cache"
           echo "Caching and temping singularity at : $SINGULARITY_CACHEDIR and $SINGULARITY_TMPDIR"
-          singularity build mrhardi_dev_gpu.sif docker://avcaron/mrhardi-gpu:dev
+          singularity build mrhardi_dev_gpu.sif docker://avcaron/mrhardi-gpu:pr-${{ github.event.number }}
           echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
-          singularity push mrhardi_dev_gpu.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
+          singularity push mrhardi_dev_gpu.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:pr-${{ github.event.number }}
       -
         name: Write artifacts manifest
         run: |
+          echo "Warning !!! Artifacts will be deleted when pull request closes" >> artifacts.MANIFEST
           echo "Artifacts pull commands:" >> artifacts.MANIFEST
-          echo "docker pull avcaron/mrhardi-nogpu:dev" >> artifacts.MANIFEST
-          echo "docker pull avcaron/mrhardi-gpu:dev" >> artifacts.MANIFEST
-          echo "singularity pull oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev" >> artifacts.MANIFEST
+          echo "docker pull avcaron/mrhardi-nogpu:pr-${{ github.event.number }}" >> artifacts.MANIFEST
+          echo "docker pull avcaron/mrhardi-gpu:pr-${{ github.event.number }}" >> artifacts.MANIFEST
+          echo "singularity pull oras://mrhardi.azurecr.io/mrHARDI/mrhardi:pr-${{ github.event.number }}" >> artifacts.MANIFEST
       -
         name: Upload workflow artifacts
         uses: actions/upload-artifact@v3
