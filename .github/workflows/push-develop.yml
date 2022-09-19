@@ -116,7 +116,7 @@ jobs:
           export SINGULARITY_TMPDIR="$(pwd)/sif_tmp"
           export SINGULARITY_CACHEDIR="$(pwd)/sif_cache"
           echo "Caching and temping singularity at : $SINGULARITY_CACHEDIR and $SINGULARITY_TMPDIR"
-          echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
           singularity pull oras://mrhardi.azurecr.io/mrHARDI/mrhardi:pr-${{ github.event.number }}
-          singularirty push mrhardi_pr_${{ github.event.number }}.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
+          echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
+          singularity push mrhardi_pr_${{ github.event.number }}.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
           az acr repository untag -n mrHARDI -t mrhardi:pr-${{ github.event.number }}
