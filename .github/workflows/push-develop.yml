@@ -101,14 +101,6 @@ jobs:
         with:
           singularity-version: 3.7.1
       -
-        name: Azure Container Registry Login
-        if: ${{ steps.git_diff.outputs.lines > 0 }}
-        uses: Azure/docker-login@v1
-        with:
-          login-server: mrhardi.azurecr.io
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_TOKEN }}
-      -
         name: Update tag of singularity image
         if: ${{ steps.git_diff.outputs.lines > 0 }}
         run: |
@@ -119,4 +111,16 @@ jobs:
           singularity pull oras://mrhardi.azurecr.io/mrHARDI/mrhardi:pr-${{ github.event.number }}
           echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
           singularity push mrhardi_pr-${{ github.event.number }}.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
+      -
+        name: Azure Container Registry Login
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZ_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+      -
+        name: Delete PR tag from ACR
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
+        run: |
           az acr repository untag -n mrHARDI -t mrhardi:pr-${{ github.event.number }}
