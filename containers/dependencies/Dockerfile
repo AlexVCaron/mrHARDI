@@ -51,9 +51,10 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install \
     gfortran \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3 -m pip install Cython \
-    && python3 -m pip install numpy \
-    && python3 -m pip install setuptools==57.5.0
+RUN python3 -m pip install Cython && \
+    python3 -m pip install numpy && \
+    python3 -m pip install setuptools==57.5.0 && \
+    python3 -m pip cache purge
 
 WORKDIR /
 RUN mkdir -p /mrhs/dev/fsl
