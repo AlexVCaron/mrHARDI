@@ -12,6 +12,10 @@ on:
       - '.github/workflows/*-develop.yml'
       - 'containers/**/*'
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   create_docker_dev:
     if: github.event.pull_request.merged == true
@@ -75,7 +79,7 @@ jobs:
           tag: pr-${{ github.event.number }}
 
   create_singularity_dev:
-    needs: create_docker_dev
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     environment: CI
 
