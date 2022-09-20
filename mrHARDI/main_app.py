@@ -6,7 +6,6 @@ from mrHARDI.base.application import mrHARDIBaseApplication
 
 
 def cast_unicode(s):
-    print(s)
     if isinstance(s, bytes):
         return s.decode(sys.stdin.encoding, 'replace')
     return s
@@ -19,11 +18,8 @@ class mrHARDIApplication(mrHARDIBaseApplication):
 
     @classmethod
     def launch_instance(cls, argv=None, **kwargs):
-        print("Launching instance")
-        print(argv if argv else "No argv sent")
         assert not isinstance(argv, str)
         argv = sys.argv[1:] if argv is None else argv
-        print(argv)
         argv = [cast_unicode(arg) for arg in argv]
         super().launch_instance(argv, **kwargs)
 

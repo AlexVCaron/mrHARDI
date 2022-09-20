@@ -113,7 +113,6 @@ class EddyConfiguration(mrHARDIConfigurable):
 
     def _config_section(self):
         if self.enable_cuda:
-            print("cuda enabled")
             for trait in self.traits(
                 none_to_default=True, cuda_required=True
             ).values():
@@ -123,7 +122,6 @@ class EddyConfiguration(mrHARDIConfigurable):
         return super()._config_section()
 
     def _validate(self):
-        print(self.outlier_model)
         if not self.enable_cuda and (
             self.outlier_model or self.slice_to_vol or self.susceptibility
         ):

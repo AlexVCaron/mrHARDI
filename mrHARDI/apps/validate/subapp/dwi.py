@@ -55,22 +55,25 @@ class DWIValidation(mrHARDIBaseApplication):
                 )
 
         if self.output:
-            with open("{}_errors.txt".format(self.output), "w+") as f:
-                if not has_b0:
-                    f.write("DWI image does not have b0 volumes\n")
-                if not bvecs_is_row:
-                    f.write("b-vectors should be arranged in columns\n")
-                if not valid_bvals:
-                    f.write(
-                        "Mismatch between the number of b-values "
-                        "({}) and DWI volumes ({})\n".format(
-                            len(bvals), n_volumes
+            if not (
+                has_b0 and bvecs_is_row and valid_bvecs and valid_bvals
+            ):
+                with open("{}_errors.txt".format(self.output), "w+") as f:
+                    if not has_b0:
+                        f.write("DWI image does not have b0 volumes\n")
+                    if not bvecs_is_row:
+                        f.write("b-vectors should be arranged in columns\n")
+                    if not valid_bvals:
+                        f.write(
+                            "Mismatch between the number of b-values "
+                            "({}) and DWI volumes ({})\n".format(
+                                len(bvals), n_volumes
+                            )
                         )
-                    )
-                if bvecs_is_row and not valid_bvecs:
-                    f.write(
-                        "Mismatch between the number of b-vectors "
-                        "({}) and DWI volumes ({})\n".format(
-                            bvecs.shape[1], n_volumes
+                    if bvecs_is_row and not valid_bvecs:
+                        f.write(
+                            "Mismatch between the number of b-vectors "
+                            "({}) and DWI volumes ({})\n".format(
+                                bvecs.shape[1], n_volumes
+                            )
                         )
-                    )

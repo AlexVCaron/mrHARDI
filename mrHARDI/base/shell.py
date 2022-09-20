@@ -201,7 +201,6 @@ def launch_shell_process(
     except BaseException as e:
         if log_file_path:
             with open(log_file_path, "a+") as log_file:
-                print(type(e))
                 log_file.write("Caught unknown exception : {}\n".format(
                     e if e else "No description"
                 ))
