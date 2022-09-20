@@ -70,12 +70,3 @@ jobs:
           name: artifacts_manifest
           path: artifacts.MANIFEST
           if-no-files-found: warn
-
-  mrhardi-creative-packaging:
-    runs-on: ubuntu-latest
-    environment: CI
-
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v3
