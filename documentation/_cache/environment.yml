@@ -1,4 +1,4 @@
-name: magic_monkey_docs
+name: mrHARDI_docs
 dependencies:
 - python=3.7
 - setuptools>=49.6

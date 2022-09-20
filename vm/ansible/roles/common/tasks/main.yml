@@ -7,8 +7,8 @@
   include: build_python.yml
   ignore_errors: yes
 
-- name: Run MMY installation block
-  include: install_mmy.yml
+- name: Run MRH installation block
+  include: install_mrh.yml
 
 - name: Run Nextflow installation block
   include: install_nxf.yml

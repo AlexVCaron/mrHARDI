@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Magic Monkey documentation build configuration file.
+# mrHARDI documentation build configuration file.
 
 # NOTE: This file has been edited manually from the auto-generated one from
 # sphinx.  Do NOT delete and re-generate.  If any changes from sphinx are
@@ -95,7 +95,7 @@ rst_prolog += """
 .. important::
 
     This corpus covers the available documentation inside the applications 
-    forming the Magic-Monkey code base. It only contains the auto-generated 
+    forming the mrHARDI code base. It only contains the auto-generated 
     documentation from command-line help, configuration descriptions and PEP 
     documentation. More to come.
 
@@ -105,7 +105,7 @@ rst_prolog += """
 master_doc = 'index'
 
 # General substitutions.
-project = 'Magic Monkey'
+project = 'mrHARDI'
 copyright = 'SCIL - UdeS'
 
 # TODO : Add here when the project's goes public
@@ -259,7 +259,7 @@ latex_font_size = '11pt'
 # (source start file, target name, title, author, document class [howto/manual]).
 
 latex_documents = [
-    ('index', 'magic_monkey.tex', 'Magic Monkey Documentation',
+    ('index', 'mrHARDI.tex', 'mrHARDI Documentation',
      u"""SCIL - UdeS""", 'manual', True)
 ]
 
@@ -285,15 +285,15 @@ latex_use_modindex = True
 # --------------------------
 
 texinfo_documents = [
-  (master_doc, 'magic_monkey', 'Magic Monkey Documentation',
+  (master_doc, 'mrHARDI', 'mrHARDI Documentation',
    'SCIL - UdeS',
-   'Magic Monkey',
-   'Magic Monkey Documentation',
+   'mrHARDI',
+   'mrHARDI Documentation',
    'Programming',
    1),
 ]
 
-modindex_common_prefix = ['magic_monkey.']
+modindex_common_prefix = ['mrHARDI.']
 
 
 # # Cleanup

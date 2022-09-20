@@ -1,7 +1,7 @@
 .. _introduction:
 
 ==========================
-Magic Monkey Documentation
+mrHARDI Documentation
 ==========================
 
 .. only:: html
@@ -9,7 +9,7 @@ Magic Monkey Documentation
    :Release: This will have to be \|release\| when we have it
    :Date: |today|
 
-Welcome to Magic-monkey, a modular, parallel and configurable magnetic
+Welcome to mrHARDI, a modular, parallel and configurable magnetic
 resonance image processing and analysis toolbox, based on some of the most
 popular libraries available to date. The goal of this library is to facilitate
 and humanize the implementation of complex data analysis pipelines. To do so,
