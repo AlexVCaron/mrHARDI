@@ -149,7 +149,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.utils.SplitImage",
             'Split an image given an axis'
         ),
-        topup=("mrHARDI.apps.denoise.Topup", 'Execute topup correction')
+        topup=("mrHARDI.apps.denoise.Topup", 'Execute topup correction'),
+        validate=(
+            "mrHARDI.apps.validate.Validate", 'Data validation'
+        )
     )
 
 
