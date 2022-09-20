@@ -36,9 +36,9 @@ _default_passes = [
 
 _aliases = {
     "reg": "TopupConfiguration.reg_model",
-    "spl": "spl_order",
-    "interp": "interpolation",
-    "b0-thr": "ceil_value"
+    "spl": "TopupConfiguration.spl_order",
+    "interp": "TopupConfiguration.interpolation",
+    "b0-thr": "TopupConfiguration.ceil_value"
 }
 
 
