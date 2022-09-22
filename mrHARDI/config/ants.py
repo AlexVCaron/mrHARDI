@@ -65,12 +65,12 @@ class AntsConfiguration(mrHARDIConfigurable):
                    "of imaging for fixed and moving images"
     ).tag(config=True)
     init_moving_transform = List(
-        InitialTransform,
+        InitialTransform(),
         help="Perform an initial fast registration from moving "
              "to fixed between two images to align the dataset"
     ).tag(config=True)
     init_fixed_transform = List(
-        InitialTransform,
+        InitialTransform(),
         help="Perform an initial fast registration from fixed "
              "to moving between two images to align the dataset"
     ).tag(config=True)
