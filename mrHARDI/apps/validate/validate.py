@@ -7,6 +7,12 @@ class Validate(mrHARDIBaseApplication):
     name = u"mrHARDI data validator"
 
     subcommands = {
-        "affine": "mrHARDI.apps.validate.AffineValidation",
-        "dwi": "mrHARDI.apps.validate.DWIValidation"
+        "affine": (
+            "mrHARDI.apps.validate.AffineValidation",
+            "Validate spatial alignment of two images"
+        ),
+        "dwi": (
+            "mrHARDI.apps.validate.DWIValidation",
+            "Validate acquisition parameters of a DWI acquisition"
+        )
     }
