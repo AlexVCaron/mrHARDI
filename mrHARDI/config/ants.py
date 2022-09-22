@@ -64,20 +64,20 @@ class AntsConfiguration(mrHARDIConfigurable):
         True, help="Perform registration on different modalities "
                    "of imaging for fixed and moving images"
     ).tag(config=True)
-    init_transform = InitialTransform(
-        None, allow_none=True, help="Perform an initial fast registration "
-                                    "between two images to align the dataset"
+    init_moving_transform = List(
+        InitialTransform,
+        help="Perform an initial fast registration from moving "
+             "to fixed between two images to align the dataset"
+    ).tag(config=True)
+    init_fixed_transform = List(
+        InitialTransform,
+        help="Perform an initial fast registration from fixed "
+             "to moving between two images to align the dataset"
     ).tag(config=True)
     register_last_dimension = Bool(True).tag(config=True)
     seed = Integer(None, allow_none=True).tag(config=True)
 
     def _config_section(self):
-
-        if self.init_transform is None:
-            trait = self.traits()["init_transform"]
-            trait.set(self, [0, 0, 1])
-            trait.tag(bypass=True)
-
         return super()._config_section()
 
     @default('app_flags')
@@ -102,12 +102,21 @@ class AntsConfiguration(mrHARDIConfigurable):
                 0 if self.accross_modalities else 1
             ))
 
-        if self.init_transform:
-            optionals.append(self.init_transform)
-            if not self.register_last_dimension:
-                optionals.append("--restrict-deformation {}x0".format(
-                    "x".join(str(1) for _ in range(self.dimension - 1))
-                ))
+        if self.init_moving_transform and len(self.init_moving_transform) > 0:
+            for transform in self.init_moving_transform:
+                optionals.append(transform)
+                if not self.register_last_dimension:
+                    optionals.append("--restrict-deformation {}x0".format(
+                        "x".join(str(1) for _ in range(self.dimension - 1))
+                    ))
+
+        if self.init_fixed_transform and len(self.init_fixed_transform) > 0:
+            for transform in self.init_fixed_transform:
+                optionals.append(transform.invert())
+                if not self.register_last_dimension:
+                    optionals.append("--restrict-deformation {}x0".format(
+                        "x".join(str(1) for _ in range(self.dimension - 1))
+                    ))
 
         for ants_pass in self.passes:
             optionals.append(ants_pass.serialize(voxel_size))
