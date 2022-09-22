@@ -1,17 +1,39 @@
 import nibabel as nib
 import numpy as np
-from traitlets import Bool
+from traitlets import Bool, default
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
                                       output_prefix_argument,
                                       required_file)
 from mrHARDI.compute.utils import validate_affine
 
+
+_aliases = {
+    "in": "AffineValidation.image",
+    "ref": "AffineValidation.reference",
+    "out": "AffineValidation.output"
+}
+
+_flags = dict(
+    stdout=(
+        {"AffineValidation": {"output_stdout": True}},
+        "Redirect output information to stdout (else quiet)"
+    )
+)
+
 class AffineValidation(mrHARDIBaseApplication):
     image = required_file(description="Input image to compare")
     reference = required_file(description="Reference image for the comparison")
     output = output_prefix_argument(required=False)
     output_stdout = Bool(False).tag(config=True)
+
+    @default('app_flags')
+    def _app_flags_default(self):
+        return _flags
+
+    @default('app_aliases')
+    def _app_aliases_default(self):
+        return _aliases
 
     def execute(self):
         img = nib.load(self.image)

@@ -1,10 +1,26 @@
 import nibabel as nib
 import numpy as np
-from traitlets import Bool, Float
+from traitlets import Bool, Float, default
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
                                       output_prefix_argument,
                                       required_file)
+
+
+_aliases = {
+    "in": "DWIValidation.dwi",
+    "bvals": "DWIValidation.bvals",
+    "bvecs": "DWIValidation.bvecs",
+    "out": "AffineValidation.output",
+    "b0-thr": "DWIValidation.b0_threshold"
+}
+
+_flags = dict(
+    stdout=(
+        {"DWIValidation": {"output_stdout": True}},
+        "Redirect output information to stdout (else quiet)"
+    )
+)
 
 
 class DWIValidation(mrHARDIBaseApplication):
@@ -16,6 +32,14 @@ class DWIValidation(mrHARDIBaseApplication):
     b0_threshold = Float(
         0.9, help="Higher bound determining a valid b-value for a b0 volume"
     ).tag(config=True)
+
+    @default('app_flags')
+    def _app_flags_default(self):
+        return _flags
+
+    @default('app_aliases')
+    def _app_aliases_default(self):
+        return _aliases
 
     def execute(self):
         img = nib.load(self.dwi)
