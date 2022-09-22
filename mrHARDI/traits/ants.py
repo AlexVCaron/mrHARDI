@@ -12,7 +12,7 @@ from mrHARDI.base.application import (DictInstantiatingInstance,
 
 class InitialTransform(TraitType):
     default_value = None
-    order = ["t", "m"]
+    transform_type = "moving"
 
     def get(self, obj, cls=None):
         value = super().get(obj, cls)
@@ -27,12 +27,16 @@ class InitialTransform(TraitType):
             return value
 
         target_index, moving_index, strat = value
-        return "--initial-moving-transform [${}{}%,${}{}%,{}]".format(
-            self.order[0], target_index, self.order[1], moving_index, strat
+        return "--initial-{}-transform [$t{}%,$m{}%,{}]".format(
+            self.transform_type, target_index, moving_index, strat
         ).replace("$", "{").replace("%", "}")
 
     def invert(self):
-        self.order = self.order[::-1]
+        if self.transform_type == "moving":
+            self.transform_type = "fixed"
+        else:
+            self.transform_type = "moving"
+
         return self
 
     def validate(self, obj, value):
