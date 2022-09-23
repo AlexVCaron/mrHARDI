@@ -7,7 +7,7 @@ from traitlets.config.loader import ConfigError
 
 from mrHARDI.base.ListValuedDict import MagicDict
 from mrHARDI.base.application import (DictInstantiatingInstance,
-                                           mrHARDIConfigurable)
+                                      mrHARDIConfigurable)
 
 
 class InitialTransform(TraitType):
@@ -47,7 +47,7 @@ class InitialTransform(TraitType):
                 t, m, strat = value
                 if isinstance(t, int) and isinstance(m, int):
                     if isinstance(strat, int) and (0 <= strat <= 2):
-                        return self.klass(*value)
+                        return value
 
         if value is not None:
             self.error(obj, value)

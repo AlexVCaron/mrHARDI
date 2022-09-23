@@ -104,7 +104,11 @@ class AntsConfiguration(mrHARDIConfigurable):
 
         if self.init_moving_transform and len(self.init_moving_transform) > 0:
             for transform in self.init_moving_transform:
-                optionals.append(transform)
+                optionals.append(
+                    "--initial-moving-transform [$t{}%,$m{}%,{}]".format(
+                        *transform
+                    ).replace("$", "{").replace("%", "}")
+                )
                 if not self.register_last_dimension:
                     optionals.append("--restrict-deformation {}x0".format(
                         "x".join(str(1) for _ in range(self.dimension - 1))
@@ -112,7 +116,11 @@ class AntsConfiguration(mrHARDIConfigurable):
 
         if self.init_fixed_transform and len(self.init_fixed_transform) > 0:
             for transform in self.init_fixed_transform:
-                optionals.append(transform.invert())
+                optionals.append(
+                    "--initial-fixed-transform [$t{}%,$m{}%,{}]".format(
+                        *transform
+                    ).replace("$", "{").replace("%", "}")
+                )
                 if not self.register_last_dimension:
                     optionals.append("--restrict-deformation {}x0".format(
                         "x".join(str(1) for _ in range(self.dimension - 1))
