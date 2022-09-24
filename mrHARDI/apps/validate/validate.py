@@ -4,7 +4,7 @@ from mrHARDI.base.application import (mrHARDIBaseApplication,
                                       output_prefix_argument)
 
 class Validate(mrHARDIBaseApplication):
-    name = u"mrHARDI data validator"
+    name = u"mrhardi validate"
 
     subcommands = {
         "affine": (

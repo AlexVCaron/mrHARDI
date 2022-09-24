@@ -344,7 +344,16 @@ class mrHARDIBaseApplication(Application):
         self._validate_configuration()
 
     def _example_command(self, sub_command=""):
-        return "mrHARDI {} <args> <flags>".format(sub_command)
+        return "mrhardi {} <args> <flags>".format(sub_command)
+
+    def _get_current_subapps(self):
+        subapps = []
+        parent = self.parent
+        while parent:
+            subapps.append(parent.argv[0])
+            parent = parent.parent
+
+        return subapps
 
     def emit_options_help(self):
         if not self.flags and not self.aliases:
@@ -362,12 +371,12 @@ class mrHARDIBaseApplication(Application):
         yield separator
         yield ''
 
-        if self.subapp:
-            yield "command format : {}".format(
-                self._example_command(self.parent.argv[0])
-            )
-        else:
-            yield "command format : {}".format(self._example_command())
+        subapps = list(
+            filter(lambda a: len(a) > 0, self._get_current_subapps())
+        )
+        yield "command format : {}".format(
+            self._example_command(" ".join(subapps))
+        )
 
         yield ''
 

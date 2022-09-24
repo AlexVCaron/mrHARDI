@@ -24,7 +24,7 @@ class mrHARDIApplication(mrHARDIBaseApplication):
         super().launch_instance(argv, **kwargs)
 
     def _example_command(self, *args):
-        return "mrHARDI command <args> <flags>"
+        return "mrhardi [cmd] <args> <flags>"
 
     subcommands = dict(
         ants_motion=(
