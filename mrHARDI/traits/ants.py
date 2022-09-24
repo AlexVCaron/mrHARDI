@@ -99,13 +99,14 @@ class MetricMI(AntsMetric):
 
 class MetricCC(AntsMetric):
     def __init__(
-        self, target_index, moving_index, weight=1., radius=4, args=None, **_
+        self, target_index, moving_index, weight=1., radius=4, 
+        sampling="Regular", sampling_p=0.25, args=None, **_
     ):
         if args and len(args) == 2:
             weight, radius = args
 
         super().__init__(
-            target_index, moving_index, (weight, radius)
+            target_index, moving_index, (weight, radius, sampling, sampling_p)
         )
 
         self._name = "CC"
