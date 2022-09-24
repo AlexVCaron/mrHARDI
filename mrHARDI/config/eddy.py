@@ -5,13 +5,13 @@ from traitlets.config import Bool, Instance, default, List
 from traitlets.config.loader import ConfigError
 
 from mrHARDI.base.application import (BoundedInt,
-                                           DictInstantiatingInstance,
-                                           mrHARDIConfigurable,
-                                           convert_enum)
+                                      DictInstantiatingInstance,
+                                      mrHARDIConfigurable,
+                                      convert_enum)
 from mrHARDI.base.fsl import serialize_fsl_args
 from mrHARDI.traits.eddy import (IntraVolMotionCorrection,
-                                      OutlierReplacement,
-                                      SusceptibilityCorrection)
+                                 OutlierReplacement,
+                                 SusceptibilityCorrection)
 
 _flags = dict(
     cuda=(
