@@ -70,29 +70,30 @@ def world_to_voxel(coord, affine):
     return vox_coord[0:3]
 
 
-def validate_affine(aff_a, aff_b, shape_b):
-    def _get_strides(_aff):
-        _val, _vec = np.linalg.eigh(_aff)
-        _sort = list(
-            np.where([np.allclose(_a, _r) for _r in _aff])[0][0]
-            for _a in _vec @ np.diag(_val) @ np.linalg.inv(_vec)
-        )
-        return _val[_sort]
+def validate_affine(aff_a, aff_b, shape):
+    # Code from dicm2nii
+    def _reorient_to_ras(_r):
+        _a = np.abs(_r[:-1, :-1])
+        _ix = np.argmax(_a, axis=1)
+        if _ix[1] == _ix[0]:
+            _a[_ix[1], 1] = 0
+            _ix[1] = np.argmax(_a[:, 1])
+        if np.any(_ix[:2] == _ix[2]):
+            _ix[3] = np.setdiff1d(np.arange(0, 3, dtype=int), _ix[:3])
+        _perm = np.argsort(_ix)
+        _r[:, :3] = _r[:, _perm]
+        _flp = np.diag(_r[:3, :3]) < 0
+        _flp[0] = ~_flp[0]
+        _rm = np.diag(np.concatenate((1. - _flp * 2., [1.])))
+        _rm[:3, -1] = (np.array(shape)[_perm] - 1) * _flp
+        _r = _r @ np.linalg.inv(_rm)
 
-    same_origin = np.allclose(aff_a[:3, -1], aff_b[:3, -1])
-    same_trans = np.allclose(aff_a[:3, :3], aff_b[:3, :3])
-    if same_origin:
-        if same_trans:
-            return True, aff_a
-        return False, None
+        return _r, _perm, _flp
 
-    b_in_a = [b if df else nb for b, df, nb in zip(
-        aff_b[:3, -1],
-        np.equal(
-            np.sign(_get_strides(aff_a[:3, :3])),
-            np.sign(_get_strides(aff_b[:3, :3]))
-        ),
-        voxel_to_world(np.array(shape_b) - 1., aff_b)
-    )]
+    _a, _, _ = _reorient_to_ras(aff_a)
+    _b, _, _ = _reorient_to_ras(aff_b)
 
-    return np.allclose(b_in_a, aff_a[:3, -1]), aff_a
+    if np.allclose(_a, _b):
+        return True, aff_a
+
+    return False, None
