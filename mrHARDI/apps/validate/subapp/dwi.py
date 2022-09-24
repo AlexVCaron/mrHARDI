@@ -1,6 +1,6 @@
 import nibabel as nib
 import numpy as np
-from traitlets import Bool, Float, default
+from traitlets import Bool, Dict, Float
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
                                       output_prefix_argument,
@@ -33,13 +33,8 @@ class DWIValidation(mrHARDIBaseApplication):
         0.9, help="Higher bound determining a valid b-value for a b0 volume"
     ).tag(config=True)
 
-    @default('app_flags')
-    def _app_flags_default(self):
-        return _flags
-
-    @default('app_aliases')
-    def _app_aliases_default(self):
-        return _aliases
+    aliases = Dict(default_value=_aliases)
+    flags = Dict(default_value=_flags)
 
     def execute(self):
         img = nib.load(self.dwi)

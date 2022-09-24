@@ -1,6 +1,6 @@
 import nibabel as nib
 import numpy as np
-from traitlets import Bool, default
+from traitlets import Bool, Dict
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
                                       output_prefix_argument,
@@ -27,18 +27,14 @@ class AffineValidation(mrHARDIBaseApplication):
     output = output_prefix_argument(required=False)
     output_stdout = Bool(False).tag(config=True)
 
-    @default('app_flags')
-    def _app_flags_default(self):
-        return _flags
-
-    @default('app_aliases')
-    def _app_aliases_default(self):
-        return _aliases
+    aliases = Dict(default_value=_aliases)
+    flags = Dict(default_value=_flags)
+    
 
     def execute(self):
         img = nib.load(self.image)
         ref = nib.load(self.reference)
-        is_similar, aff = validate_affine(img.affine, ref.affine)
+        is_similar, aff = validate_affine(img.affine, ref.affine, img.shape)
 
         if self.output_stdout:
             if not is_similar:
