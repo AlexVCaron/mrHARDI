@@ -129,6 +129,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.denoise.N4BiasCorrection",
             'Denoise rician and chi squared noise artifacts from dwi datasets'
         ),
+        nlmeans=(
+            "mrHARDI.apps.denoise.NonLocalMeans",
+            'Run Non-Local Means denoising on 3D MRI data'
+        ),
         pft=(
             "mrHARDI.apps.track.PftTracking",
             'Execute particle filtering tracking'
