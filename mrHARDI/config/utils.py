@@ -94,7 +94,8 @@ _meta_aliases = dict(
     si="DwiMetadataUtilsConfiguration.slice_indexes",
     gsl="DwiMetadataUtilsConfiguration.gslider_factor",
     acq="DwiMetadataUtilsConfiguration.acquisition",
-    readout="DwiMetadataUtilsConfiguration.readout"
+    readout="DwiMetadataUtilsConfiguration.readout",
+    coils="DwiMetadataUtilsConfiguration.number_of_coils"
 )
 
 _meta_flags = dict(
@@ -169,6 +170,10 @@ class DwiMetadataUtilsConfiguration(mrHARDIConfigurable):
     acquisition = convert_enum(
         AcquisitionType, None, allow_none=True
     ).tag(config=True)
+
+    number_of_coils = Integer(
+        0, help="Number of coils used for the image acquisition"
+    )
 
     def _validate(self):
         pass
