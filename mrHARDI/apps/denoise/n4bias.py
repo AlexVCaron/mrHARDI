@@ -7,12 +7,12 @@ import numpy as np
 from traitlets import Unicode, Bool, Instance, Dict
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
-                                           required_file,
-                                           mask_arg,
-                                           output_prefix_argument)
+                                      required_file,
+                                      mask_arg,
+                                      output_prefix_argument)
 from mrHARDI.base.dwi import (load_metadata,
-                                   load_metadata_file,
-                                   save_metadata)
+                              load_metadata_file,
+                              save_metadata)
 from mrHARDI.base.shell import launch_shell_process
 from mrHARDI.config.n4bias import N4BiasCorrectionConfiguration
 
