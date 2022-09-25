@@ -1,7 +1,7 @@
 from copy import deepcopy
 from enum import Enum
 from os.path import join, dirname, basename, exists
-from mrHARDI.compute.utils import validate_affine
+
 
 import numpy as np
 from traitlets import Dict, List, Bool, Integer, Float, Unicode
@@ -10,9 +10,8 @@ from traitlets.config.loader import ConfigError
 from mrHARDI.base.application import (mrHARDIConfigurable,
                                            ChoiceList,
                                            AnyInt)
-
 from mrHARDI.base.config import ConfigurationLoader
-
+from mrHARDI.compute.utils import validate_affine
 
 class Direction(Enum):
     AP = [0., 1., 0.]
