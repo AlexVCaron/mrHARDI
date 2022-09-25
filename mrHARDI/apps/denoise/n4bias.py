@@ -1,5 +1,6 @@
 from os import getcwd
 from os.path import join, basename
+from mrHARDI.base.dwi import DwiMetadata
 
 import nibabel as nib
 import numpy as np
@@ -10,9 +11,9 @@ from mrHARDI.base.application import (mrHARDIBaseApplication,
                                       required_file,
                                       mask_arg,
                                       output_prefix_argument)
-from mrHARDI.base.dwi import (load_metadata,
-                              load_metadata_file,
-                              save_metadata)
+from mrHARDI.base.image import (load_metadata,
+                                load_metadata_file,
+                                save_metadata)
 from mrHARDI.base.shell import launch_shell_process
 from mrHARDI.config.n4bias import N4BiasCorrectionConfiguration
 
@@ -134,7 +135,7 @@ class N4BiasCorrection(mrHARDIBaseApplication):
             )
 
         if self.apply_to:
-            metadata = load_metadata(self.apply_to)
+            metadata = load_metadata(self.apply_to, DwiMetadata)
 
         if metadata:
             save_metadata(self.output, metadata)

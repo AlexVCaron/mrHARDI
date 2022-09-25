@@ -6,7 +6,7 @@ from mrHARDI.base.application import (mask_arg,
                                       mrHARDIBaseApplication,
                                       output_prefix_argument,
                                       required_file)
-from mrHARDI.base.dwi import load_metadata, save_metadata
+from mrHARDI.base.image import load_metadata, save_metadata
 from mrHARDI.base.shell import launch_shell_process
 
 

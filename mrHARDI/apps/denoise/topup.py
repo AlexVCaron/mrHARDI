@@ -1,6 +1,7 @@
 from os import chmod, getcwd
 from os.path import join, basename
 from shutil import copyfile
+from mrHARDI.base.dwi import DwiMetadata
 
 import nibabel as nib
 import numpy as np
@@ -12,7 +13,7 @@ from mrHARDI.base.application import (mrHARDIBaseApplication,
                                            output_prefix_argument,
                                            required_arg, required_file)
 from mrHARDI.base.fsl import prepare_acqp_file, prepare_topup_index
-from mrHARDI.base.dwi import load_metadata, save_metadata
+from mrHARDI.base.image import load_metadata, save_metadata
 from mrHARDI.base.shell import launch_shell_process
 from mrHARDI.config.topup import TopupConfiguration
 
@@ -132,7 +133,7 @@ class Topup(mrHARDIBaseApplication):
 
         used_indexes = 0
         for i, bvals in enumerate(self.bvals + self.rev_bvals):
-            mt = load_metadata(bvals)
+            mt = load_metadata(bvals, DwiMetadata)
             mt.topup_indexes = [int(indexes[used_indexes])]
             save_metadata(
                 "{}_topup_indexes".format(bvals.split(".")[0]), mt
@@ -264,7 +265,7 @@ class ApplyTopup(mrHARDIBaseApplication):
             zip(self.dwi, self.bvals, self.bvecs)
         ):
             bvalvec = np.loadtxt(bval)[:, None] * np.loadtxt(bvec).T
-            metadata = load_metadata(dwi)
+            metadata = load_metadata(dwi, DwiMetadata)
             acq_types = metadata.acquisition_slices_to_list()
             new_group = True
             rev_vol = self._inspect_for_rev_at(i, bvalvec.shape[0])
@@ -293,9 +294,9 @@ class ApplyTopup(mrHARDIBaseApplication):
             ))
             indexes = np.concatenate([
                 np.concatenate([
-                    load_metadata(dwi).topup_indexes,
-                    load_metadata(rev).topup_indexes
-                ]) if rev else load_metadata(dwi).topup_indexes
+                    load_metadata(dwi, DwiMetadata).topup_indexes,
+                    load_metadata(rev, DwiMetadata).topup_indexes
+                ]) if rev else load_metadata(dwi, DwiMetadata).topup_indexes
                 for dwi, rev in zip(group["dwi"], group["rev"])
             ])
             imain += " --inindex={}".format(
@@ -303,7 +304,7 @@ class ApplyTopup(mrHARDIBaseApplication):
             )
             imain += " --out={}_group{}".format(self.output_prefix, i)
 
-            metadata = load_metadata(group["dwi"][0])
+            metadata = load_metadata(group["dwi"][0], DwiMetadata)
             save_metadata("{}_group{}".format(self.output_prefix, i), metadata)
 
             copyfile(

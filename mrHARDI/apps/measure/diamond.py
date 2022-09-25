@@ -2,6 +2,7 @@ import time
 from copy import copy
 from os.path import exists, join
 from pathlib import Path
+from mrHARDI.base.dwi import DwiMetadata
 
 import nibabel as nib
 import numpy as np
@@ -23,7 +24,7 @@ from mrHARDI.base.config import DiamondConfigLoader
 # ffa = fascicle fa --check
 # ff = fascicle fractions --check
 # peaks = main eigenvectors of each fascicle
-from mrHARDI.base.dwi import load_metadata
+from mrHARDI.base.image import load_metadata
 
 _DIAMOND_METRICS = [
     "fmd", "fad", "frd", "ffa", "ff", "peaks"
@@ -226,7 +227,7 @@ class DiamondMetrics(mrHARDIBaseApplication):
             mask = nib.load(self.mask)
             affine = mask.affine
 
-        metadata = load_metadata(self.input_prefix)
+        metadata = load_metadata(self.input_prefix, DwiMetadata)
         if metadata is None:
             if affine is None:
                 try:

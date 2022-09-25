@@ -1,10 +1,53 @@
 from copy import deepcopy
+from enum import Enum
 import numpy as np
+from os.path import basename, dirname, exists, join
 from traitlets import Integer, List, Bool, Float
 from traitlets.config.loader import ConfigError
 
 from mrHARDI.base.application import mrHARDIConfigurable, AnyInt
+from mrHARDI.base.config import ConfigurationLoader
 from mrHARDI.compute.utils import validate_affine
+
+
+class Direction(Enum):
+    AP = [0., 1., 0.]
+    PA = [0., -1., 0.]
+    RL = [-1., 0., 0.]
+    LR = [1., 0., 0.]
+    SI = [0., 0., -1.]
+    IS = [0., 0., 1.]
+    NONE = None
+
+
+def metadata_filename_from(img_name):
+    dn = dirname(img_name)
+    return join(
+        dn,
+        "{}_metadata.py".format(basename(img_name).split(".")[0])
+    ) if dn else "{}_metadata.py".format(basename(img_name).split(".")[0])
+
+
+def load_metadata_file(metadata_file, metatype=None):
+    metadata = metatype or ImageMetadata()
+    ConfigurationLoader(metadata).load_configuration(metadata_file)
+
+    return metadata
+
+
+def load_metadata(img_name, metatype=None):
+    metadata_file = metadata_filename_from(img_name)
+
+    if not exists(metadata_file):
+        print("No metadata file found : {}".format(img_name))
+        return None
+
+    return load_metadata_file(metadata_file, metatype)
+
+
+def save_metadata(prefix, metadata):
+    metadata.generate_config_file("{}_metadata".format(prefix))
+
 
 class ImageMetadata(mrHARDIConfigurable):
     n = Integer().tag(config=True)

@@ -1,5 +1,6 @@
 import glob
 from os.path import basename
+from mrHARDI.base.dwi import DwiMetadata
 
 import nibabel as nib
 import numpy as np
@@ -14,7 +15,7 @@ from mrHARDI.base.application import (mrHARDIBaseApplication,
                                            output_prefix_argument,
                                            prefix_argument,
                                            required_number)
-from mrHARDI.base.dwi import load_metadata, save_metadata
+from mrHARDI.base.image import ImageMetadata, load_metadata, save_metadata
 from mrHARDI.compute.utils import apply_mask_on_data, concatenate_dwi
 
 _apply_mask_aliases = {
@@ -151,7 +152,11 @@ class Concatenate(mrHARDIBaseApplication):
                 bvecs_list
             )
 
-        metadatas = list(load_metadata(img) for img in self.images)
+        is_dwi = out_bvals is not None and len(out_bvals) > 0
+        metadatas = list(
+            load_metadata(img, DwiMetadata if is_dwi else ImageMetadata)
+            for img in self.images
+        )
         all_meta = all(m is not None for m in metadatas)
         if not all_meta and any(m is not None for m in metadatas):
             raise ArgumentError(
@@ -239,7 +244,7 @@ class SplitImage(mrHARDIBaseApplication):
 
     def _img_to_split(self):
         img = nib.load(self.image)
-        metadata = load_metadata(self.image)
+        metadata = load_metadata(self.image, DwiMetadata)
         self._affine = img.affine
         for i, sub in enumerate(np.moveaxis(
             img.get_fdata().astype(img.get_data_dtype()), self.axis, 0
@@ -458,7 +463,7 @@ class FixOddDimensions(mrHARDIBaseApplication):
 
         for image in [self.image] + self.associations:
             img = nib.load(image)
-            metadata = load_metadata(image)
+            metadata = load_metadata(image, DwiMetadata)
             name = image.split(".")[0] + self.suffix
             extension = ".".join(image.split(".")[1:])
 

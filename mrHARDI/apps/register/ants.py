@@ -1,6 +1,7 @@
 from os import getcwd
 from os.path import basename, join
 from tempfile import TemporaryDirectory, mkdtemp
+from mrHARDI.base.dwi import DwiMetadata
 
 import nibabel as nib
 import numpy as np
@@ -15,7 +16,7 @@ from mrHARDI.base.application import (mrHARDIBaseApplication,
                                       output_prefix_argument,
                                       required_arg,
                                       required_file)
-from mrHARDI.base.dwi import load_metadata, save_metadata
+from mrHARDI.base.image import load_metadata, save_metadata
 from mrHARDI.base.shell import launch_shell_process
 from mrHARDI.config.ants import (AntsConfiguration,
                                  AntsTransformConfiguration,

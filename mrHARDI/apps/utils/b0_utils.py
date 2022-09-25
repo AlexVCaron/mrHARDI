@@ -1,5 +1,6 @@
 import re
 from copy import deepcopy
+from mrHARDI.base.dwi import DwiMetadata
 
 import nibabel as nib
 import numpy as np
@@ -9,7 +10,7 @@ from traitlets.config import Config
 from mrHARDI.base.application import (mrHARDIBaseApplication,
                                            required_file,
                                            output_prefix_argument)
-from mrHARDI.base.dwi import load_metadata, save_metadata
+from mrHARDI.base.image import load_metadata, save_metadata
 from mrHARDI.compute.b0 import extract_b0, normalize_to_b0, squash_b0
 from mrHARDI.config.utils import B0UtilsConfiguration
 
@@ -97,7 +98,7 @@ class B0Utils(mrHARDIBaseApplication):
         in_dwi = nib.load(self.image)
         bvals = np.loadtxt(self.bvals)
         kwargs = dict(b0_comp=np.less) if self.configuration.strict else dict()
-        metadata = load_metadata(self.image)
+        metadata = load_metadata(self.image, DwiMetadata)
 
         data, ref_mean = normalize_to_b0(
             in_dwi.get_fdata().astype(in_dwi.get_data_dtype()), bvals,
@@ -154,7 +155,7 @@ class B0Utils(mrHARDIBaseApplication):
 
             nib.save(img, "{}.nii.gz".format(self.rev_output_prefix))
 
-            metadata = load_metadata(self.reverse)
+            metadata = load_metadata(self.reverse, DwiMetadata)
             if metadata:
                 save_metadata(self.rev_output_prefix, metadata)
 
@@ -162,7 +163,7 @@ class B0Utils(mrHARDIBaseApplication):
         in_dwi = nib.load(self.image)
         bvals = np.loadtxt(self.bvals)
         kwargs = dict(b0_comp=np.less) if self.configuration.strict else dict()
-        metadata = load_metadata(self.image)
+        metadata = load_metadata(self.image, DwiMetadata)
         kwargs["metadata"] = metadata
         kwargs["dtype"] = in_dwi.get_data_dtype()
 
@@ -193,7 +194,7 @@ class B0Utils(mrHARDIBaseApplication):
         in_dwi = nib.load(self.image)
         bvals = np.loadtxt(self.bvals)
         kwargs = dict(b0_comp=np.less) if self.configuration.strict else dict()
-        metadata = load_metadata(self.image)
+        metadata = load_metadata(self.image, DwiMetadata)
         kwargs["metadata"] = metadata
         kwargs["dtype"] = in_dwi.get_data_dtype()
 

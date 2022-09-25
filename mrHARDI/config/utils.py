@@ -5,7 +5,8 @@ from mrHARDI.base.application import (mrHARDIConfigurable,
                                            convert_enum,
                                            ChoiceList)
 
-from mrHARDI.base.dwi import Direction, AcquisitionType
+from mrHARDI.base.dwi import AcquisitionType
+from mrHARDI.base.image import Direction
 from mrHARDI.compute.b0 import B0PostProcess, B0Reference
 
 _b0_aliases = dict(

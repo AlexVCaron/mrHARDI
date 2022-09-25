@@ -1,5 +1,6 @@
 from os import chmod
 from os.path import exists
+from mrHARDI.base.image import ImageMetadata
 
 import nibabel as nib
 import numpy as np
@@ -12,7 +13,8 @@ from mrHARDI.base.application import (mrHARDIBaseApplication,
                                            input_dwi_prefix)
 
 from mrHARDI.base.fsl import prepare_acqp_file, prepare_topup_index
-from mrHARDI.base.dwi import load_metadata, save_metadata, non_zero_bvecs
+from mrHARDI.base.dwi import DwiMetadata, non_zero_bvecs
+from mrHARDI.base.image import load_metadata, save_metadata
 from mrHARDI.base.scripting import build_script
 from mrHARDI.config.eddy import EddyConfiguration
 
@@ -125,11 +127,13 @@ class Eddy(mrHARDIBaseApplication):
     def execute(self):
         bvals = np.loadtxt("{}.bval".format(self.image), ndmin=1)
         non_zero_bvecs(self.image)
-        metadata = load_metadata(self.image)
+        metadata = load_metadata(self.image, DwiMetadata)
         if self.rev_image:
             rev_bvals = np.loadtxt("{}.bval".format(self.rev_image), ndmin=1)
 
+            rev_is_dwi = False
             if exists("{}.bvec".format(self.rev_image)):
+                rev_is_dwi = True
                 non_zero_bvecs(self.rev_image)
             elif not np.allclose(rev_bvals, 0):
                 raise ArgumentError(
@@ -137,7 +141,9 @@ class Eddy(mrHARDIBaseApplication):
                     "seems to contain diffusion volumes"
                 )
 
-            metadata.extend(load_metadata(self.rev_image))
+            metadata.extend(load_metadata(
+                self.rev_image, DwiMetadata if rev_is_dwi else ImageMetadata
+            ))
         else:
             rev_bvals = np.array([])
 

@@ -18,12 +18,12 @@ from mrHARDI.base.application import (mrHARDIBaseApplication,
                                            required_arg,
                                            required_file)
 from mrHARDI.base.dwi import (AcquisitionType,
-                                   Direction,
-                                   DwiMetadata,
-                                   DwiMismatchError,
-                                   load_metadata_file,
-                                   load_metadata,
-                                   save_metadata)
+                              DwiMetadata,
+                              DwiMismatchError)
+from mrHARDI.base.image import (Direction,
+                                load_metadata_file,
+                                load_metadata,
+                                save_metadata)
 from mrHARDI.config.utils import DwiMetadataUtilsConfiguration
 
 _mb_aliases = {
@@ -235,11 +235,14 @@ class DwiMetadataUtils(mrHARDIBaseApplication):
         )
 
     def _only_update_affine(self, images):
-        base_meta = load_metadata_file(self.metadata) \
+        base_meta = load_metadata_file(self.metadata, DwiMetadata) \
             if self.metadata else None
 
         for img in images:
-            mt = base_meta.copy() if base_meta else load_metadata(img["name"])
+            if base_meta:
+                mt = base_meta.copy()
+            else:
+                load_metadata(img["name"], DwiMetadata)
             mt.affine = img["data"].affine.tolist()
             save_metadata(img["name"].split(".")[0], mt)
 
@@ -270,7 +273,10 @@ class DwiMetadataUtils(mrHARDIBaseApplication):
             self.dwis, images, directions, slice_indexes, slice_dirs
         ):
             shape = img["data"].shape
-            metadata = load_metadata(name) if self.metadata else DwiMetadata()
+            if self.metadata:
+                metadata = load_metadata(name, DwiMetadata)
+            else:
+                metadata = DwiMetadata()
             metadata.n = shape[-1] if len(shape) > 3 else 1
             metadata.n_excitations = int(shape[
                 np.argmax(np.absolute(Direction[sd].value))
@@ -386,7 +392,7 @@ class AssertDwiDimensions(mrHARDIBaseApplication):
             if self.output:
                 nib.save(img, "{}.nii.gz".format(self.output))
 
-                metadata = load_metadata(self.dwi)
+                metadata = load_metadata(self.dwi, DwiMetadata)
                 if metadata:
                     metadata.adapt_to_shape(len(bvals))
                     save_metadata(self.output, metadata)
@@ -487,7 +493,7 @@ class ExtractShells(mrHARDIBaseApplication):
             "{}.nii.gz".format(self.output)
         )
 
-        metadata = load_metadata(self.dwi)
+        metadata = load_metadata(self.dwi, DwiMetadata)
         if metadata:
             acq_types = np.array(metadata.acquisition_slices_to_list())[mask]
             directions = np.array(metadata.directions)[mask, :]
@@ -602,7 +608,7 @@ class CheckDuplicatedBvecsInShell(mrHARDIBaseApplication):
             "{}.nii.gz".format(self.output)
         )
 
-        metadata = load_metadata(self.dwi)
+        metadata = load_metadata(self.dwi, DwiMetadata)
         if metadata:
             acq_types = np.array(metadata.acquisition_slices_to_list())[meta_mask]
             directions = np.array(metadata.directions)[meta_mask, :]

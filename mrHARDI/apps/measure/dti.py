@@ -1,5 +1,6 @@
 from copy import copy
 from os.path import exists
+from mrHARDI.base.dwi import DwiMetadata
 
 import nibabel as nib
 
@@ -11,7 +12,7 @@ from mrHARDI.base.application import (ChoiceEnum, ChoiceList,
                                            output_prefix_argument,
                                            required_file)
 
-from mrHARDI.base.dwi import load_metadata
+from mrHARDI.base.image import load_metadata
 
 _TENSOR_METRICS = ["fa", "md", "ad", "rd", "peaks"]
 
@@ -75,7 +76,9 @@ class TensorMetrics(mrHARDIBaseApplication):
         if exists("{}_mask.nii.gz".format(self.input_prefix)):
             mask = nib.load("{}_mask.nii.gz".format(self.input_prefix))
 
-        metadata = load_metadata("{}.nii.gz".format(self.input_prefix))
+        metadata = load_metadata(
+            "{}.nii.gz".format(self.input_prefix), DwiMetadata
+        )
         if metadata is None:
             raise ConfigError(
                 "Need a metadata file for {}".format(self.input_prefix)
