@@ -9,7 +9,7 @@ from mrHARDI.base.dwi import load_metadata, save_metadata
 from mrHARDI.base.shell import launch_shell_process
 
 
-class N4BiasCorrection(mrHARDIBaseApplication):
+class NonLocalMeans(mrHARDIBaseApplication):
 
     image = required_file(description="Input image to correct")
     output = output_prefix_argument()
