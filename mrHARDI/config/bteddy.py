@@ -7,6 +7,8 @@ class BTEddyConfiguration(mrHARDIConfigurable):
 
     low_b_threshold = Float()
 
+    smoothing_sigma = Float()
+
     def _validate(self):
         return super()._validate()
 
