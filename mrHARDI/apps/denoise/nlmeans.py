@@ -1,5 +1,5 @@
 from os.path import basename
-from traitlets import Int, Float
+from traitlets import Dict, Float,Integer
 
 from mrHARDI.base.application import (mask_arg,
                                       mrHARDIBaseApplication,
@@ -9,14 +9,24 @@ from mrHARDI.base.dwi import load_metadata, save_metadata
 from mrHARDI.base.shell import launch_shell_process
 
 
+_aliases = {
+    "in": "NonLocalMeans.image",
+    "out": "NonLocalMeans.output",
+    "mask": "NonLocalMeans.mask",
+    "coils": "NonLocalMeans.default_n_coils",
+    "sigma": "NonLocalMeans.force_sigma"
+}
+
 class NonLocalMeans(mrHARDIBaseApplication):
 
     image = required_file(description="Input image to correct")
     output = output_prefix_argument()
 
     mask = mask_arg()
-    default_n_coils = Int(0).tag(config=True)
+    default_n_coils = Integer(0).tag(config=True)
     force_sigma = Float(None, allow_none=True).tag(config=True)
+
+    aliases = Dict(default_value=_aliases)
 
     def execute(self):
         n_coils = self.default_n_coils
