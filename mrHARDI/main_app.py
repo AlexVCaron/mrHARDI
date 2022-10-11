@@ -6,7 +6,6 @@ from mrHARDI.base.application import mrHARDIBaseApplication
 
 
 def cast_unicode(s):
-    print(s)
     if isinstance(s, bytes):
         return s.decode(sys.stdin.encoding, 'replace')
     return s
@@ -19,16 +18,13 @@ class mrHARDIApplication(mrHARDIBaseApplication):
 
     @classmethod
     def launch_instance(cls, argv=None, **kwargs):
-        print("Launching instance")
-        print(argv if argv else "No argv sent")
         assert not isinstance(argv, str)
         argv = sys.argv[1:] if argv is None else argv
-        print(argv)
         argv = [cast_unicode(arg) for arg in argv]
         super().launch_instance(argv, **kwargs)
 
     def _example_command(self, *args):
-        return "mrHARDI command <args> <flags>"
+        return "mrhardi [cmd] <args> <flags>"
 
     subcommands = dict(
         ants_motion=(
@@ -149,7 +145,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.utils.SplitImage",
             'Split an image given an axis'
         ),
-        topup=("mrHARDI.apps.denoise.Topup", 'Execute topup correction')
+        topup=("mrHARDI.apps.denoise.Topup", 'Execute topup correction'),
+        validate=(
+            "mrHARDI.apps.validate.Validate", 'Data validation'
+        )
     )
 
 

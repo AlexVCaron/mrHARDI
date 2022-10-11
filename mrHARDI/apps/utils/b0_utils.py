@@ -79,7 +79,7 @@ class B0Utils(mrHARDIBaseApplication):
             super().initialize(argv)
 
     def _example_command(self, sub_command=""):
-        return "mrHARDI {} [extract|squash] <args> <flags>".format(
+        return "mrHARDI {} [extract|squash|normalize] <args> <flags>".format(
             sub_command
         )
 

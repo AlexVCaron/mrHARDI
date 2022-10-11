@@ -15,7 +15,9 @@ from mrHARDI.base.application import (mrHARDIBaseApplication,
                                            prefix_argument,
                                            required_number)
 from mrHARDI.base.dwi import load_metadata, save_metadata
-from mrHARDI.compute.utils import apply_mask_on_data, concatenate_dwi
+from mrHARDI.compute.utils import (apply_mask_on_data,
+                                   concatenate_dwi,
+                                   validate_affine)
 
 _apply_mask_aliases = {
     'in': 'ApplyMask.image',
@@ -114,6 +116,12 @@ class Concatenate(mrHARDIBaseApplication):
 
         reference_affine = dwi_list[0].affine
         reference_header = dwi_list[0].header
+
+        for img in dwi_list[1:]:
+            is_valid, _ = validate_affine(
+                reference_affine, img.affine, img.shape
+            )
+            assert is_valid, "All images must have the same or similar affine"
 
         data = [
             dwi.get_fdata().astype(dtype=dwi.get_data_dtype())

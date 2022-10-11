@@ -434,8 +434,6 @@ class Mosaic(mrHARDIBaseApplication):
                     )
                     p1 = (0.1, 1. / n_bars)
 
-                print("Bar pos {}, size {}".format(p0, p1))
-
                 bar = actor.scalar_bar(lut)
                 bar.SetPosition(*p0)
                 bar.SetPosition2(*p1)

@@ -48,17 +48,14 @@ def extract_b0(
     dtype = dtype if dtype else dwi_img.get_data_dtype()
 
     if b0_strides:
-        print("Extracting b0 volumes at each {} volumes".format(b0_strides))
         b0_mask[:dwi_img.shape[-1]] = pick_b0(
             b0_mask[:dwi_img.shape[-1]], b0_strides
         )
 
     if mean is B0PostProcess.batch:
-        print("Applying mean to b0 in batch")
         mask = np.ma.masked_array(b0_mask)
         mask[~b0_mask] = np.ma.masked
         b0_vols = mean_b0_clusters(dwi_img, mask, dwi_img.shape[:-1])
-        print("Found {} mean b0 volumes in dataset".format(b0_vols.shape[-1]))
 
         if metadata:
             clusters = np.ma.notmasked_contiguous(mask, axis=0)
@@ -99,7 +96,6 @@ def extract_b0(
             idx += len_cluster
 
         if metadata:
-            print(metadata.acquisition_slices_to_list())
             acquisition = (np.array(
                 metadata.acquisition_slices_to_list()
             )[b0_mask[:dwi_img.shape[-1]]]).tolist()
@@ -137,10 +133,7 @@ def extract_b0(
 
             metadata.n = b0_vols.shape[-1]
 
-        print("Found {} b0 volumes in dataset".format(b0_vols.shape[-1]))
-
         if mean is B0PostProcess.whole:
-            print("Applying mean to whole b0 volume")
             b0_vols = np.mean(b0_vols, axis=-1)[..., None]
 
             if metadata:

@@ -27,8 +27,6 @@ _named_template = """
 def build_script(
     script, positional_args, named_args, named_prefix="--", header=""
 ):
-    print(positional_args)
-    print(named_args)
     scr = "#!/usr/bin/env bash\n\n"
     scr += header
     scr += _args_template.format("\n".join(
