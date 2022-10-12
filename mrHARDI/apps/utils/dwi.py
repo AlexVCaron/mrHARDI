@@ -293,6 +293,7 @@ class DwiMetadataUtils(mrHARDIBaseApplication):
                 AcquisitionType[self.configuration.acquisition].value
             ]
             metadata.acquisition_slices = [[0, None]]
+            metadata.number_of_coils = self.configuration.number_of_coils
 
             metadata.generate_config_file(self._get_file_for(img["name"]))
 

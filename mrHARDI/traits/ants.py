@@ -7,11 +7,12 @@ from traitlets.config.loader import ConfigError
 
 from mrHARDI.base.ListValuedDict import MagicDict
 from mrHARDI.base.application import (DictInstantiatingInstance,
-                                           mrHARDIConfigurable)
+                                      mrHARDIConfigurable)
 
 
 class InitialTransform(TraitType):
     default_value = None
+    transform_type = "moving"
 
     def get(self, obj, cls=None):
         value = super().get(obj, cls)
@@ -26,9 +27,17 @@ class InitialTransform(TraitType):
             return value
 
         target_index, moving_index, strat = value
-        return "--initial-moving-transform [$t{}%,$m{}%,{}]".format(
-            target_index, moving_index, strat
+        return "--initial-{}-transform [$t{}%,$m{}%,{}]".format(
+            self.transform_type, target_index, moving_index, strat
         ).replace("$", "{").replace("%", "}")
+
+    def invert(self):
+        if self.transform_type == "moving":
+            self.transform_type = "fixed"
+        else:
+            self.transform_type = "moving"
+
+        return self
 
     def validate(self, obj, value):
         if isinstance(value, str):
@@ -90,13 +99,14 @@ class MetricMI(AntsMetric):
 
 class MetricCC(AntsMetric):
     def __init__(
-        self, target_index, moving_index, weight=1., radius=4, args=None, **_
+        self, target_index, moving_index, weight=1., radius=4, 
+        sampling="Regular", sampling_p=0.25, args=None, **_
     ):
         if args and len(args) == 2:
             weight, radius = args
 
         super().__init__(
-            target_index, moving_index, (weight, radius)
+            target_index, moving_index, (weight, radius, sampling, sampling_p)
         )
 
         self._name = "CC"

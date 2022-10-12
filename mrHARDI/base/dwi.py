@@ -95,6 +95,8 @@ class DwiMetadata(mrHARDIConfigurable):
     topup_indexes = List(Integer(), allow_none=True).tag(config=True)
     dataset_indexes = List(Integer(), default_value=[0]).tag(config=True)
 
+    number_of_coils = Integer(0).tag(config=True)
+
     def get_spacing(self):
         return np.absolute(
             np.linalg.eigvalsh(np.array(self.affine)[:3, :3])
@@ -143,6 +145,7 @@ class DwiMetadata(mrHARDIConfigurable):
         self.readout = oth.readout
         self.topup_indexes = oth.topup_indexes
         self.dataset_indexes = oth.dataset_indexes
+        self.number_of_coils = oth.number_of_coils
 
     def extend(self, oth):
         is_same, _ = validate_affine(
@@ -204,6 +207,7 @@ class DwiMetadata(mrHARDIConfigurable):
         metadata.acquisition_slices = deepcopy(self.acquisition_slices)
         metadata.topup_indexes = deepcopy(self.topup_indexes)
         metadata.dataset_indexes = deepcopy(self.dataset_indexes)
+        metadata.number_of_coils = self.number_of_coils
 
         return metadata
 
