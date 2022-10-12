@@ -7,7 +7,7 @@ RUN mkdir -p /mrhardi
 RUN git clone https://github.com/AlexVCaron/mrHARDI.git /mrhardi
 WORKDIR /mrhardi
 ARG mrhardi_ver=develop
-RUN git fetch && git checkout --track origin/$mrhardi_ver
+RUN git fetch --all --tags && git checkout --track origin/$mrhardi_ver
 
 FROM scilpy_installed as nogpu
 
