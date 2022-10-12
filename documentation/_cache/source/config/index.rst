@@ -4,7 +4,7 @@
 Configuration and customization
 ===============================
 
-Configuring Magic Monkey
+Configuring mrHARDI
 ------------------------
 
 .. toctree::

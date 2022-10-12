@@ -1,4 +1,4 @@
-name: Development build
+name: Development PR builds
 
 on:
   pull_request:
@@ -6,10 +6,11 @@ on:
       - develop
     types: [opened,reopened,synchronize]
     paths:
-      - magic_monkey/**/*.py
-      - setup.py
-      - .github/workflows/build-develop.yml
-      - containers/**/*
+      - 'mrHARDI/**/*.py'
+      - 'setup.py'
+      - '!.github/**'
+      - '.github/workflows/*-develop.yml'
+      - 'containers/**/*'
 
 jobs:
   mrhardi-creative-bakery:
@@ -22,13 +23,14 @@ jobs:
         uses: actions/checkout@v3
       -
         name: Get git diff for the current modifications
-        uses: technote-space/get-diff-action@v4.0.1
+        uses: technote-space/get-diff-action@v6.1.0
         id: git_diff
         with:
+          GET_FILE_DIFF: true
           PATTERNS: |
-            magic_monkey/**/*.py
+            mrHARDI/**/*.py
             setup.py
-            .github/workflows/build-develop.yml
+            .github/workflows/*-develop.yml
             containers/**/*
       -
         name: Set up Docker Buildx
@@ -51,71 +53,16 @@ jobs:
           pull: true
           push: true
           set: |
-            nogpu.tags=docker.io/avcaron/mrhardi-nogpu:dev
-            latest.tags=docker.io/avcaron/mrhardi-gpu:dev
-
-  mrhardi-creative-packaging:
-    needs: mrhardi-creative-bakery
-    runs-on: ubuntu-latest
-    environment: CI
-
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v3
-      -
-        name: Get git diff for the current modifications
-        uses: technote-space/get-diff-action@v4.0.1
-        id: git_diff
-        with:
-          PATTERNS: |
-            magic_monkey/**/*.py
-            setup.py
-            .github/workflows/build-develop.yml
-            containers/**/*
-      -
-        name: Maximize disk usage
-        if: ${{ steps.git_diff.outputs.lines > 0 }}
-        uses: easimon/maximize-build-space@master
-        with:
-          root-reserve-mb: 4096
-          temp-reserve-mb: 4096
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-      - 
-        name: Setup singularity
-        if: ${{ steps.git_diff.outputs.lines > 0 }}
-        uses: eWaterCycle/setup-singularity@v7
-        with:
-          singularity-version: 3.7.1
-      - 
-        name: Azure Container Registry Login
-        if: ${{ steps.git_diff.outputs.lines > 0 }}
-        uses: Azure/docker-login@v1
-        with:
-          login-server: mrhardi.azurecr.io
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_TOKEN }}
-      -
-        name: Build and push singularity
-        if: ${{ steps.git_diff.outputs.lines > 0 }}
-        run: |
-          mkdir -p mrhardi/singularity
-          mkdir sif_tmp sif_cache
-          export SINGULARITY_TMPDIR="$(pwd)/sif_tmp"
-          export SINGULARITY_CACHEDIR="$(pwd)/sif_cache"
-          echo "Caching and temping singularity at : $SINGULARITY_CACHEDIR and $SINGULARITY_TMPDIR"
-          singularity build mrhardi_dev_gpu.sif docker://avcaron/mrhardi-gpu:dev
-          echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
-          singularity push mrhardi_dev_gpu.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
+            nogpu.tags=docker.io/avcaron/mrhardi-nogpu:pr-${{ github.event.number }}
+            latest.tags=docker.io/avcaron/mrhardi-gpu:pr-${{ github.event.number }}
+            mrhardi_cloner.args.mrhardi_ver=${{ github.head_ref }}
       -
         name: Write artifacts manifest
         run: |
+          echo "Warning !!! Artifacts will be deleted when pull request closes" >> artifacts.MANIFEST
           echo "Artifacts pull commands:" >> artifacts.MANIFEST
-          echo "docker pull avcaron/mrhardi-nogpu:dev" >> artifacts.MANIFEST
-          echo "docker pull avcaron/mrhardi-gpu:dev" >> artifacts.MANIFEST
-          echo "singularity pull oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev" >> artifacts.MANIFEST
+          echo "docker pull avcaron/mrhardi-nogpu:pr-${{ github.event.number }}" >> artifacts.MANIFEST
+          echo "docker pull avcaron/mrhardi-gpu:pr-${{ github.event.number }}" >> artifacts.MANIFEST
       -
         name: Upload workflow artifacts
         uses: actions/upload-artifact@v3

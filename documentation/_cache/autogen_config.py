@@ -3,8 +3,8 @@
 from os.path import join, dirname, abspath
 import inspect
 
-from magic_monkey.base.application import MagicMonkeyConfigurable
-from magic_monkey.main_app import MagicMonkeyApplication
+from mrHARDI.base.application import MagicMonkeyConfigurable
+from mrHARDI.main_app import MagicMonkeyApplication
 from traitlets import Instance, Undefined, import_item
 from collections import defaultdict
 
@@ -162,11 +162,11 @@ def write_doc(name, title, item, aliases, preamble=None, parents=True):
 
 _index_header = """
 ====================
-Magic Monkey options
+mrHARDI options
 ====================
 
 Any of the options listed here can be set in config files, at the
-command line, or from inside Magic Monkey. See :ref:`setting_config` for
+command line, or from inside mrHARDI. See :ref:`setting_config` for
 details.
 """
 
@@ -199,7 +199,7 @@ if __name__ == '__main__':
         pass
 
     write_doc(
-        'main_app', 'Magic Monkey base options',
+        'main_app', 'mrHARDI base options',
         MagicMonkeyApplication.instance(),
         reverse_aliases(MagicMonkeyApplication.instance()),
         parents=False

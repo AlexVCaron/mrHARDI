@@ -1,7 +1,7 @@
 .. _api-index:
 
 ########################
-  The Magic Monkey API
+  The mrHARDI API
 ########################
 
 .. only:: html
