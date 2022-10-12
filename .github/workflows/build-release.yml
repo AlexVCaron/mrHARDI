@@ -60,7 +60,7 @@ jobs:
           name: Rebuild complete docker image stack with dependencies
           uses: docker/bake-action@v2.3.0
           with:
-            working-directory: ./containers
+            workdir: ./containers
             files: |
               ./docker-bake.hcl
               ${{ steps.release_tags.outputs.bake-file }}
