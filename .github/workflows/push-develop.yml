@@ -6,7 +6,7 @@ on:
       - develop
     types: [closed]
     paths:
-      - 'magic_monkey/**/*.py'
+      - 'mrHARDI/**/*.py'
       - 'setup.py'
       - '!.github/**'
       - '.github/workflows/*-develop.yml'
@@ -33,7 +33,7 @@ jobs:
         with:
           GET_FILE_DIFF: true
           PATTERNS: |
-            magic_monkey/**/*.py
+            mrHARDI/**/*.py
             setup.py
             .github/workflows/*-develop.yml
             containers/**/*
@@ -90,7 +90,7 @@ jobs:
         with:
           GET_FILE_DIFF: true
           PATTERNS: |
-            magic_monkey/**/*.py
+            mrHARDI/**/*.py
             setup.py
             .github/workflows/*-develop.yml
             containers/**/*
