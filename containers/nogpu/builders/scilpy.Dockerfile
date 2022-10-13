@@ -8,7 +8,7 @@ RUN git clone https://github.com/boiteaclou/scilpy.git /scilpy
 WORKDIR /scilpy
 ARG scilpy_ver=develop
 ARG scilpy_is_tag=false
-RUN if [[ -z "${scilpy_is_tag}" ]] ; \
+RUN if [ "${scilpy_is_tag}" = "true" ] ; \
     then \
         git fetch --all --tags --force && \
         git checkout --track tags/$scilpy_ver -b temp ; \
