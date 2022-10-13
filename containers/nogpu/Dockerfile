@@ -11,7 +11,7 @@ ARG mrhardi_is_tag=false
 RUN if [ "${mrhardi_is_tag}" = "true" ] ; \
     then \
         git fetch --all --tags --force && \
-        git checkout --track tags/$mrhardi_ver -b temp ; \
+        git checkout tags/$mrhardi_ver -b temp ; \
     else \
         git fetch && \
         git checkout --track origin/$mrhardi_ver ; \
