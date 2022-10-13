@@ -8,7 +8,7 @@ RUN git clone https://github.com/AlexVCaron/mrHARDI.git /mrhardi
 WORKDIR /mrhardi
 ARG mrhardi_ver=develop
 ARG mrhardi_is_tag=false
-RUN if [[ -z "${mrhardi_is_tag}" ]] ; \
+RUN if [ "${mrhardi_is_tag}" = "true" ] ; \
     then \
         git fetch --all --tags --force && \
         git checkout --track tags/$mrhardi_ver -b temp ; \
