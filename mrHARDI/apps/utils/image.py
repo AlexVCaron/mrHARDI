@@ -168,7 +168,7 @@ class Concatenate(mrHARDIBaseApplication):
 
         if all_meta:
             for i, meta in enumerate(metadatas[1:]):
-                metadatas[0].extend(meta, dwi_list[i].image.shape)
+                metadatas[0].extend(meta, dwi_list[i].shape)
 
             save_metadata(self.prefix, metadatas[0])
 
