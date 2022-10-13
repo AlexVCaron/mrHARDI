@@ -7,8 +7,7 @@ RUN mkdir -p /scilpy
 RUN git clone https://github.com/boiteaclou/scilpy.git /scilpy
 WORKDIR /scilpy
 ARG scilpy_ver=develop
-RUN git fetch && git checkout --track origin/$scilpy_ver
-
+RUN git fetch --all --tags && git checkout --track origin/$scilpy_ver
 
 FROM dependencies as scilpy_installed
 

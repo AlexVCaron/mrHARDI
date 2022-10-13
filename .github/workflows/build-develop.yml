@@ -47,9 +47,9 @@ jobs:
       -
         name: Build docker image stack
         if: ${{ steps.git_diff.outputs.lines > 0 }}
-        uses: docker/bake-action@78e325fad8b5b74acf4be76f371e8e7577e527d7
+        uses: docker/bake-action@v2.3.0
         with:
-          working-directory: ./containers
+          workdir: ./containers
           pull: true
           push: true
           set: |
