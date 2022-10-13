@@ -11,7 +11,7 @@ ARG scilpy_is_tag=false
 RUN if [ "${scilpy_is_tag}" = "true" ] ; \
     then \
         git fetch --all --tags --force && \
-        git checkout --track tags/$scilpy_ver -b temp ; \
+        git checkout tags/$scilpy_ver -b temp ; \
     else \
         git fetch && \
         git checkout --track origin/$scilpy_ver ; \
