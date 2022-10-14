@@ -137,7 +137,7 @@ class Eddy(mrHARDIBaseApplication):
                     "seems to contain diffusion volumes"
                 )
 
-            shape = nib.load(self.rev_image).shape
+            shape = nib.load("{}.nii.gz".format(self.rev_image)).shape
             metadata.extend(load_metadata(self.rev_image), shape)
         else:
             rev_bvals = np.array([])
