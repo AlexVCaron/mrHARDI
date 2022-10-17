@@ -147,9 +147,9 @@ class DwiMetadata(mrHARDIConfigurable):
         self.dataset_indexes = oth.dataset_indexes
         self.number_of_coils = oth.number_of_coils
 
-    def extend(self, oth):
+    def extend(self, oth, shape):
         is_same, _ = validate_affine(
-            np.array(self.affine), np.array(oth.affine), True
+            np.array(self.affine), np.array(oth.affine), shape
         )
         assert is_same, "Affine transform for input images are not the same"
 

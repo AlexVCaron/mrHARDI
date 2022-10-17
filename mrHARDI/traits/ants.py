@@ -102,8 +102,8 @@ class MetricCC(AntsMetric):
         self, target_index, moving_index, weight=1., radius=4, 
         sampling="Regular", sampling_p=0.25, args=None, **_
     ):
-        if args and len(args) == 2:
-            weight, radius = args
+        if args and len(args) == 4:
+            weight, radius, sampling, sampling_p = args
 
         super().__init__(
             target_index, moving_index, (weight, radius, sampling, sampling_p)

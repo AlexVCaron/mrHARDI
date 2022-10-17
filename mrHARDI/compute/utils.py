@@ -85,7 +85,7 @@ def validate_affine(aff_a, aff_b, shape):
         _flp = np.diag(_r[:3, :3]) < 0
         _flp[0] = ~_flp[0]
         _rm = np.diag(np.concatenate((1. - _flp * 2., [1.])))
-        _rm[:3, -1] = (np.array(shape)[_perm] - 1) * _flp
+        _rm[:3, -1] = (np.array(shape)[:3][_perm] - 1) * _flp
         _r = _r @ np.linalg.inv(_rm)
 
         return _r, _perm, _flp
