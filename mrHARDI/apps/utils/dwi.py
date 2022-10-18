@@ -303,7 +303,8 @@ _assert_aliases = {
     "bvals": "AssertDwiDimensions.bvals",
     "bvecs": "AssertDwiDimensions.bvecs",
     "strat": "AssertDwiDimensions.strategy",
-    "out": "AssertDwiDimensions.output"
+    "out": "AssertDwiDimensions.output",
+    "ceil": "AssertDwiDimensions.b0_threshold"
 }
 
 
@@ -320,6 +321,10 @@ class AssertDwiDimensions(mrHARDIBaseApplication):
         ["error", "fix"], "error",
         help="Strategy to employ when discrepancies are found, either "
              "output an error message or try to fix the problem"
+    ).tag(config=True)
+
+    b0_threshold = Integer(
+        default_value=0, help="Upper threshold for b-values considered as b0"
     ).tag(config=True)
 
     output = output_prefix_argument(
@@ -358,7 +363,7 @@ class AssertDwiDimensions(mrHARDIBaseApplication):
                         bvecs, int(len(bvals) / bvecs.shape[0]), axis=0
                     )
                 else:
-                    b0_mask = np.isclose(bvals, 0)
+                    b0_mask = np.less_equal(bvals, self.b0_threshold)
                     zero_bvecs = np.isclose(np.linalg.norm(bvecs, axis=1), 0)
                     if np.sum(b0_mask) == (
                         len(bvals) - bvecs.shape[0] + np.sum(zero_bvecs)
@@ -399,7 +404,8 @@ _shells_aliases = {
     "shells": "ExtractShells.shells",
     "count": "ExtractShells.count",
     "keep": "ExtractShells.keep",
-    "out": "ExtractShells.output"
+    "out": "ExtractShells.output",
+    "ceil": "ExtractShells.b0_threshold"
 }
 
 _shells_flags = dict(
@@ -438,6 +444,10 @@ class ExtractShells(mrHARDIBaseApplication):
         False, help="When False, removes the b0 volumes from the output volume"
     ).tag(config=True)
 
+    b0_threshold = Integer(
+        default_value=0, help="Upper threshold for b-values considered as b0"
+    ).tag(config=True)
+
     output = output_prefix_argument()
 
     aliases = Dict(default_value=_shells_aliases)
@@ -450,7 +460,8 @@ class ExtractShells(mrHARDIBaseApplication):
 
         if not self.shells:
             shells, cnt = np.unique(
-                bvals[~np.isclose(bvals, 0.)], return_counts=True
+                bvals[~np.less_equal(bvals, self.b0_threshold)],
+                return_counts=True
             )
         else:
             shells, cnt = np.unique(np.array(self.shells), return_counts=True)
@@ -473,9 +484,9 @@ class ExtractShells(mrHARDIBaseApplication):
                 mask |= bvals == shell
 
         if self.keep_b0:
-            mask |= np.isclose(bvals, 0.)
+            mask |= np.less_equal(bvals, self.b0_threshold)
         else:
-            mask &= ~np.isclose(bvals, 0.)
+            mask &= ~np.less_equal(bvals, self.b0_threshold)
 
         np.savetxt("{}.bval".format(self.output), bvals[mask][None, :])
         np.savetxt("{}.bvec".format(self.output), bvecs[:, mask])
@@ -527,7 +538,8 @@ _duplicates_aliases = {
     "bvecs": "CheckDuplicatedBvecsInShell.bvecs",
     "out": "CheckDuplicatedBvecsInShell.output",
     "merge": "CheckDuplicatedBvecsInShell.merging",
-    "abs-thr": "CheckDuplicatedBvecsInShell.abs_threshold"
+    "abs-thr": "CheckDuplicatedBvecsInShell.abs_threshold",
+    "ceil": "CheckDuplicatedBvecsInShell.b0_threshold"
 }
 
 
@@ -543,6 +555,10 @@ class CheckDuplicatedBvecsInShell(mrHARDIBaseApplication):
 
     abs_threshold = Float(
         1E-5, help="Absolute threshold on distance between directions"
+    ).tag(config=True)
+
+    b0_threshold = Integer(
+        default_value=0, help="Upper threshold for b-values considered as b0"
     ).tag(config=True)
 
     output = output_prefix_argument()
@@ -568,7 +584,7 @@ class CheckDuplicatedBvecsInShell(mrHARDIBaseApplication):
         obvecs = []
         processed_vols = np.array([False] * data.shape[-1])
 
-        b0_mask = np.isclose(bvals, 0.)
+        b0_mask = np.less_equal(bvals, self.b0_threshold)
         meta_mask = np.zeros((len(bvals),),  dtype=bool)
 
         for i in range(data.shape[-1]):
