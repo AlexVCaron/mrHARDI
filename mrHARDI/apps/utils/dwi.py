@@ -13,7 +13,7 @@ from traitlets import (Instance,
 from traitlets.config import Config
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
-                                           MultipleArguments,
+                                           MultipleArguments, output_file_argument,
                                            output_prefix_argument,
                                            required_arg,
                                            required_file)
@@ -24,6 +24,7 @@ from mrHARDI.base.dwi import (AcquisitionType,
                                    load_metadata_file,
                                    load_metadata,
                                    save_metadata)
+from mrHARDI.compute.dwi import identify_shells, sh_order_from
 from mrHARDI.config.utils import DwiMetadataUtilsConfiguration
 
 _mb_aliases = {
@@ -324,7 +325,7 @@ class AssertDwiDimensions(mrHARDIBaseApplication):
     ).tag(config=True)
 
     b0_threshold = Integer(
-        default_value=0, help="Upper threshold for b-values considered as b0"
+        default_value=20, help="Upper threshold for b-values considered as b0"
     ).tag(config=True)
 
     output = output_prefix_argument(
@@ -405,7 +406,8 @@ _shells_aliases = {
     "count": "ExtractShells.count",
     "keep": "ExtractShells.keep",
     "out": "ExtractShells.output",
-    "ceil": "ExtractShells.b0_threshold"
+    "ceil": "ExtractShells.b0_threshold",
+    "gap": "ExtractShells.shell_threshold"
 }
 
 _shells_flags = dict(
@@ -445,7 +447,10 @@ class ExtractShells(mrHARDIBaseApplication):
     ).tag(config=True)
 
     b0_threshold = Integer(
-        default_value=0, help="Upper threshold for b-values considered as b0"
+        default_value=20, help="Upper threshold for b-values considered as b0"
+    ).tag(config=True)
+    shell_threshold = Integer(
+        default_value=40, help="Threshold for gaps between shells"
     ).tag(config=True)
 
     output = output_prefix_argument()
@@ -458,30 +463,45 @@ class ExtractShells(mrHARDIBaseApplication):
         bvecs = np.loadtxt(self.bvecs)
         dwi = nib.load(self.dwi)
 
+        shells, centroids = identify_shells(
+            bvals[~np.less_equal(bvals, self.b0_threshold)],
+            self.shell_threshold
+        )
         if not self.shells:
-            shells, cnt = np.unique(
-                bvals[~np.less_equal(bvals, self.b0_threshold)],
-                return_counts=True
-            )
+            _, cnt = np.unique(centroids, return_counts=True)
         else:
-            shells, cnt = np.unique(np.array(self.shells), return_counts=True)
+            shells = np.array(self.shells)
+            cnt = [
+                (np.greater(centroids, s - self.shell_threshold) &
+                 np.less(centroids, s + self.shell_threshold)).sum()
+                for s in shells
+            ]
 
         shells = shells[cnt > self.count]
 
         mask = np.zeros_like(bvals, bool)
         if self.keep == "leq":
-            mask |= bvals <= shells.max()
+            mask |= centroids <= shells.max()
         elif self.keep == "geq":
-            mask |= bvals >= shells.min()
+            mask |= centroids >= shells.min()
         elif self.keep == "bigset":
-            counts = np.array([(bvals == s).sum() for s in shells])
+            counts = [
+                (np.greater(centroids, s - self.shell_threshold) &
+                 np.less(centroids, s + self.shell_threshold)).sum()
+                for s in shells
+            ]
             mask |= bvals == shells[counts.argmax()]
         elif self.keep == "smallset":
-            counts = np.array([(bvals == s).sum() for s in shells])
+            counts = [
+                (np.greater(centroids, s - self.shell_threshold) &
+                 np.less(centroids, s + self.shell_threshold)).sum()
+                for s in shells
+            ]
             mask |= bvals == shells[counts.argmin()]
         elif self.keep == "all":
             for shell in shells:
-                mask |= bvals == shell
+                mask |= (np.greater(centroids, shell - self.shell_threshold) &
+                         np.less(centroids, shell + self.shell_threshold))
 
         if self.keep_b0:
             mask |= np.less_equal(bvals, self.b0_threshold)
@@ -558,7 +578,7 @@ class CheckDuplicatedBvecsInShell(mrHARDIBaseApplication):
     ).tag(config=True)
 
     b0_threshold = Integer(
-        default_value=0, help="Upper threshold for b-values considered as b0"
+        default_value=20, help="Upper threshold for b-values considered as b0"
     ).tag(config=True)
 
     output = output_prefix_argument()
@@ -626,3 +646,96 @@ class CheckDuplicatedBvecsInShell(mrHARDIBaseApplication):
             metadata.directions = directions.tolist()
             metadata.n = int(meta_mask.sum())
             save_metadata(self.output, metadata)
+
+
+_sh_order_aliases = {
+    "bvals": "DetermineSHOrder.bvals",
+    "bvecs": "DetermineSHOrder.bvecs",
+    "out": "DetermineSHOrder.output",
+    "ceil": "DetermineSHOrder.b0_threshold",
+    "gap": "DetermineSHOrder.shell_threshold",
+    "order": "DetermineSHOrder.sh_order",
+}
+
+_sh_order_flags = dict(
+    strict=(
+        {"DetermineSHOrder": {"strict": True}},
+        'Images that do not meet the required SH order cause an error'
+    ),
+    msmt=(
+        {"DetermineSHOrder": {"msmt": True}},
+        'Compute the order per shell'
+    ),
+    full=(
+        {"DetermineSHOrder": {"full_basis": True}},
+        'Use full SH basis'
+    )
+)
+
+
+class DetermineSHOrder(mrHARDIBaseApplication):
+    bvals = required_file(description="b-values file")
+    bvecs = required_file(description="b-vectors file")
+    output = output_file_argument()
+    sh_order = required_arg(Integer)
+
+    b0_threshold = Integer(
+        default_value=20, help="Upper threshold for b-values considered as b0"
+    ).tag(config=True)
+    shell_threshold = Integer(
+        default_value=40, help="Threshold for gaps between shells"
+    ).tag(config=True)
+    strict = Bool(
+        False, help="When true, images that do not meet the "
+                    "required SH order cause an error"
+    ).tag(config=True)
+    msmt = Bool(False, help="Specify to compute the order per shell").tag(
+        config=True
+    )
+    full_basis = Bool(False).tag(config=True)
+
+    aliases = Dict(default_value=_sh_order_aliases)
+    flags = Dict(default_value=_sh_order_flags)
+
+    def execute(self):
+        bvals = np.loadtxt(self.bvals)
+        bvecs = np.loadtxt(self.bvecs)
+
+        bvals_idxs = np.greater(bvals, self.b0_threshold)
+        bvals = bvals[bvals_idxs]
+        bvecs = bvecs[:, bvals_idxs]
+
+        if self.msmt:
+            num_ubvecs = []
+            shells, centroids = identify_shells(bvals, self.shell_threshold)
+            for shell in shells:
+                ubv = np.unique(bvecs[:, centroids == shell], axis=1)
+                num_ubvecs.append(len(ubv))
+
+            num_ubvecs = min(num_ubvecs)
+        else:
+            num_ubvecs = len(np.unique(bvecs, axis=1))
+
+        sh_order = sh_order_from(num_ubvecs, self.full_basis)
+
+        if self.strict and sh_order < self.sh_order:
+            raise RuntimeError(
+                "Insufficent number of volumes for SH order {}".format(
+                    self.sh_order
+                )
+            )
+        
+        if sh_order == 0:
+            if self.msmt:
+                raise RuntimeError(
+                    "Insufficent number of volumes in one or more shells "
+                    "for SH reconstruction (calculated order = 0)"
+                )
+
+            raise RuntimeError(
+                    "Insufficent number of volumes for SH "
+                    "reconstruction (calculated order = 0)"
+                )
+
+        with open(self.output, "w+") as f:
+            f.write("{}".format(sh_order))

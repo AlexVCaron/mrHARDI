@@ -89,7 +89,7 @@ class Diamond(mrHARDIBaseApplication):
     ).tag(config=True)
 
     b0_threshold = Int(
-        0, help="Upper b-value threshold for b0 volumes"
+        20, help="Upper b-value threshold for b0 volumes"
     ).tag(config=True)
 
     verbose = Bool(
