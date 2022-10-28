@@ -149,6 +149,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.utils.Segmentation2Mask",
             'Splits a segmentation image intensities into masks'
         ),
+        sh_order=(
+            "mrHARDI.apps.utils.DetermineSHOrder",
+            'Compute SH order valid given a number of volumes'
+        ),
         split=(
             "mrHARDI.apps.utils.SplitImage",
             'Split an image given an axis'
