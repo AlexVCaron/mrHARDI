@@ -10,5 +10,6 @@ from .image import (ApplyMask,
                     ConvertImage,
                     FixOddDimensions,
                     ReplicateImage,
+                    ResamplingReference,
                     Segmentation2Mask,
                     SplitImage)
