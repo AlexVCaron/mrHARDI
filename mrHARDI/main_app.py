@@ -137,6 +137,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.utils.ReplicateImage",
             'Replicate an image to fit another one on the last axis'
         ),
+        resampling_reference=(
+            "mrHARDI.apps.utils.ResamplingReference",
+            'Compute a reference image for resampling base on criterias'
+        ),
         response=(
             "mrHARDI.apps.reconstruct.FiberResponse",
             'Compute single fiber response (and gm and csf if msmt)'
