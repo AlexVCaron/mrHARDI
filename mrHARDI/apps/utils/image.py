@@ -550,7 +550,8 @@ _resample_ref_aliases = {
     'in': 'ResamplingReference.images',
     'out': 'ResamplingReference.output',
     'subdiv': 'ResamplingReference.subdivisions',
-    'min_voxel_size': 'ResamplingReference.min_voxel_size'
+    'min_voxel_size': 'ResamplingReference.min_voxel_size',
+    'force_resolution': 'ResamplingReference.force_resolution'
 }
 
 
