@@ -465,7 +465,7 @@ class ExtractShells(mrHARDIBaseApplication):
 
         b0_mask = ~np.less_equal(bvals, self.b0_threshold)
         shells, centroids = identify_shells(
-            bvals[b0_mask], self.shell_threshold
+            bvals[~b0_mask], self.shell_threshold
         )
         centroids = shells[centroids]
 
