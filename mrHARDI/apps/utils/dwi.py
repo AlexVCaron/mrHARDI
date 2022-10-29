@@ -469,18 +469,23 @@ class ExtractShells(mrHARDIBaseApplication):
         )
         centroids = shells[centroids]
 
-        if not self.shells:
-            _, cnt = np.unique(centroids, return_counts=True)
-        else:
-            shells = np.array(self.shells)
-            cnt = [
-                (np.greater(centroids, s - self.shell_threshold) &
-                 np.less(centroids, s + self.shell_threshold)).sum()
-                for s in shells
-            ]
+        cnt = [
+            (np.greater(centroids, s - self.shell_threshold) &
+                np.less(centroids, s + self.shell_threshold)).sum()
+            for s in shells
+        ]
 
         cnt = np.array(cnt)
+        cnt_mask = np.ones_like(centroids, bool)
+        for shell, ct in zip(shells, cnt):
+            if ct <= self.count:
+                cnt_mask[centroids == shell] = False
+
+        centroids = centroids[cnt_mask]
         shells = shells[cnt > self.count]
+
+        if self.shells:
+            shells = np.array(self.shells)
 
         mask = np.zeros_like(centroids, bool)
         if self.keep == "leq":
@@ -507,7 +512,8 @@ class ExtractShells(mrHARDIBaseApplication):
                          np.less(centroids, shell + self.shell_threshold))
 
         extraction_mask = np.zeros_like(bvals, bool)
-        extraction_mask[~b0_mask] = mask
+        cnt_mask[cnt_mask] = mask
+        extraction_mask[~b0_mask] = cnt_mask
         if self.keep_b0:
             extraction_mask[b0_mask] = True
 
