@@ -737,7 +737,7 @@ class DetermineSHOrder(mrHARDIBaseApplication):
 
             num_ubvecs = min(num_ubvecs)
         else:
-            num_ubvecs = len(np.unique(bvecs, axis=1))
+            num_ubvecs = np.unique(bvecs, axis=1).shape[1]
 
         sh_order = sh_order_from(num_ubvecs, self.full_basis)
 
