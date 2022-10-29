@@ -69,4 +69,4 @@ def sh_order_from(n, full_basis=False):
     if full_basis:
         return max(int(np.floor(np.sqrt(n) - 1)), 0)
 
-    return max(int(np.floor(-3 + 0.5 * np.sqrt(1 + 8 * n))), 0)
+    return 2 * (max(int(np.floor(-3 + 0.5 * np.sqrt(1 + 8 * n))), 0) % 2)
