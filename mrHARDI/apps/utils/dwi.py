@@ -467,6 +467,8 @@ class ExtractShells(mrHARDIBaseApplication):
             bvals[~np.less_equal(bvals, self.b0_threshold)],
             self.shell_threshold
         )
+        centroids = shells[centroids]
+
         if not self.shells:
             _, cnt = np.unique(centroids, return_counts=True)
         else:
@@ -477,8 +479,9 @@ class ExtractShells(mrHARDIBaseApplication):
                 for s in shells
             ]
 
-        cnt = np.array(cnt)
-        shells = shells[cnt > self.count]
+        if self.count > 0:
+            cnt = np.array(cnt)
+            shells = shells[cnt > self.count]
 
         mask = np.zeros_like(bvals, bool)
         if self.keep == "leq":
@@ -709,6 +712,7 @@ class DetermineSHOrder(mrHARDIBaseApplication):
         if self.msmt:
             num_ubvecs = []
             shells, centroids = identify_shells(bvals, self.shell_threshold)
+            centroids = shells[centroids]
             for shell in shells:
                 ubv = np.unique(bvecs[:, centroids == shell], axis=1)
                 num_ubvecs.append(len(ubv))
