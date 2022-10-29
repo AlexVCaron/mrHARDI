@@ -477,6 +477,7 @@ class ExtractShells(mrHARDIBaseApplication):
                 for s in shells
             ]
 
+        cnt = np.array(cnt)
         shells = shells[cnt > self.count]
 
         mask = np.zeros_like(bvals, bool)
