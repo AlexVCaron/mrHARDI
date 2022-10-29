@@ -463,9 +463,9 @@ class ExtractShells(mrHARDIBaseApplication):
         bvecs = np.loadtxt(self.bvecs)
         dwi = nib.load(self.dwi)
 
+        b0_mask = ~np.less_equal(bvals, self.b0_threshold)
         shells, centroids = identify_shells(
-            bvals[~np.less_equal(bvals, self.b0_threshold)],
-            self.shell_threshold
+            bvals[b0_mask], self.shell_threshold
         )
         centroids = shells[centroids]
 
@@ -479,11 +479,10 @@ class ExtractShells(mrHARDIBaseApplication):
                 for s in shells
             ]
 
-        if self.count > 0:
-            cnt = np.array(cnt)
-            shells = shells[cnt > self.count]
+        cnt = np.array(cnt)
+        shells = shells[cnt > self.count]
 
-        mask = np.zeros_like(bvals, bool)
+        mask = np.zeros_like(centroids, bool)
         if self.keep == "leq":
             mask |= centroids <= shells.max()
         elif self.keep == "geq":
@@ -494,29 +493,40 @@ class ExtractShells(mrHARDIBaseApplication):
                  np.less(centroids, s + self.shell_threshold)).sum()
                 for s in shells
             ]
-            mask |= bvals == shells[counts.argmax()]
+            mask |= centroids == shells[counts.argmax()]
         elif self.keep == "smallset":
             counts = [
                 (np.greater(centroids, s - self.shell_threshold) &
                  np.less(centroids, s + self.shell_threshold)).sum()
                 for s in shells
             ]
-            mask |= bvals == shells[counts.argmin()]
+            mask |= centroids == shells[counts.argmin()]
         elif self.keep == "all":
             for shell in shells:
                 mask |= (np.greater(centroids, shell - self.shell_threshold) &
                          np.less(centroids, shell + self.shell_threshold))
 
+        extraction_mask = np.zeros_like(bvals, bool)
+        extraction_mask[~b0_mask] = mask
         if self.keep_b0:
-            mask |= np.less_equal(bvals, self.b0_threshold)
-        else:
-            mask &= ~np.less_equal(bvals, self.b0_threshold)
+            extraction_mask[b0_mask] = True
 
-        np.savetxt("{}.bval".format(self.output), bvals[mask][None, :])
-        np.savetxt("{}.bvec".format(self.output), bvecs[:, mask])
+        np.savetxt(
+            "{}.bval".format(self.output),
+            bvals[extraction_mask],
+            newline=" ",
+            fmt="%d"
+        )
+        np.savetxt(
+            "{}.bvec".format(self.output),
+            bvecs[:, extraction_mask],
+            fmt="%.8f"
+        )
         nib.save(
             nib.Nifti1Image(
-                dwi.get_fdata().astype(dwi.get_data_dtype())[..., mask],
+                dwi.get_fdata().astype(
+                    dwi.get_data_dtype()
+                )[..., extraction_mask],
                 dwi.affine, dwi.header
             ),
             "{}.nii.gz".format(self.output)
@@ -524,11 +534,13 @@ class ExtractShells(mrHARDIBaseApplication):
 
         metadata = load_metadata(self.dwi)
         if metadata:
-            acq_types = np.array(metadata.acquisition_slices_to_list())[mask]
-            directions = np.array(metadata.directions)[mask, :]
+            acq_types = np.array(
+                metadata.acquisition_slices_to_list()
+            )[extraction_mask]
+            directions = np.array(metadata.directions)[extraction_mask, :]
             metadata.update_acquisition_from_list(acq_types.tolist())
             metadata.directions = directions.tolist()
-            metadata.n = int(mask.sum())
+            metadata.n = int(extraction_mask.sum())
             save_metadata(self.output, metadata)
 
 
