@@ -463,17 +463,12 @@ class ExtractShells(mrHARDIBaseApplication):
         bvecs = np.loadtxt(self.bvecs)
         dwi = nib.load(self.dwi)
 
-        b0_mask = ~np.less_equal(bvals, self.b0_threshold)
+        b0_mask = np.less_equal(bvals, self.b0_threshold)
         shells, centroids = identify_shells(
             bvals[~b0_mask], self.shell_threshold
         )
         centroids = shells[centroids]
-
-        cnt = [
-            (np.greater(centroids, s - self.shell_threshold) &
-                np.less(centroids, s + self.shell_threshold)).sum()
-            for s in shells
-        ]
+        _, cnt = np.unique(centroids, return_counts=True)
 
         cnt = np.array(cnt)
         cnt_mask = np.ones_like(centroids, bool)
@@ -493,23 +488,14 @@ class ExtractShells(mrHARDIBaseApplication):
         elif self.keep == "geq":
             mask |= centroids >= shells.min()
         elif self.keep == "bigset":
-            counts = [
-                (np.greater(centroids, s - self.shell_threshold) &
-                 np.less(centroids, s + self.shell_threshold)).sum()
-                for s in shells
-            ]
+            counts = [(centroids == s).sum() for s in shells]
             mask |= centroids == shells[counts.argmax()]
         elif self.keep == "smallset":
-            counts = [
-                (np.greater(centroids, s - self.shell_threshold) &
-                 np.less(centroids, s + self.shell_threshold)).sum()
-                for s in shells
-            ]
+            counts = [(centroids == s).sum() for s in shells]
             mask |= centroids == shells[counts.argmin()]
         elif self.keep == "all":
             for shell in shells:
-                mask |= (np.greater(centroids, shell - self.shell_threshold) &
-                         np.less(centroids, shell + self.shell_threshold))
+                mask |= centroids == shell
 
         extraction_mask = np.zeros_like(bvals, bool)
         cnt_mask[cnt_mask] = mask
