@@ -733,7 +733,7 @@ class DetermineSHOrder(mrHARDIBaseApplication):
             centroids = shells[centroids]
             for shell in shells:
                 ubv = np.unique(bvecs[:, centroids == shell], axis=1)
-                num_ubvecs.append(len(ubv))
+                num_ubvecs.append(ubv.shape[1])
 
             num_ubvecs = min(num_ubvecs)
         else:
