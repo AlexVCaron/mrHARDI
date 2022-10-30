@@ -93,7 +93,7 @@ class Eddy(mrHARDIBaseApplication):
 
     def _register_high_b(self, low_dwi, low_bvals, low_bvecs, output_directory):
         ref = self._extrapolate_reference(
-            low_dwi, low_bvals, low_bvecs
+            low_dwi, low_bvals, low_bvecs, output_directory
         )
         dwi, bvecs, _ = self._coregister_images(
             self.image, ref, self.bvecs, output_directory
@@ -117,11 +117,9 @@ class Eddy(mrHARDIBaseApplication):
 
         smooth_img = nib.Nifti1Image(smooth, source.affine, source.header)
 
-        reference = extrapolate_reference(
+        return extrapolate_reference(
             smooth_img, source, target
         )
-
-
 
     def _coregister_images(self, dwi, ref, bvecs=None, output_directory="."):
         moving, target = nib.load(dwi), nib.load(ref)
