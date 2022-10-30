@@ -149,6 +149,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.utils.SplitImage",
             'Split an image given an axis'
         ),
+        template=(
+            "mrHARDI.apps.template.AntsMultivariateTemplate",
+            'Compute population templates over (possibly) multiple modalities'
+        ),
         topup=("mrHARDI.apps.denoise.Topup", 'Execute topup correction'),
         validate=(
             "mrHARDI.apps.validate.Validate", 'Data validation'
