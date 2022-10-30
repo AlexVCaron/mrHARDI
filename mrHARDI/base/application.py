@@ -901,7 +901,7 @@ class Vector3D(List):
         super().__init__(trait=Float(), minlen=3, maxlen=3, **kwargs)
 
 
-_out_pre_help_line = "Output directory and prefix for files. Directory "\
+_out_gen_help_line = "Output {style} for files. Directory "\
                      "required, will overwrite files (Anything that can " \
                      "possibly go wrong, does - Murphy's Law)"
 
@@ -942,8 +942,19 @@ def prefix_argument(
     )
 
 
+def output_directory_argument(
+    default_value=Undefined,
+    description=_out_gen_help_line.format(style="directory"),
+    config=True, required=True, ignore_write=True, **tags
+):
+    return prefix_argument(
+        description, default_value, config, required, ignore_write, **tags
+    )
+
+
 def output_prefix_argument(
-    default_value=Undefined, description=_out_pre_help_line,
+    default_value=Undefined,
+    description=_out_gen_help_line.format(style="directory and prefix"),
     config=True, required=True, ignore_write=True, **tags
 ):
     return prefix_argument(
