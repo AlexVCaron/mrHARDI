@@ -1,16 +1,22 @@
-from os import makedirs
-from tempfile import TemporaryDirectory
+import json
 import nibabel as nib
 import numpy as np
+from os import makedirs
 from os.path import join
 from scipy.ndimage import gaussian_filter
-from traitlets import Instance, Unicode
+from tempfile import TemporaryDirectory
+from traitlets import Enum, Instance, Integer, Unicode
 
+from mrHARDI.apps.register.ants import AntsRegistration
 from mrHARDI.base.application import (input_dwi_prefix,
+                                      mask_arg,
                                       mrHARDIBaseApplication,
                                       output_prefix_argument,
                                       required_file)
+from mrHARDI.compute.extrapolation import extrapolate_reference
+from mrHARDI.config.ants import AntsConfiguration
 from mrHARDI.config.bteddy import BTEddyConfiguration
+from mrHARDI.traits.ants import AntsCompositeAffine, MetricMI
 
 
 class Eddy(mrHARDIBaseApplication):
@@ -18,12 +24,22 @@ class Eddy(mrHARDIBaseApplication):
     configuration = Instance(BTEddyConfiguration).tag(config=True)
 
     image = input_dwi_prefix()
+    mask = mask_arg()
     bvals = required_file(help="b-value file")
     bvecs = required_file(help="b-vectors file")
+
+    interpolation = Enum(
+        ["Linear", "NearestNeighbor", "Gaussian",  "BSpline", "MultiLabel"],
+        "BSpline",
+        help="Interpolation strategy. Choices : {}".format(
+            ["Linear", "NearestNeighbor", "Gaussian",  "BSpline", "MultiLabel"]
+        )
+    )
 
     output = output_prefix_argument()
 
     temp_dir = Unicode(None, allow_none=True).tag(config=True)
+    seed = Integer(None, allow_none=True).tag(config=True)
 
     def execute(self):
         img = nib.load(self.image)
@@ -103,7 +119,6 @@ class Eddy(mrHARDIBaseApplication):
 
     def _extrapolate_reference(self, dwi, bvals, bvecs, output_directory):
         source = nib.load(dwi)
-        target = nib.load(self.image)
         smooth = np.empty(source.shape)
 
         workdir = join(output_directory, ".extrapol_workdir")
@@ -116,9 +131,22 @@ class Eddy(mrHARDIBaseApplication):
             )
 
         smooth_img = nib.Nifti1Image(smooth, source.affine, source.header)
+        source_bvals = np.loadtxt(bvals)
+        source_bvecs = np.loadtxt(bvecs)
+        target_bvals = np.loadtxt(self.bvals)
+        target_bvecs = np.loadtxt(self.bvecs)
+
+        mask = None
+        if self.mask:
+            mask = nib.load(self.mask).get_fdata().astype(bool)
 
         return extrapolate_reference(
-            smooth_img, source, target
+            smooth_img,
+            source_bvals,
+            source_bvecs,
+            target_bvals,
+            target_bvecs,
+            mask
         )
 
     def _coregister_images(self, dwi, ref, bvecs=None, output_directory="."):
@@ -147,8 +175,18 @@ class Eddy(mrHARDIBaseApplication):
             get_target = _get_target
 
         for i in range(n_moving):
+            nib.save(
+                nib.Nifti1Image(
+                    moving.get_fdata()[..., i],
+                    moving.affine,
+                    moving.header
+                ),
+                join(workdir, "temp_moving.nii.gz")
+            )
             res, p = self._run_registration_command(
-                get_target(i), join(workdir, "temp_moving.nii.gz")
+                get_target(i),
+                join(workdir, "temp_moving.nii.gz"),
+                join(workdir, "temp_registered")
             )
             out[..., i] = res
             params[:, i] = p
@@ -159,10 +197,40 @@ class Eddy(mrHARDIBaseApplication):
         return out, bvecs, params
 
     def _correct_bvecs(self, bvecs, params):
-        return bvecs
+        out_bvecs = np.loadtxt(bvecs)
+        for i, param in enumerate(params.T):
+            out_bvecs[:, i] = (
+                param[:9].reshape((3, 3)) @ out_bvecs[:, i] + params[9:]
+            )
 
-    def _run_registration_command(self, target, moving):
-        return target, moving
+        return out_bvecs
+
+    def _run_registration_command(self, target, moving, output_prefix):
+        registration_configuration = AntsConfiguration()
+        registration_configuration.init_moving_transform = [[0, 0, 0]]
+        registration_configuration.interpolation = self.interpolation
+        registration_configuration.match_histogram = False
+        registration_configuration.seed = self.seed
+
+        affine_pass = AntsCompositeAffine()
+        affine_pass.conv_win = 30
+        affine_pass.conv_max_iter = [300, 300, 300]
+        affine_pass.shrinks = [1, 1, 1]
+        affine_pass.smoothing = [1., 0.5, 0.]
+        affine_pass.metrics = [MetricMI(0, 0, 1, 64, "Random", 0.7)]
+
+        registration_configuration.passes = [affine_pass]
+
+        ants_registration = AntsRegistration()
+        ants_registration.configuration = registration_configuration
+        ants_registration.target_images = [target]
+        ants_registration.moving_images = [moving]
+        ants_registration.output_prefix = output_prefix
+        ants_registration.execute()
+
+        params = json.load("{}.mat".format(output_prefix))
+
+        return "{}Warped.nii.gz".format(output_prefix), params
 
     def _get_temp_dir(self):
         if self.temp_dir:

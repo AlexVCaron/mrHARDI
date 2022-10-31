@@ -226,6 +226,14 @@ class AntsAffine(AntsPass):
         ])
 
 
+class AntsCompositeAffine(AntsAffine):
+    def serialize(self, voxel_size, with_convergence=True):
+        return " ".join([
+            "--transform CompositeAffine[{}]".format(self.grad_step),
+            super().serialize(voxel_size)
+        ])
+
+
 class AntsSyN(AntsPass):
     def get_time_restriction(self, ndim):
         return "x".join(["1" for _ in range(ndim - 1)] + ["0"])
