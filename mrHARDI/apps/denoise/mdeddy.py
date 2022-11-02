@@ -19,7 +19,7 @@ from mrHARDI.config.bteddy import BTEddyConfiguration
 from mrHARDI.traits.ants import AntsCompositeAffine, MetricMI
 
 
-class Eddy(mrHARDIBaseApplication):
+class MDEddy(mrHARDIBaseApplication):
     name = u"B-Tensor Adapted Eddy"
     configuration = Instance(BTEddyConfiguration).tag(config=True)
 

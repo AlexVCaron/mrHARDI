@@ -89,6 +89,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             'Check and handles duplicated directions in DWI shells'
         ),
         eddy=("mrHARDI.apps.denoise.Eddy", 'Execute eddy correction'),
+        eddy_md=(
+            "mrHARDI.apps.denoise.MDEddy"
+            'Eddy correction for high b-value and multidimensional DWI'
+        ),
         eddy_viz=(
             "mrHARDI.apps.visualize.VisualizeEddyParameters",
             "Visualization of eddy's optimization train"
