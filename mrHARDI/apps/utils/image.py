@@ -3,7 +3,7 @@ from os.path import basename
 
 import nibabel as nib
 import numpy as np
-from traitlets import Integer, Enum, Dict, Undefined, Unicode, Bool
+from traitlets import Integer, Enum, Dict, Undefined, Unicode, Bool, Float
 from traitlets.config import ArgumentError
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
@@ -189,6 +189,7 @@ _split_aliases = {
     'prefix': 'SplitImage.prefix',
     'axis': 'SplitImage.axis'
 }
+
 _split_flags = dict(
     inverse=(
         {"SplitImage": {'inverse': True}},
@@ -543,3 +544,52 @@ class FixOddDimensions(mrHARDIBaseApplication):
 
             if metadata is not None:
                 save_metadata(name, metadata)
+
+
+_resample_ref_aliases = {
+    'in': 'ResamplingReference.images',
+    'out': 'ResamplingReference.output',
+    'subdiv': 'ResamplingReference.subdivisions',
+    'min_voxel_size': 'ResamplingReference.min_voxel_size',
+    'force_resolution': 'ResamplingReference.force_resolution'
+}
+
+
+class ResamplingReference(mrHARDIBaseApplication):
+    images = required_arg(
+        MultipleArguments, traits_args=(Unicode(),),
+        description="Input images to concatenate"
+    )
+    output = output_file_argument()
+
+    subdivisions = Integer(default_value=2).tag(config=True)
+    min_voxel_size = Float(default_value=None, allow_none=True).tag(config=True)
+    force_resolution = Float(
+        default_value=None, allow_none=True
+    ).tag(config=True)
+
+    aliases = Dict(default_value=_resample_ref_aliases)
+
+    def execute(self):
+        if self.force_resolution:
+            resolution = self.force_resolution
+        else:
+            sizes = [nib.load(i).header.get_zooms()[:3] for i in self.images]
+            sizes = [s for ss in sizes for s in ss]
+
+            subs = [s / float(self.subdivisions) for s in sizes]
+            subs = np.array(subs)
+
+            if self.min_voxel_size:
+                subs = subs[subs >= self.min_voxel_size]
+
+            resolution = np.max(subs)
+
+        ref = nib.load(self.images[0])
+        zooms = np.array(ref.header.get_zooms()[:3])
+        shape = np.array(ref.shape[:3]) / zooms
+        shape = tuple(np.ceil(shape * resolution).astype(int).tolist())
+        affine = np.copy(ref.affine)
+        affine[:3, :3] *= np.diag(resolution / zooms)
+        out = nib.Nifti1Image(np.empty(shape), affine)
+        nib.save(out, self.output)

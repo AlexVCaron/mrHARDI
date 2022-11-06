@@ -1,6 +1,6 @@
 import nibabel as nib
 import numpy as np
-from traitlets import Bool, Dict, Float
+from traitlets import Bool, Dict, Integer
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
                                       output_prefix_argument,
@@ -29,8 +29,8 @@ class DWIValidation(mrHARDIBaseApplication):
     bvecs = required_file(description="Input b-vectors file")
     output = output_prefix_argument(required=False)
     output_stdout = Bool(False).tag(config=True)
-    b0_threshold = Float(
-        0.9, help="Higher bound determining a valid b-value for a b0 volume"
+    b0_threshold = Integer(
+        20, help="Higher bound determining a valid b-value for a b0 volume"
     ).tag(config=True)
 
     aliases = Dict(default_value=_aliases)
