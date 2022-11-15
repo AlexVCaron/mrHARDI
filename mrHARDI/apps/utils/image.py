@@ -128,8 +128,8 @@ class Concatenate(mrHARDIBaseApplication):
             for dwi in dwi_list
         ]
 
-        if (
-            not all(len(dt.shape) == 3 for dt in data) or
+        if not (
+            all(len(dt.shape) == 3 for dt in data) or
             all(len(dt.shape) == 4 for dt in data)
         ):
             data = [
