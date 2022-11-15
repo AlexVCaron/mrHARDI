@@ -31,14 +31,20 @@ WORKDIR /mrhs/dev/ants/bin
 RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
+        -name ANTSpexec.sh -or \
         -name antsRegistration -or \
         -name 'antsRegistrationSyN*' -or \
         -name N4BiasFieldCorrection -or \
         -name antsApplyTransforms -or \
         -name antsMotionCorr -or \
         -name antsMotionCorrDiffusionDirection -or \
+        -name antsMultivariateTemplateConstruction2.sh -or \
         -name DenoiseImage -or \
         -name Atropos -or \
         -name ImageMath -or \
-        -name 'antsAtroposN4*' \
+        -name 'antsAtroposN4*' -or \
+        -name waitForSGEQJobs.pl -or \
+        -name waitForPBSQJobs.pl -or \
+        -name waitForXGridJobs.pl -or \
+        -name waitForSlurmJobs.pl \
     \) -exec rm -rf "{}" \;
