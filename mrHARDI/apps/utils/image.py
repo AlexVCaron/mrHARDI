@@ -130,7 +130,7 @@ class Concatenate(mrHARDIBaseApplication):
 
         if (
             not all(len(dt.shape) == 3 for dt in data) or
-            all(len(dt.shape == 4) for dt in data)
+            all(len(dt.shape) == 4 for dt in data)
         ):
             data = [
                 dt if len(dt.shape) == 4 else dt[..., None]
