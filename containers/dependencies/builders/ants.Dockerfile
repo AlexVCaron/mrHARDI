@@ -32,6 +32,12 @@ RUN find . -maxdepth 1 -not \( \
         -name . -or \
         -name .. -or \
         -name ANTSpexec.sh -or \
+        -name AverageImages -or \
+        -name ImageSetStatistics -or \
+        -name MultiplyImages -or \
+        -name MeasureMinMaxMean -or \
+        -name AverageAffineTransform -or \
+        -name AverageAffineTransformNoRigid -or \
         -name antsRegistration -or \
         -name 'antsRegistrationSyN*' -or \
         -name N4BiasFieldCorrection -or \

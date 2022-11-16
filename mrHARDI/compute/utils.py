@@ -25,8 +25,8 @@ def apply_mask_on_data(
     return out_data
 
 
-def concatenate_dwi(dwi_list, bvals_in=None, bvecs_in=None):
-    return concatenate(dwi_list, axis=-1), \
+def concatenate_dwi(dwi_list, bvals_in=None, bvecs_in=None, dwi_axis=-1):
+    return concatenate(dwi_list, dwi_axis=dwi_axis), \
            concatenate(bvals_in)[None, :] if bvals_in else None, \
            concatenate(bvecs_in, axis=1).T if bvecs_in else None
 

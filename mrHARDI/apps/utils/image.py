@@ -73,7 +73,8 @@ _cat_aliases = {
     'in': 'Concatenate.images',
     'out': 'Concatenate.prefix',
     'bvals': 'Concatenate.bvals',
-    'bvecs': 'Concatenate.bvecs'
+    'bvecs': 'Concatenate.bvecs',
+    'axis': 'Concatenate.axis'
 }
 
 _cat_flags = dict(
@@ -108,8 +109,16 @@ class Concatenate(mrHARDIBaseApplication):
 
     time_series = Bool(False).tag(config=True)
 
+    axis = Integer(None, allow_none=True).tag(config=True)
+
     aliases = Dict(default_value=_cat_aliases)
     flags = Dict(default_value=_cat_flags)
+
+    def _shape_to_axis(self, data):
+        while len(data.shape) - 1 < self.axis:
+            data = np.expand_dims(data, min(self.axis, len(data.shape)))
+
+        return data
 
     def execute(self):
         dwi_list = [nib.load(dwi) for dwi in self.images]
@@ -123,8 +132,12 @@ class Concatenate(mrHARDIBaseApplication):
             )
             assert is_valid, "All images must have the same or similar affine"
 
+        if self.axis is None:
+            self.axis = np.max([len(img.shape) for img in dwi_list]) - 1
+
         data = [
-            dwi.get_fdata().astype(dtype=dwi.get_data_dtype())
+            self._shape_to_axis(
+                dwi.get_fdata().astype(dtype=dwi.get_data_dtype()))
             for dwi in dwi_list
         ]
 
@@ -156,7 +169,8 @@ class Concatenate(mrHARDIBaseApplication):
             out_dwi, out_bvals, out_bvecs = concatenate_dwi(
                 [d[..., None] for d in data] if self.time_series else data,
                 bvals_list,
-                bvecs_list
+                bvecs_list,
+                dwi_axis=self.axis
             )
 
         metadatas = list(load_metadata(img) for img in self.images)
