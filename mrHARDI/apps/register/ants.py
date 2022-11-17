@@ -221,6 +221,26 @@ class AntsTransform(mrHARDIBaseApplication):
 
         if self.out_type:
             args += " -u {}".format(self.out_type)
+        else:
+            out_type = "default"
+            if np.issubdtype(image.header.get_data_dtype(), np.integer):
+                if np.issubdtype(
+                    image.header.get_data_dtype(), np.signedinteger):
+                    out_type = "int"
+                else:
+                    if image.header.get_data_dtype().itemsize == 1:
+                        out_type = "uchar"
+                    else:
+                        out_type = "int"
+            elif np.issubdtype(image.header.get_data_dtype(), np.floating):
+                if image.header.get_data_dtype().itemsize > 4:
+                    out_type = "double"
+                else:
+                    out_type = "float"
+            elif np.issubdtype(image.header.get_data_dtype(), np.character):
+                out_type = "char"
+
+            args += " -u {}".format(out_type)
 
         if self.transformations and len(self.transformations) > 0:
             if not self.invert or len(self.invert) == 0:
