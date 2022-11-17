@@ -77,14 +77,6 @@ _cat_aliases = {
     'axis': 'Concatenate.axis'
 }
 
-_cat_flags = dict(
-    ts=(
-        {"Concatenate": {'time_series': True}},
-        "Concatenate the images along a new axis in last "
-        "dimension, to form a time-series of images"
-    )
-)
-
 
 class Concatenate(mrHARDIBaseApplication):
     name = u"Concatenate"
@@ -107,12 +99,9 @@ class Concatenate(mrHARDIBaseApplication):
 
     prefix = output_prefix_argument()
 
-    time_series = Bool(False).tag(config=True)
-
     axis = Integer(None, allow_none=True).tag(config=True)
 
     aliases = Dict(default_value=_cat_aliases)
-    flags = Dict(default_value=_cat_flags)
 
     def _shape_to_axis(self, data):
         while len(data.shape) - 1 < self.axis:
@@ -132,23 +121,15 @@ class Concatenate(mrHARDIBaseApplication):
             )
             assert is_valid, "All images must have the same or similar affine"
 
+        max_len = np.max([len(img.shape) for img in dwi_list])
         if self.axis is None:
-            self.axis = np.max([len(img.shape) for img in dwi_list]) - 1
+            self.axis = int(max_len - 1)
 
         data = [
             self._shape_to_axis(
                 dwi.get_fdata().astype(dtype=dwi.get_data_dtype()))
             for dwi in dwi_list
         ]
-
-        if not (
-            all(len(dt.shape) == 3 for dt in data) or
-            all(len(dt.shape) == 4 for dt in data)
-        ):
-            data = [
-                dt if len(dt.shape) == 4 else dt[..., None]
-                for dt in data
-            ]
 
         bvals_list = [
             np.zeros((data[i].shape[-1],)) if bvals == "0" else
@@ -167,7 +148,7 @@ class Concatenate(mrHARDIBaseApplication):
             )
         else:
             out_dwi, out_bvals, out_bvecs = concatenate_dwi(
-                [d[..., None] for d in data] if self.time_series else data,
+                data,
                 bvals_list,
                 bvecs_list,
                 dwi_axis=self.axis
