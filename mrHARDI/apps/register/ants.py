@@ -408,6 +408,43 @@ class AntsTransform(mrHARDIBaseApplication):
                     nib.Nifti1Image(data, output.affine, output.header),
                     "{}.nii.gz".format(self.output)
                 )
+        elif img_type == ImageType.TIMESERIES.value and len(shape) == 4:
+            with TemporaryDirectory(dir=current_path) as tmp_dir:
+                data = image.get_fdata().astype(image.header.get_data_dtype())
+
+                for i in range(data.shape[-1]):
+                    nib.save(
+                        nib.Nifti1Image(
+                            data[..., i], image.affine, image.header
+                        ),
+                        join(tmp_dir, "v{}.nii.gz".format(i))
+                    )
+                    launch_shell_process(
+                        "{} {} -i {} -o {}".format(
+                            command, args,
+                            join(tmp_dir, "v{}.nii.gz".format(i)),
+                            join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                        ),
+                        join(tmp_dir, "v{}_trans.log".format(i))
+                    )
+
+                base_output = nib.load(
+                    join(tmp_dir, "v0_trans.nii.gz")
+                )
+                out_data = base_output.get_fdata()[..., None]
+                for i in range(1, data.shape[-1]):
+                    other_data = nib.load(
+                        join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                    ).get_fdata()[..., None]
+                    out_data = np.concatenate((out_data, other_data), axis=-1)
+
+                nib.save(
+                    nib.Nifti1Image(
+                        out_data.reshape(out_data.shape[:3] + shape[3:]),
+                        base_output.affine, image.header
+                    ),
+                    "{}.nii.gz".format(self.output)
+                )
         else:
             command += " {} -i {} -o {}".format(
                 args, self.image, "{}.nii.gz".format(self.output)
