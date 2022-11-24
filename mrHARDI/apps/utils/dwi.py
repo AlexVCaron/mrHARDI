@@ -13,7 +13,7 @@ from traitlets import (Instance,
 from traitlets.config import Config
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
-                                           MultipleArguments,
+                                           MultipleArguments, output_file_argument,
                                            output_prefix_argument,
                                            required_arg,
                                            required_file)
@@ -24,6 +24,7 @@ from mrHARDI.base.dwi import (AcquisitionType,
                                    load_metadata_file,
                                    load_metadata,
                                    save_metadata)
+from mrHARDI.compute.dwi import identify_shells, sh_order_from
 from mrHARDI.config.utils import DwiMetadataUtilsConfiguration
 
 _mb_aliases = {
@@ -303,7 +304,8 @@ _assert_aliases = {
     "bvals": "AssertDwiDimensions.bvals",
     "bvecs": "AssertDwiDimensions.bvecs",
     "strat": "AssertDwiDimensions.strategy",
-    "out": "AssertDwiDimensions.output"
+    "out": "AssertDwiDimensions.output",
+    "ceil": "AssertDwiDimensions.b0_threshold"
 }
 
 
@@ -320,6 +322,10 @@ class AssertDwiDimensions(mrHARDIBaseApplication):
         ["error", "fix"], "error",
         help="Strategy to employ when discrepancies are found, either "
              "output an error message or try to fix the problem"
+    ).tag(config=True)
+
+    b0_threshold = Integer(
+        default_value=20, help="Upper threshold for b-values considered as b0"
     ).tag(config=True)
 
     output = output_prefix_argument(
@@ -358,7 +364,7 @@ class AssertDwiDimensions(mrHARDIBaseApplication):
                         bvecs, int(len(bvals) / bvecs.shape[0]), axis=0
                     )
                 else:
-                    b0_mask = np.isclose(bvals, 0)
+                    b0_mask = np.less_equal(bvals, self.b0_threshold)
                     zero_bvecs = np.isclose(np.linalg.norm(bvecs, axis=1), 0)
                     if np.sum(b0_mask) == (
                         len(bvals) - bvecs.shape[0] + np.sum(zero_bvecs)
@@ -399,7 +405,9 @@ _shells_aliases = {
     "shells": "ExtractShells.shells",
     "count": "ExtractShells.count",
     "keep": "ExtractShells.keep",
-    "out": "ExtractShells.output"
+    "out": "ExtractShells.output",
+    "ceil": "ExtractShells.b0_threshold",
+    "gap": "ExtractShells.shell_threshold"
 }
 
 _shells_flags = dict(
@@ -438,6 +446,13 @@ class ExtractShells(mrHARDIBaseApplication):
         False, help="When False, removes the b0 volumes from the output volume"
     ).tag(config=True)
 
+    b0_threshold = Integer(
+        default_value=20, help="Upper threshold for b-values considered as b0"
+    ).tag(config=True)
+    shell_threshold = Integer(
+        default_value=40, help="Threshold for gaps between shells"
+    ).tag(config=True)
+
     output = output_prefix_argument()
 
     aliases = Dict(default_value=_shells_aliases)
@@ -448,40 +463,62 @@ class ExtractShells(mrHARDIBaseApplication):
         bvecs = np.loadtxt(self.bvecs)
         dwi = nib.load(self.dwi)
 
-        if not self.shells:
-            shells, cnt = np.unique(
-                bvals[~np.isclose(bvals, 0.)], return_counts=True
-            )
-        else:
-            shells, cnt = np.unique(np.array(self.shells), return_counts=True)
+        b0_mask = np.less_equal(bvals, self.b0_threshold)
+        shells, centroids = identify_shells(
+            bvals[~b0_mask], self.shell_threshold
+        )
+        centroids = shells[centroids]
+        _, cnt = np.unique(centroids, return_counts=True)
 
+        cnt = np.array(cnt)
+        cnt_mask = np.ones_like(centroids, bool)
+        for shell, ct in zip(shells, cnt):
+            if ct <= self.count:
+                cnt_mask[centroids == shell] = False
+
+        centroids = centroids[cnt_mask]
         shells = shells[cnt > self.count]
 
-        mask = np.zeros_like(bvals, bool)
+        if self.shells:
+            shells = np.array(self.shells)
+
+        mask = np.zeros_like(centroids, bool)
         if self.keep == "leq":
-            mask |= bvals <= shells.max()
+            mask |= centroids <= shells.max()
         elif self.keep == "geq":
-            mask |= bvals >= shells.min()
+            mask |= centroids >= shells.min()
         elif self.keep == "bigset":
-            counts = np.array([(bvals == s).sum() for s in shells])
-            mask |= bvals == shells[counts.argmax()]
+            counts = [(centroids == s).sum() for s in shells]
+            mask |= centroids == shells[counts.argmax()]
         elif self.keep == "smallset":
-            counts = np.array([(bvals == s).sum() for s in shells])
-            mask |= bvals == shells[counts.argmin()]
+            counts = [(centroids == s).sum() for s in shells]
+            mask |= centroids == shells[counts.argmin()]
         elif self.keep == "all":
             for shell in shells:
-                mask |= bvals == shell
+                mask |= centroids == shell
 
+        extraction_mask = np.zeros_like(bvals, bool)
+        cnt_mask[cnt_mask] = mask
+        extraction_mask[~b0_mask] = cnt_mask
         if self.keep_b0:
-            mask |= np.isclose(bvals, 0.)
-        else:
-            mask &= ~np.isclose(bvals, 0.)
+            extraction_mask[b0_mask] = True
 
-        np.savetxt("{}.bval".format(self.output), bvals[mask][None, :])
-        np.savetxt("{}.bvec".format(self.output), bvecs[:, mask])
+        np.savetxt(
+            "{}.bval".format(self.output),
+            bvals[extraction_mask],
+            newline=" ",
+            fmt="%d"
+        )
+        np.savetxt(
+            "{}.bvec".format(self.output),
+            bvecs[:, extraction_mask],
+            fmt="%.8f"
+        )
         nib.save(
             nib.Nifti1Image(
-                dwi.get_fdata().astype(dwi.get_data_dtype())[..., mask],
+                dwi.get_fdata().astype(
+                    dwi.get_data_dtype()
+                )[..., extraction_mask],
                 dwi.affine, dwi.header
             ),
             "{}.nii.gz".format(self.output)
@@ -489,11 +526,13 @@ class ExtractShells(mrHARDIBaseApplication):
 
         metadata = load_metadata(self.dwi)
         if metadata:
-            acq_types = np.array(metadata.acquisition_slices_to_list())[mask]
-            directions = np.array(metadata.directions)[mask, :]
+            acq_types = np.array(
+                metadata.acquisition_slices_to_list()
+            )[extraction_mask]
+            directions = np.array(metadata.directions)[extraction_mask, :]
             metadata.update_acquisition_from_list(acq_types.tolist())
             metadata.directions = directions.tolist()
-            metadata.n = int(mask.sum())
+            metadata.n = int(extraction_mask.sum())
             save_metadata(self.output, metadata)
 
 
@@ -527,7 +566,8 @@ _duplicates_aliases = {
     "bvecs": "CheckDuplicatedBvecsInShell.bvecs",
     "out": "CheckDuplicatedBvecsInShell.output",
     "merge": "CheckDuplicatedBvecsInShell.merging",
-    "abs-thr": "CheckDuplicatedBvecsInShell.abs_threshold"
+    "abs-thr": "CheckDuplicatedBvecsInShell.abs_threshold",
+    "ceil": "CheckDuplicatedBvecsInShell.b0_threshold"
 }
 
 
@@ -543,6 +583,10 @@ class CheckDuplicatedBvecsInShell(mrHARDIBaseApplication):
 
     abs_threshold = Float(
         1E-5, help="Absolute threshold on distance between directions"
+    ).tag(config=True)
+
+    b0_threshold = Integer(
+        default_value=20, help="Upper threshold for b-values considered as b0"
     ).tag(config=True)
 
     output = output_prefix_argument()
@@ -568,7 +612,7 @@ class CheckDuplicatedBvecsInShell(mrHARDIBaseApplication):
         obvecs = []
         processed_vols = np.array([False] * data.shape[-1])
 
-        b0_mask = np.isclose(bvals, 0.)
+        b0_mask = np.less_equal(bvals, self.b0_threshold)
         meta_mask = np.zeros((len(bvals),),  dtype=bool)
 
         for i in range(data.shape[-1]):
@@ -610,3 +654,97 @@ class CheckDuplicatedBvecsInShell(mrHARDIBaseApplication):
             metadata.directions = directions.tolist()
             metadata.n = int(meta_mask.sum())
             save_metadata(self.output, metadata)
+
+
+_sh_order_aliases = {
+    "bvals": "DetermineSHOrder.bvals",
+    "bvecs": "DetermineSHOrder.bvecs",
+    "out": "DetermineSHOrder.output",
+    "ceil": "DetermineSHOrder.b0_threshold",
+    "gap": "DetermineSHOrder.shell_threshold",
+    "order": "DetermineSHOrder.sh_order",
+}
+
+_sh_order_flags = dict(
+    strict=(
+        {"DetermineSHOrder": {"strict": True}},
+        'Images that do not meet the required SH order cause an error'
+    ),
+    msmt=(
+        {"DetermineSHOrder": {"msmt": True}},
+        'Compute the order per shell'
+    ),
+    full=(
+        {"DetermineSHOrder": {"full_basis": True}},
+        'Use full SH basis'
+    )
+)
+
+
+class DetermineSHOrder(mrHARDIBaseApplication):
+    bvals = required_file(description="b-values file")
+    bvecs = required_file(description="b-vectors file")
+    output = output_file_argument()
+    sh_order = required_arg(Integer)
+
+    b0_threshold = Integer(
+        default_value=20, help="Upper threshold for b-values considered as b0"
+    ).tag(config=True)
+    shell_threshold = Integer(
+        default_value=40, help="Threshold for gaps between shells"
+    ).tag(config=True)
+    strict = Bool(
+        False, help="When true, images that do not meet the "
+                    "required SH order cause an error"
+    ).tag(config=True)
+    msmt = Bool(False, help="Specify to compute the order per shell").tag(
+        config=True
+    )
+    full_basis = Bool(False).tag(config=True)
+
+    aliases = Dict(default_value=_sh_order_aliases)
+    flags = Dict(default_value=_sh_order_flags)
+
+    def execute(self):
+        bvals = np.loadtxt(self.bvals)
+        bvecs = np.loadtxt(self.bvecs)
+
+        bvals_idxs = np.greater(bvals, self.b0_threshold)
+        bvals = bvals[bvals_idxs]
+        bvecs = bvecs[:, bvals_idxs]
+
+        if self.msmt:
+            num_ubvecs = []
+            shells, centroids = identify_shells(bvals, self.shell_threshold)
+            centroids = shells[centroids]
+            for shell in shells:
+                ubv = np.unique(bvecs[:, centroids == shell], axis=1)
+                num_ubvecs.append(ubv.shape[1])
+
+            num_ubvecs = min(num_ubvecs)
+        else:
+            num_ubvecs = np.unique(bvecs, axis=1).shape[1]
+
+        sh_order = sh_order_from(num_ubvecs, self.full_basis)
+
+        if self.strict and sh_order < self.sh_order:
+            raise RuntimeError(
+                "Insufficent number of volumes for SH order {}".format(
+                    self.sh_order
+                )
+            )
+        
+        if sh_order == 0:
+            if self.msmt:
+                raise RuntimeError(
+                    "Insufficent number of volumes in one or more shells "
+                    "for SH reconstruction (calculated order = 0)"
+                )
+
+            raise RuntimeError(
+                    "Insufficent number of volumes for SH "
+                    "reconstruction (calculated order = 0)"
+                )
+
+        with open(self.output, "w+") as f:
+            f.write("{}".format(sh_order))

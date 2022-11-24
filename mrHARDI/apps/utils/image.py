@@ -3,7 +3,7 @@ from os.path import basename
 
 import nibabel as nib
 import numpy as np
-from traitlets import Integer, Enum, Dict, Undefined, Unicode, Bool
+from traitlets import Integer, Enum, Dict, Undefined, Unicode, Bool, Float
 from traitlets.config import ArgumentError
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
@@ -73,16 +73,9 @@ _cat_aliases = {
     'in': 'Concatenate.images',
     'out': 'Concatenate.prefix',
     'bvals': 'Concatenate.bvals',
-    'bvecs': 'Concatenate.bvecs'
+    'bvecs': 'Concatenate.bvecs',
+    'axis': 'Concatenate.axis'
 }
-
-_cat_flags = dict(
-    ts=(
-        {"Concatenate": {'time_series': True}},
-        "Concatenate the images along a new axis in last "
-        "dimension, to form a time-series of images"
-    )
-)
 
 
 class Concatenate(mrHARDIBaseApplication):
@@ -106,10 +99,15 @@ class Concatenate(mrHARDIBaseApplication):
 
     prefix = output_prefix_argument()
 
-    time_series = Bool(False).tag(config=True)
+    axis = Integer(None, allow_none=True).tag(config=True)
 
     aliases = Dict(default_value=_cat_aliases)
-    flags = Dict(default_value=_cat_flags)
+
+    def _shape_to_axis(self, data):
+        while len(data.shape) - 1 < self.axis:
+            data = np.expand_dims(data, min(self.axis, len(data.shape)))
+
+        return data
 
     def execute(self):
         dwi_list = [nib.load(dwi) for dwi in self.images]
@@ -123,19 +121,15 @@ class Concatenate(mrHARDIBaseApplication):
             )
             assert is_valid, "All images must have the same or similar affine"
 
+        max_len = np.max([len(img.shape) for img in dwi_list])
+        if self.axis is None:
+            self.axis = int(max_len - 1)
+
         data = [
-            dwi.get_fdata().astype(dtype=dwi.get_data_dtype())
+            self._shape_to_axis(
+                dwi.get_fdata().astype(dtype=dwi.get_data_dtype()))
             for dwi in dwi_list
         ]
-
-        if (
-            not all(len(dt.shape) == 3 for dt in data) or
-            all(len(dt.shape == 4) for dt in data)
-        ):
-            data = [
-                dt if len(dt.shape) == 4 else dt[..., None]
-                for dt in data
-            ]
 
         bvals_list = [
             np.zeros((data[i].shape[-1],)) if bvals == "0" else
@@ -154,9 +148,10 @@ class Concatenate(mrHARDIBaseApplication):
             )
         else:
             out_dwi, out_bvals, out_bvecs = concatenate_dwi(
-                [d[..., None] for d in data] if self.time_series else data,
+                data,
                 bvals_list,
-                bvecs_list
+                bvecs_list,
+                dwi_axis=self.axis
             )
 
         metadatas = list(load_metadata(img) for img in self.images)
@@ -189,6 +184,7 @@ _split_aliases = {
     'prefix': 'SplitImage.prefix',
     'axis': 'SplitImage.axis'
 }
+
 _split_flags = dict(
     inverse=(
         {"SplitImage": {'inverse': True}},
@@ -543,3 +539,52 @@ class FixOddDimensions(mrHARDIBaseApplication):
 
             if metadata is not None:
                 save_metadata(name, metadata)
+
+
+_resample_ref_aliases = {
+    'in': 'ResamplingReference.images',
+    'out': 'ResamplingReference.output',
+    'subdiv': 'ResamplingReference.subdivisions',
+    'min_voxel_size': 'ResamplingReference.min_voxel_size',
+    'force_resolution': 'ResamplingReference.force_resolution'
+}
+
+
+class ResamplingReference(mrHARDIBaseApplication):
+    images = required_arg(
+        MultipleArguments, traits_args=(Unicode(),),
+        description="Input images to concatenate"
+    )
+    output = output_file_argument()
+
+    subdivisions = Integer(default_value=2).tag(config=True)
+    min_voxel_size = Float(default_value=None, allow_none=True).tag(config=True)
+    force_resolution = Float(
+        default_value=None, allow_none=True
+    ).tag(config=True)
+
+    aliases = Dict(default_value=_resample_ref_aliases)
+
+    def execute(self):
+        if self.force_resolution:
+            resolution = self.force_resolution
+        else:
+            sizes = [nib.load(i).header.get_zooms()[:3] for i in self.images]
+            sizes = [s for ss in sizes for s in ss]
+
+            subs = [s / float(self.subdivisions) for s in sizes]
+            subs = np.array(subs)
+
+            if self.min_voxel_size:
+                subs = subs[subs >= self.min_voxel_size]
+
+            resolution = np.max(subs)
+
+        ref = nib.load(self.images[0])
+        zooms = np.array(ref.header.get_zooms()[:3])
+        shape = np.array(ref.shape[:3]) / zooms
+        shape = tuple(np.ceil(shape * resolution).astype(int).tolist())
+        affine = np.copy(ref.affine)
+        affine[:3, :3] *= np.diag(resolution / zooms)
+        out = nib.Nifti1Image(np.empty(shape), affine)
+        nib.save(out, self.output)

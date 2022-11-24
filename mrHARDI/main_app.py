@@ -137,6 +137,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.utils.ReplicateImage",
             'Replicate an image to fit another one on the last axis'
         ),
+        resampling_reference=(
+            "mrHARDI.apps.utils.ResamplingReference",
+            'Compute a reference image for resampling base on criterias'
+        ),
         response=(
             "mrHARDI.apps.reconstruct.FiberResponse",
             'Compute single fiber response (and gm and csf if msmt)'
@@ -144,6 +148,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
         seg2mask=(
             "mrHARDI.apps.utils.Segmentation2Mask",
             'Splits a segmentation image intensities into masks'
+        ),
+        sh_order=(
+            "mrHARDI.apps.utils.DetermineSHOrder",
+            'Compute SH order valid given a number of volumes'
         ),
         split=(
             "mrHARDI.apps.utils.SplitImage",
