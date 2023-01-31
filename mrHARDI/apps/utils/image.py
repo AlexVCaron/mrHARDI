@@ -1,3 +1,4 @@
+from enum import Enum as PyEnum
 import glob
 from os.path import basename
 
@@ -6,18 +7,20 @@ import numpy as np
 from traitlets import Integer, Enum, Dict, Undefined, Unicode, Bool, Float
 from traitlets.config import ArgumentError
 
-from mrHARDI.base.application import (mrHARDIBaseApplication,
-                                           required_file,
-                                           output_file_argument,
-                                           required_arg,
-                                           MultipleArguments,
-                                           output_prefix_argument,
-                                           prefix_argument,
-                                           required_number)
+from mrHARDI.base.application import (convert_enum,
+                                      mrHARDIBaseApplication,
+                                      required_file,
+                                      output_file_argument,
+                                      required_arg,
+                                      MultipleArguments,
+                                      output_prefix_argument,
+                                      prefix_argument,
+                                      required_number)
 from mrHARDI.base.dwi import load_metadata, save_metadata
 from mrHARDI.compute.utils import (apply_mask_on_data,
                                    concatenate_dwi,
                                    validate_affine)
+
 
 _apply_mask_aliases = {
     'in': 'ApplyMask.image',
@@ -588,3 +591,67 @@ class ResamplingReference(mrHARDIBaseApplication):
         affine[:3, :3] *= np.diag(resolution / zooms)
         out = nib.Nifti1Image(np.empty(shape), affine)
         nib.save(out, self.output)
+
+
+class ByteUnit(PyEnum):
+    b = 0
+    K = 1
+    M = 2
+    G = 3
+
+
+_img_sizes_aliases = {
+    'in': 'ImageSizes.image',
+    'out': 'ImageSizes.output',
+    'dtype': 'ImageSizes.datatype',
+    'btype': 'ImageSizes.byte_unit'
+}
+
+
+class ImageSizes(mrHARDIBaseApplication):
+    image = required_file(description="Input image")
+
+    datatype = Unicode(
+        default_value=None,
+        allow_none=True,
+        help="Overrides the input image datatype when computing the image "
+             "size. The datatype string must be a valid Numpy Dtype. See : "
+             "https://numpy.org/doc/stable/reference/arrays.dtypes.html"
+    ).tag(config=True)
+    output = output_file_argument(
+        description="If supplied, will output the size "
+                    "to this file instead of stdout",
+        required=False
+    )
+    byte_unit = convert_enum(
+        ByteUnit, "b", description="Unit for outputed size"
+    )
+
+    aliases = Dict(default_value=_img_sizes_aliases)
+
+    def execute(self):
+        img = nib.load(self.image)
+        n_elems = np.prod(img.shape)
+        
+        datatype = img.header.get_data_dtype()
+        if self.datatype:
+            try:
+                datatype = np.dtype(self.datatype)
+            except ValueError as e:
+                raise ArgumentError(
+                    "Invalid Numpy datatype specified ({})".format(
+                        self.datatype
+                    )
+                )
+
+        unit_mod = ByteUnit[self.byte_unit].value * 1024
+        memory_size = "{}{}".format(
+            int(datatype.itemsize * n_elems / unit_mod),
+            self.byte_unit
+        )
+
+        if self.output:
+            with open(self.output, "w+") as f:
+                f.write(memory_size)
+        else:
+            print(memory_size)
