@@ -26,7 +26,7 @@ WORKDIR /
 RUN mkdir -p /mrhs/dev/scilpy
 COPY --from=scilpy_cloner /scilpy /mrhs/dev/scilpy
 WORKDIR /mrhs/dev/scilpy
-RUN python3 -m pip install -e . && \
+RUN SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True python3 -m pip install -e . && \
     python3 -m pip cache purge
 
 WORKDIR /
