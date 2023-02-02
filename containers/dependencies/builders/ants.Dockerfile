@@ -13,7 +13,7 @@ RUN mkdir ants_build &&\
     git clone https://github.com/ANTsX/ANTs.git
 WORKDIR /ANTs
 RUN git fetch --tags &&\
-    git checkout tags/v2.3.4 -b v2.3.4
+    git checkout tags/v2.4.3 -b v2.4.3
 WORKDIR /ants_build
 RUN cmake \
     -DBUILD_SHARED_LIBS=OFF \
