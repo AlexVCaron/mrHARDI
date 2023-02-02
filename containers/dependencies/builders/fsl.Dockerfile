@@ -3,6 +3,7 @@
 FROM base_image as fsl_builder
 
 RUN apt-get update && apt-get -y install \
+    git \
     libgl1-mesa-dev \
     linux-headers-generic \
     python \
@@ -14,8 +15,11 @@ RUN mkdir -p /mrhs/dev
 WORKDIR /tmp
 RUN mkdir -p fsl_sources
 
+WORKDIR /tmp
+RUN git clone https://git.fmrib.ox.ac.uk/fsl/installer.git && \
+    mv installer/fslinstaller.py fsl_sources/fslinstaller.py
+
 WORKDIR /tmp/fsl_sources
-RUN wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py
 RUN python fslinstaller.py -d /mrhs/dev/fsl -D
 WORKDIR /mrhs/dev/fsl
 RUN find . -maxdepth 1 -not \( \
