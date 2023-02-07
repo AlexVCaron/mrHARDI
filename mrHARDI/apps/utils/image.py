@@ -585,8 +585,8 @@ class ResamplingReference(mrHARDIBaseApplication):
         shape = np.array(ref.shape[:3]) / zooms
         shape = tuple(np.ceil(shape * resolution).astype(int).tolist())
         affine = np.copy(ref.affine)
-        affine[:3, :3] *= np.diag(resolution / zooms)
-        out = nib.Nifti1Image(np.empty(shape), affine)
+        affine[:3, :3] *= np.ones((3, 3)) - np.diag(1. - resolution / zooms)
+        out = nib.Nifti1Image(np.empty(shape), np.copy(ref.affine))
         nib.save(out, self.output)
 
 
