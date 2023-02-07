@@ -588,3 +588,41 @@ class ResamplingReference(mrHARDIBaseApplication):
         affine[:3, :3] *= np.diag(resolution / zooms)
         out = nib.Nifti1Image(np.empty(shape), affine)
         nib.save(out, self.output)
+
+
+_patch_aliases = {
+    'in': 'PatchImage.patch_image',
+    'back': 'PatchImage.background_image',
+    'mask': 'PatchImage.mask',
+    'out': 'PatchImage.output'
+}
+
+
+class PatchImage(mrHARDIBaseApplication):
+    patch_image = required_file(
+        description="Input image to patch into background image"
+    )
+    background_image = required_file(
+        description="Background image that will be patched"
+    )
+    mask = required_file(
+        description="Mask defining the region of the patch image"
+    )
+    output = output_file_argument()
+
+    aliases = Dict(default_value=_patch_aliases)
+
+    def execute(self):
+        patch = nib.load(self.patch_image)
+        background = nib.load(self.background_image)
+
+        mask = nib.load(self.mask).get_fdata().astype(bool)
+        out_dtype = background.get_data_dtype()
+
+        out = background.get_fdata().astype(out_dtype)
+        out[mask] = patch.get_fdata().astype(out_dtype)[mask]
+
+        nib.save(
+            nib.Nifti1Image(out, background.affine, background.header),
+            self.output
+        )

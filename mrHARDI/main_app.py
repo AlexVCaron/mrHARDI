@@ -129,6 +129,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.denoise.NonLocalMeans",
             'Run Non-Local Means denoising on 3D MRI data'
         ),
+        patch=(
+            "mrHARDI.apps.utils.PatchImage",
+            'Apply an image as a patch in a background image'
+        ),
         pft=(
             "mrHARDI.apps.track.PftTracking",
             'Execute particle filtering tracking'
