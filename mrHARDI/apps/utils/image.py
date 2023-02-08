@@ -591,7 +591,7 @@ class ResamplingReference(mrHARDIBaseApplication):
         new_zooms = np.repeat(resolution, 3)
         zoom_matrix = np.eye(4)
         zoom_matrix[:3, :3] = np.diag(1. / zooms)
-        affine = np.dot(affine, zoom_matrix)
+        affine = np.dot(ref.affine, zoom_matrix)
 
         for j in range(3):
             extent = shape[j] * zooms[j]
