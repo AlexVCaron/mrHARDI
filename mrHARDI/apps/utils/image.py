@@ -568,25 +568,33 @@ class ResamplingReference(mrHARDIBaseApplication):
     def execute(self):
         if self.force_resolution:
             resolution = self.force_resolution
+            ref_image = 0
         else:
             sizes = [nib.load(i).header.get_zooms()[:3] for i in self.images]
-            sizes = [s for ss in sizes for s in ss]
+            sizes = [(i, s) for i, ss in enumerate(sizes) for s in ss]
 
-            subs = [s / float(self.subdivisions) for s in sizes]
+            indexes = [s[0] for s in sizes]
+            subs = [s[1] / float(self.subdivisions) for s in sizes]
             subs = np.array(subs)
 
             if self.min_voxel_size:
                 subs = subs[subs >= self.min_voxel_size]
+                indexes = indexes[subs >= self.min_voxel_size]
 
-            resolution = np.max(subs)
+            resolution_pos = np.argmax(subs)
+            resolution = subs[resolution_pos]
+            ref_image = indexes[resolution_pos]
 
-        ref = nib.load(self.images[0])
-        zooms = np.array(ref.header.get_zooms()[:3])
-        shape = np.array(ref.shape[:3]) / zooms
+        ref = nib.load(self.images[ref_image])
+        zooms = np.array(ref.header.get_zooms())
+        if len(zooms) > 3:
+            zooms[3:] = 1.
+
+        shape = np.array(ref.shape) / zooms
         shape = tuple(np.ceil(shape * resolution).astype(int).tolist())
-        affine = np.copy(ref.affine)
-        affine[:3, :3] *= np.ones((3, 3)) - np.diag(1. - resolution / zooms)
-        out = nib.Nifti1Image(np.empty(shape), affine)
+        out = nib.Nifti1Image(np.empty(shape), ref.affine, ref.header)
+        zooms[:3] = np.repeat(resolution, 3)
+        out.header.set_zooms(zooms)
         nib.save(out, self.output)
 
 
