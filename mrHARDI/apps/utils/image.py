@@ -586,15 +586,30 @@ class ResamplingReference(mrHARDIBaseApplication):
             ref_image = indexes[resolution_pos]
 
         ref = nib.load(self.images[ref_image])
-        zooms = np.array(ref.header.get_zooms())
-        if len(zooms) > 3:
-            zooms[3:] = 1.
+        shape = np.array(ref.shape)
+        zooms = np.array(ref.header.get_zooms()[:3])
+        new_zooms = np.repeat(resolution, 3)
+        zoom_matrix = np.eye(4)
+        zoom_matrix[:3, :3] = np.diag(1. / zooms)
+        affine = np.dot(affine, zoom_matrix)
 
-        shape = np.array(ref.shape) / zooms
-        shape = tuple(np.ceil(shape * resolution).astype(int).tolist())
-        out = nib.Nifti1Image(np.empty(shape), ref.affine, ref.header)
-        zooms[:3] = np.repeat(resolution, 3)
-        out.header.set_zooms(zooms)
+        for j in range(3):
+            extent = shape[j] * zooms[j]
+            axis = np.round(extent / new_zooms[j] - 1E-4)
+            mod = 0.5 * (
+                (1. - axis) * new_zooms[j] - zooms[j] + extent
+            )
+
+            for i in range(3):
+                affine[i, 3] += mod * affine[i, j]
+
+        zoom_matrix = np.eye(4)
+        zoom_matrix[:3, :3] = np.diag(new_zooms)
+        affine = np.dot(affine, zoom_matrix)
+
+        shape[:3] = zooms / new_zooms * shape[:3]
+        shape = tuple(np.round(shape).astype(int))
+        out = nib.Nifti1Image(np.empty(shape), affine)
         nib.save(out, self.output)
 
 
