@@ -568,23 +568,84 @@ class ResamplingReference(mrHARDIBaseApplication):
     def execute(self):
         if self.force_resolution:
             resolution = self.force_resolution
+            ref_image = 0
         else:
             sizes = [nib.load(i).header.get_zooms()[:3] for i in self.images]
-            sizes = [s for ss in sizes for s in ss]
+            sizes = [(i, s) for i, ss in enumerate(sizes) for s in ss]
 
-            subs = [s / float(self.subdivisions) for s in sizes]
+            indexes = [s[0] for s in sizes]
+            subs = [s[1] / float(self.subdivisions) for s in sizes]
             subs = np.array(subs)
 
             if self.min_voxel_size:
                 subs = subs[subs >= self.min_voxel_size]
+                indexes = indexes[subs >= self.min_voxel_size]
 
-            resolution = np.max(subs)
+            resolution_pos = np.argmax(subs)
+            resolution = subs[resolution_pos]
+            ref_image = indexes[resolution_pos]
 
-        ref = nib.load(self.images[0])
+        ref = nib.load(self.images[ref_image])
+        shape = np.array(ref.shape)
         zooms = np.array(ref.header.get_zooms()[:3])
-        shape = np.array(ref.shape[:3]) / zooms
-        shape = tuple(np.ceil(shape * resolution).astype(int).tolist())
-        affine = np.copy(ref.affine)
-        affine[:3, :3] *= np.diag(resolution / zooms)
+        new_zooms = np.repeat(resolution, 3)
+        zoom_matrix = np.eye(4)
+        zoom_matrix[:3, :3] = np.diag(1. / zooms)
+        affine = np.dot(ref.affine, zoom_matrix)
+
+        for j in range(3):
+            extent = shape[j] * zooms[j]
+            axis = np.round(extent / new_zooms[j] - 1E-4)
+            mod = 0.5 * (
+                (1. - axis) * new_zooms[j] - zooms[j] + extent
+            )
+
+            for i in range(3):
+                affine[i, 3] += mod * affine[i, j]
+
+        zoom_matrix = np.eye(4)
+        zoom_matrix[:3, :3] = np.diag(new_zooms)
+        affine = np.dot(affine, zoom_matrix)
+
+        shape[:3] = zooms / new_zooms * shape[:3]
+        shape = tuple(np.round(shape).astype(int))
         out = nib.Nifti1Image(np.empty(shape), affine)
         nib.save(out, self.output)
+
+
+_patch_aliases = {
+    'in': 'PatchImage.patch_image',
+    'back': 'PatchImage.background_image',
+    'mask': 'PatchImage.mask',
+    'out': 'PatchImage.output'
+}
+
+
+class PatchImage(mrHARDIBaseApplication):
+    patch_image = required_file(
+        description="Input image to patch into background image"
+    )
+    background_image = required_file(
+        description="Background image that will be patched"
+    )
+    mask = required_file(
+        description="Mask defining the region of the patch image"
+    )
+    output = output_file_argument()
+
+    aliases = Dict(default_value=_patch_aliases)
+
+    def execute(self):
+        patch = nib.load(self.patch_image)
+        background = nib.load(self.background_image)
+
+        mask = nib.load(self.mask).get_fdata().astype(bool)
+        out_dtype = background.get_data_dtype()
+
+        out = background.get_fdata().astype(out_dtype)
+        out[mask] = patch.get_fdata().astype(out_dtype)[mask]
+
+        nib.save(
+            nib.Nifti1Image(out, background.affine, background.header),
+            self.output
+        )
