@@ -27,7 +27,9 @@ FROM scilpy_installed as nogpu
 
 WORKDIR /
 RUN mkdir -p /mrhs/dev/mrhardi
+RUN mkdir -p /mrhs/dev/anima
 COPY --from=mrhardi_cloner /mrhardi /mrhs/dev/mrhardi
+COPY --from=mrhardi_cloner /anima /mrhs/dev/anima
 WORKDIR /mrhs/dev/mrhardi
 RUN python3 -m pip install -r requirements.txt
 RUN python3 -m pip install -e . && \
