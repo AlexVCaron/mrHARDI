@@ -35,4 +35,4 @@ RUN python3 -m pip install -r requirements.txt
 RUN python3 -m pip install -e . && \
     python3 -m pip cache purge
 
-ENV PATH=$PATH:/mrhs/dev/anima
+ENV PATH=$PATH:/anima
