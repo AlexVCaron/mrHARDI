@@ -93,6 +93,9 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.visualize.VisualizeEddyParameters",
             "Visualization of eddy's optimization train"
         ),
+        epi=(
+            "mrHARDI.apps.denoise.EpiCorrection", 'Execute EPI correction'
+        ),
         even_dimensions=(
             "mrHARDI.apps.utils.FixOddDimensions",
             'Fixes images with a odd number of slices in a space dimension'
@@ -161,7 +164,6 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.utils.SplitImage",
             'Split an image given an axis'
         ),
-        topup=("mrHARDI.apps.denoise.Topup", 'Execute topup correction'),
         validate=(
             "mrHARDI.apps.validate.Validate", 'Data validation'
         )
