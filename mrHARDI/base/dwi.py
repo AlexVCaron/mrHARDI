@@ -97,6 +97,9 @@ class DwiMetadata(mrHARDIConfigurable):
 
     number_of_coils = Integer(0).tag(config=True)
 
+    def get_directions(self):
+        return [d['dir'] for d in self.directions]
+
     def get_spacing(self):
         return np.absolute(
             np.linalg.eigvalsh(np.array(self.affine)[:3, :3])
