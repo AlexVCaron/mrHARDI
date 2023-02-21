@@ -21,12 +21,6 @@ class EpiCorrectionConfiguration(mrHARDIConfigurable):
                     "\"<\" comparator instead of \"<=\""
     ).tag(config=True)
 
-    def _validate(self):
-        pass
-
-    def serialize(self, *args, **kwargs):
-        pass
-
 
 _default_passes = [
     TopupPass(5, 2, 8, 5, 5E-3),
