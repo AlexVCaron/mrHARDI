@@ -151,7 +151,6 @@ class TopupCorrection(BaseEpiCorrectionApplication):
     configuration = Instance(TopupConfiguration).tag(config=True)
 
     def execute(self):
-        print("running topup")
         metadata = load_metadata(self.b0_volumes)
         self._generate_index_acqp(metadata)
 
@@ -197,7 +196,6 @@ class BMEpiCorrection(BaseEpiCorrectionApplication):
     configuration = Instance(BlockMatchingEPIConfiguration).tag(config=True)
 
     def execute(self):
-        print("running bm")
         img = nib.load(self.b0_volumes)
         if img.shape[-1] > 2:
             raise ConfigError(
@@ -210,8 +208,6 @@ class BMEpiCorrection(BaseEpiCorrectionApplication):
         metadata = load_metadata(self.b0_volumes)
 
         phase_encode_directions = metadata.get_directions()
-        print(phase_encode_directions)
-        print(np.absolute(phase_encode_directions))
         if len(np.unique(np.absolute(phase_encode_directions), axis=0)) > 1:
             raise ConfigError(
                 "BMEpi can only be applied on 1 set of phase "
