@@ -292,4 +292,4 @@ class BlockMatchingEPIConfiguration(EpiCorrectionConfiguration):
 
         opts = [base_opts, model_opts, sigma_opts, bobyqa_opts, block_opts]
         opts += optional_opts
-        return opts.join(" ")
+        return " ".join(opts)
