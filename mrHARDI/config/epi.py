@@ -248,7 +248,7 @@ class BlockMatchingEPIConfiguration(EpiCorrectionConfiguration):
         pass
 
     def serialize(self, *args, **kwargs):
-        base_opts = "-p {} --oi{} --mi {} --met {}".format(
+        base_opts = "-p {} --oi {} --mi {} --met {}".format(
             self.depth,
             self.optimizer_niter,
             self.block_match_niter,
