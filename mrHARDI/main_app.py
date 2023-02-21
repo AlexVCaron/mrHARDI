@@ -12,10 +12,6 @@ def cast_unicode(s):
 
 
 class mrHARDIApplication(mrHARDIBaseApplication):
-    def execute(self):
-        if self.subapp:
-            self.subapp.start()
-
     @classmethod
     def launch_instance(cls, argv=None, **kwargs):
         assert not isinstance(argv, str)

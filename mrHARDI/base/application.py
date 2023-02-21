@@ -289,6 +289,7 @@ class mrHARDIBaseApplication(Application):
 
     @catch_config_error
     def initialize(self, argv=None):
+        print("passing here {}".format(self.__class__))
         aliases = deepcopy(base_aliases)
         flags = deepcopy(base_flags)
 
@@ -313,11 +314,16 @@ class mrHARDIBaseApplication(Application):
         self.update_config(cl_config)
 
     def start(self):
+        if self.subapp:
+            return self.subapp.start()
+
+        print("Starting {}".format(self.__class__))
         if self.output_config:
             self._generate_config_file(self.output_config)
             return False
         else:
             self._validate()
+            print("executing {}".format(self.__class__))
             self.execute()
             return True
 
