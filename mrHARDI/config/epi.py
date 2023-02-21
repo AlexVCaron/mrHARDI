@@ -1,7 +1,7 @@
 from enum import Enum as BaseEnum
 
-from traitlets import Float
-from traitlets.config import Bool, List, Unicode, default, Integer
+from traitlets import Float, Integer
+from traitlets.config import Bool, List, Unicode, default
 
 from mrHARDI.base.application import (BoundedInt,
                                       DictInstantiatingInstance,
