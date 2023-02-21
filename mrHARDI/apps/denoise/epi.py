@@ -224,7 +224,7 @@ class BMEpiCorrection(BaseEpiCorrectionApplication):
             f.write("in_b0=$1\n")
             f.write("in_rev=$2\n")
             f.write("out_prefix=$3\n")
-            f.write("n_threads=$3")
+            f.write("n_threads=$4\n")
             f.write("echo \"Running BMEpi on $in_b0 and $in_rev\\n\"\n")
 
             init_trans_arg = ""
