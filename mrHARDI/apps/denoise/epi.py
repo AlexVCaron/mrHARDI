@@ -242,7 +242,7 @@ class BMEpiCorrection(BaseEpiCorrectionApplication):
 
             f.write(
                 "animaBMDistortionCorrection -f $in_b0 -b $in_rev "
-                "-d {0} -T $n_threads -o {2}{3} -O {2}{4} {5} {6}\n".format(
+                "-d {0} -T $n_threads -o {1}{2} -O {1}{3} {4} {5}\n".format(
                     phase_encode_direction,
                     "${out_prefix}",
                     "_bm_corrected.nii.gz",
