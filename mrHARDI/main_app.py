@@ -46,6 +46,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.utils.B0Utils",
             'Basic processing on B0 slices of dwi volumes'
         ),
+        bspline_coeff=(
+            "mrHARDI.apps.utils.ImageBSplineCoefficients",
+            'Compute BSpline coefficient given image and know spacings'
+        ),
         shells=(
             "mrHARDI.apps.utils.ExtractShells",
             'Extract a subset of shells from a dwi dataset'

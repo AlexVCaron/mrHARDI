@@ -6,7 +6,8 @@ from .dwi import (AssertDwiDimensions,
                   DisplacementFieldToFieldmap,
                   DwiMetadataUtils,
                   ExtractShells,
-                  FlipGradientsOnReference)
+                  FlipGradientsOnReference,
+                  ImageBSplineCoefficients)
 from .image import (ApplyMask,
                     Concatenate,
                     ConvertImage,

@@ -17,6 +17,7 @@ from mrHARDI.base.application import (mrHARDIBaseApplication,
 from mrHARDI.base.dwi import load_metadata, save_metadata
 from mrHARDI.compute.utils import (apply_mask_on_data,
                                    concatenate_dwi,
+                                   resampling_affine,
                                    validate_affine)
 
 _apply_mask_aliases = {
@@ -589,23 +590,9 @@ class ResamplingReference(mrHARDIBaseApplication):
         shape = np.array(ref.shape)
         zooms = np.array(ref.header.get_zooms()[:3])
         new_zooms = np.repeat(resolution, 3)
-        zoom_matrix = np.eye(4)
-        zoom_matrix[:3, :3] = np.diag(1. / zooms)
-        affine = np.dot(ref.affine, zoom_matrix)
-
-        for j in range(3):
-            extent = shape[j] * zooms[j]
-            axis = np.round(extent / new_zooms[j] - 1E-4)
-            mod = 0.5 * (
-                (1. - axis) * new_zooms[j] - zooms[j] + extent
-            )
-
-            for i in range(3):
-                affine[i, 3] += mod * affine[i, j]
-
-        zoom_matrix = np.eye(4)
-        zoom_matrix[:3, :3] = np.diag(new_zooms)
-        affine = np.dot(affine, zoom_matrix)
+        affine = resampling_affine(
+            ref.affine, shape, zooms, new_zooms
+        )
 
         shape[:3] = zooms / new_zooms * shape[:3]
         shape = tuple(np.round(shape).astype(int))

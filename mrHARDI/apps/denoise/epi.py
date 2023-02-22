@@ -216,8 +216,13 @@ class BMEpiCorrection(BaseEpiCorrectionApplication):
 
         self._generate_index_acqp(metadata)
 
+        with open("{}_movpar.txt", "w+") as f:
+            f.write("0 0 0 0 0 0\n")
+            f.write("0 0 0 0 0 0")
+
         phase_encode_direction = np.argmax(phase_encode_directions[0])
         readout = metadata.readout
+        knot_spacing = 4. * np.max(img.header.get_zooms()[:3])
         with open("{}_script.sh".format(self.output_prefix), 'w+') as f:
             f.write("#!/usr/bin/env bash\n\n")
             f.write("# mrHARDI -------------------------\n")
@@ -259,8 +264,18 @@ class BMEpiCorrection(BaseEpiCorrectionApplication):
                     "${out_prefix}",
                     "_bm_field.nii.gz",
                     readout,
-                    ["i", "j", "k"][phase_encode_direction],
+                    ["i", "j", "k"],
                     "_bm_fieldmap.nii.gz"
+                )
+            )
+
+            f.write(
+                "mrhardi bspline_coeff --in {0}{1} "
+                "--spacing {2} --out {0}{3}".format(
+                    "${out_prefix}",
+                    "_bm_field.nii.gz",
+                    knot_spacing,
+                    "_bm_fieldcoef.nii.gz"
                 )
             )
 
