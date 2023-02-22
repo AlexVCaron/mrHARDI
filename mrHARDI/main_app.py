@@ -73,6 +73,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
         diamond_metrics=(
             "mrHARDI.apps.measure.DiamondMetrics", 'Compute DTI metrics'
         ),
+        disp_to_fmap=(
+            "mrHARDI.apps.utils.DisplacementFieldToFieldmap",
+            'Convert a displacement field to a fieldmap'
+        ),
         dti=(
             "mrHARDI.apps.reconstruct.DTI", 'Perform dti reconstruction'
         ),

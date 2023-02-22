@@ -748,3 +748,55 @@ class DetermineSHOrder(mrHARDIBaseApplication):
 
         with open(self.output, "w+") as f:
             f.write("{}".format(sh_order))
+
+
+_dftf_aliases = {
+    "in": "DisplacementFieldToFieldmap.image",
+    "readout": "DisplacementFieldToFieldmap.readout",
+    "pe": "DisplacementFieldToFieldmap.pe_direction",
+    "out": "DisplacementFieldToFieldmap.output",
+}
+
+
+class DisplacementFieldToFieldmap(mrHARDIBaseApplication):
+    image = required_file(
+        description="Input displacement field (4D with 3 "
+                    "components in last dimension aka dx,dy,dz)"
+    )
+
+    readout = required_arg(Float)
+    pe_direction = Enum(
+        ["i", "j", "k", "i-", "j-", "k-"], None
+    ).tag(config=True, required=True)
+
+    output = output_file_argument()
+
+    aliases = Dict(default_value=_dftf_aliases)
+
+    def execute(self):
+        disp = nib.load(self.image)
+        dxdydz = disp.get_fdata(dtype="float32").reshape((-1, 3))
+
+        inv_rotation = np.linalg.inv(disp.affine)
+        inv_rotation[:3, 3] = 0
+
+        didjdk = nib.affines.apply_affine(
+            inv_rotation, dxdydz
+        ).astype("float32")
+        pe_axis = "ijk".index(self.pe_direction[0])
+        vsm = didjdk[:, pe_axis].reshape(disp.shape[:3])
+
+        scale = self.readout
+        if self.pe_direction.endswith("-"):
+            scale *= -1.
+
+        fmap = nib.Nifti1Image(vsm / scale, disp.affine)
+        fmap.header.set_intent("estimate", name="Delta_B0 [Hz]")
+        fmap.header.set_xyzt_units("mm")
+        fmap.header["cal_max"] = max((
+            abs(np.asanyarray(fmap.dataobj).min()),
+            np.asanyarray(fmap.dataobj).max(),
+        ))
+        fmap.header["cal_min"] = - fmap.header["cal_max"]
+
+        nib.save(fmap, self.output)

@@ -217,6 +217,7 @@ class BMEpiCorrection(BaseEpiCorrectionApplication):
         self._generate_index_acqp(metadata)
 
         phase_encode_direction = np.argmax(phase_encode_directions[0])
+        readout = metadata.readout
         with open("{}_script.sh".format(self.output_prefix), 'w+') as f:
             f.write("#!/usr/bin/env bash\n\n")
             f.write("# mrHARDI -------------------------\n")
@@ -249,6 +250,17 @@ class BMEpiCorrection(BaseEpiCorrectionApplication):
                     "_bm_field.nii.gz",
                     self.configuration.serialize(),
                     init_trans_arg
+                )
+            )
+
+            f.write(
+                "mrhardi disp_to_fmap --in {0}{1} --readout {2} "
+                "--pe {3} --out {0}{4}".format(
+                    "${out_prefix}",
+                    "_bm_field.nii.gz",
+                    readout,
+                    ["i", "j", "k"][phase_encode_direction],
+                    "_bm_fieldmap.nii.gz"
                 )
             )
 
