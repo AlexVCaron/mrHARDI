@@ -221,6 +221,8 @@ class BMEpiCorrection(BaseEpiCorrectionApplication):
             f.write("0 0 0 0 0 0")
 
         phase_encode_direction = np.argmax(phase_encode_directions[0])
+        phase_encode_sign = np.sign(phase_encode_directions[0, phase_encode_direction])
+        phase_encode_sign = "-" if phase_encode_sign < 0 else ""
         readout = metadata.readout
         knot_spacing = 4. * np.max(img.header.get_zooms()[:3])
         with open("{}_script.sh".format(self.output_prefix), 'w+') as f:
@@ -264,20 +266,20 @@ class BMEpiCorrection(BaseEpiCorrectionApplication):
                     "${out_prefix}",
                     "_bm_field.nii.gz",
                     readout,
-                    ["i", "j", "k"],
+                    ["i", "j", "k"][phase_encode_direction] + phase_encode_sign,
                     "_bm_fieldmap.nii.gz"
                 )
             )
 
-            f.write(
-                "mrhardi bspline_coeff --in {0}{1} "
-                "--spacing {2} --out {0}{3}".format(
-                    "${out_prefix}",
-                    "_bm_field.nii.gz",
-                    knot_spacing,
-                    "_bm_fieldcoef.nii.gz"
-                )
-            )
+            #f.write(
+            #    "mrhardi bspline_coeff --in {0}{1} "
+            #    "--spacing {2} --out {0}{3}".format(
+            #        "${out_prefix}",
+            #        "_bm_field.nii.gz",
+            #        knot_spacing,
+            #        "_bm_fieldcoef.nii.gz"
+            #    )
+            #)
 
         chmod("{}_script.sh".format(self.output_prefix), 0o0777)
 
