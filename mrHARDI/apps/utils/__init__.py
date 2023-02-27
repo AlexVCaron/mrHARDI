@@ -3,9 +3,11 @@ from .dimensions import FitBox, FitToBox
 from .dwi import (AssertDwiDimensions,
                   CheckDuplicatedBvecsInShell,
                   DetermineSHOrder,
+                  DisplacementFieldToFieldmap,
                   DwiMetadataUtils,
                   ExtractShells,
-                  FlipGradientsOnReference)
+                  FlipGradientsOnReference,
+                  ImageBSplineCoefficients)
 from .image import (ApplyMask,
                     Concatenate,
                     ConvertImage,

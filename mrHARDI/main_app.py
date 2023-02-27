@@ -12,10 +12,6 @@ def cast_unicode(s):
 
 
 class mrHARDIApplication(mrHARDIBaseApplication):
-    def execute(self):
-        if self.subapp:
-            self.subapp.start()
-
     @classmethod
     def launch_instance(cls, argv=None, **kwargs):
         assert not isinstance(argv, str)
@@ -50,6 +46,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.utils.B0Utils",
             'Basic processing on B0 slices of dwi volumes'
         ),
+        bspline_coeff=(
+            "mrHARDI.apps.utils.ImageBSplineCoefficients",
+            'Compute BSpline coefficient given image and know spacings'
+        ),
         shells=(
             "mrHARDI.apps.utils.ExtractShells",
             'Extract a subset of shells from a dwi dataset'
@@ -77,6 +77,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
         diamond_metrics=(
             "mrHARDI.apps.measure.DiamondMetrics", 'Compute DTI metrics'
         ),
+        disp_to_fmap=(
+            "mrHARDI.apps.utils.DisplacementFieldToFieldmap",
+            'Convert a displacement field to a fieldmap'
+        ),
         dti=(
             "mrHARDI.apps.reconstruct.DTI", 'Perform dti reconstruction'
         ),
@@ -92,6 +96,9 @@ class mrHARDIApplication(mrHARDIBaseApplication):
         eddy_viz=(
             "mrHARDI.apps.visualize.VisualizeEddyParameters",
             "Visualization of eddy's optimization train"
+        ),
+        epi=(
+            "mrHARDI.apps.denoise.EpiCorrection", 'Execute EPI correction'
         ),
         even_dimensions=(
             "mrHARDI.apps.utils.FixOddDimensions",
@@ -161,7 +168,6 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.utils.SplitImage",
             'Split an image given an axis'
         ),
-        topup=("mrHARDI.apps.denoise.Topup", 'Execute topup correction'),
         validate=(
             "mrHARDI.apps.validate.Validate", 'Data validation'
         )

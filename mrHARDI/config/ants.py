@@ -126,6 +126,9 @@ class AntsConfiguration(mrHARDIConfigurable):
                         "x".join(str(1) for _ in range(self.dimension - 1))
                     ))
 
+        if self.seed:
+            optionals.append("--random-seed {}".format(self.seed))
+
         for ants_pass in self.passes:
             optionals.append(ants_pass.serialize(voxel_size))
             if not self.register_last_dimension:

@@ -17,12 +17,22 @@ RUN if [ "${mrhardi_is_tag}" = "true" ] ; \
         git checkout --track origin/$mrhardi_ver ; \
     fi
 
+WORKDIR /
+RUN mkdir -p /anima
+RUN wget https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-Ubuntu-4.2.zip
+RUN unzip Anima-Ubuntu-4.2.zip && \
+    mv Anima-Binaries-4.2/* /anima/.
+
 FROM scilpy_installed as nogpu
 
 WORKDIR /
 RUN mkdir -p /mrhs/dev/mrhardi
+RUN mkdir -p /mrhs/dev/anima
 COPY --from=mrhardi_cloner /mrhardi /mrhs/dev/mrhardi
+COPY --from=mrhardi_cloner /anima /mrhs/dev/anima
 WORKDIR /mrhs/dev/mrhardi
 RUN python3 -m pip install -r requirements.txt
 RUN python3 -m pip install -e . && \
     python3 -m pip cache purge
+
+ENV PATH=$PATH:/mrhs/dev/anima

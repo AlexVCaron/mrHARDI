@@ -313,6 +313,9 @@ class mrHARDIBaseApplication(Application):
         self.update_config(cl_config)
 
     def start(self):
+        if self.subapp:
+            return self.subapp.start()
+
         if self.output_config:
             self._generate_config_file(self.output_config)
             return False
