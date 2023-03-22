@@ -97,3 +97,23 @@ def validate_affine(aff_a, aff_b, shape):
         return True, aff_a
 
     return False, None
+
+
+def resampling_affine(ref_affine, ref_shape, ref_zooms, new_zooms):
+    zoom_matrix = np.eye(4)
+    zoom_matrix[:3, :3] = np.diag(1. / ref_zooms)
+    affine = np.dot(ref_affine, zoom_matrix)
+
+    for j in range(3):
+        extent = ref_shape[j] * ref_zooms[j]
+        axis = np.round(extent / new_zooms[j] - 1E-4)
+        mod = 0.5 * (
+            (1. - axis) * new_zooms[j] - ref_zooms[j] + extent
+        )
+
+        for i in range(3):
+            affine[i, 3] += mod * affine[i, j]
+
+    zoom_matrix = np.eye(4)
+    zoom_matrix[:3, :3] = np.diag(new_zooms)
+    return np.dot(affine, zoom_matrix)

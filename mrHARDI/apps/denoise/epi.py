@@ -14,42 +14,48 @@ from mrHARDI.base.application import (mrHARDIBaseApplication,
 from mrHARDI.base.fsl import prepare_acqp_file, prepare_topup_index
 from mrHARDI.base.dwi import load_metadata, save_metadata
 from mrHARDI.base.shell import launch_shell_process
-from mrHARDI.config.topup import TopupConfiguration
+from mrHARDI.config.epi import (TopupConfiguration,
+                                BlockMatchingEPIConfiguration)
 
 _aliases = dict(
-    b0s='Topup.b0_volumes',
-    extra='Topup.extra_arguments',
-    out='Topup.output_prefix',
-    bvals='Topup.bvals',
-    rev_bvals='Topup.rev_bvals'
+    b0s='BaseEpiCorrectionApplication.b0_volumes',
+    extra='BaseEpiCorrectionApplication.extra_arguments',
+    out='BaseEpiCorrectionApplication.output_prefix',
+    bvals='BaseEpiCorrectionApplication.bvals',
+    rev_bvals='BaseEpiCorrectionApplication.rev_bvals'
 )
 
 _flags = dict(
     verbose=(
-        {"Topup": {'verbose': True}},
+        {"BaseEpiCorrectionApplication": {'verbose': True}},
         "activate verbose information output"
     )
 )
 
 _description = """
-Command-line utility used to parametrize and create scripts performing topup 
-correction on b0 volumes. For more information on the parameters available for 
-the topup executable, please refer to the website [1].
+Command-line utility used to parametrize and create scripts performing epi 
+correction on b0 volumes, using either Topup or Block Matching. For more 
+information on the parameters available for the executables, please refer to 
+[1] for Topup and [2] for Block Matching.
 
 References :
 ------------
 [1] https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/topup
+[2] https://anima.readthedocs.io/en/latest/registration.html#susceptibility-distortion-correction
 [Andersson 2003] J.L.R. Andersson, S. Skare, J. Ashburner. How to correct 
                  susceptibility distortions in spin-echo echo-planar images: 
                  application to diffusion tensor imaging. NeuroImage, 
                  20(2):870-888, 2003.
+[Hedouin 2017] R. Hedouin, O. Commowick, E. Bannier, B. Scherrer, M. Taquet, 
+               S.K. Warfield, C. Barillot. Block-Matching Distortion Correction 
+               of Echo-Planar Images With Opposite Phase Encoding Directions. 
+               IEEE Trans Med Imaging, 36(5):1106-1115, 2017.
 """
 
 
-class Topup(mrHARDIBaseApplication):
-    name = u"Topup"
+class BaseEpiCorrectionApplication(mrHARDIBaseApplication):
+    name = u"EPI Correction"
     description = _description
-    configuration = Instance(TopupConfiguration).tag(config=True)
 
     b0_volumes = required_file(
         description="Input b0 volumes to feed to Topup, with "
@@ -91,9 +97,7 @@ class Topup(mrHARDIBaseApplication):
     aliases = Dict(default_value=_aliases)
     flags = Dict(default_value=_flags)
 
-    def execute(self):
-        metadata = load_metadata(self.b0_volumes)
-
+    def _generate_index_acqp(self, metadata):
         acqp = prepare_acqp_file(
             metadata.readout, metadata.directions
         )
@@ -142,8 +146,18 @@ class Topup(mrHARDIBaseApplication):
         with open("{}_acqp.txt".format(self.output_prefix), 'w+') as f:
             f.write(acqp)
 
+
+class TopupCorrection(BaseEpiCorrectionApplication):
+    configuration = Instance(TopupConfiguration).tag(config=True)
+
+    def execute(self):
+        metadata = load_metadata(self.b0_volumes)
+        self._generate_index_acqp(metadata)
+
         with open("{}_config.cnf".format(self.output_prefix), 'w+') as f:
-            max_spacing = np.max(nib.load(self.b0_volumes).header.get_zooms()[:3])
+            max_spacing = np.max(
+                nib.load(self.b0_volumes).header.get_zooms()[:3]
+            )
             f.write(self.configuration.serialize(max_spacing))
 
         if self.verbose:
@@ -159,7 +173,7 @@ class Topup(mrHARDIBaseApplication):
 
             f.write("in_b0=$1\n")
             f.write("out_prefix=$2\n")
-            f.write("echo \"Running topup on $1\\n\"\n")
+            f.write("echo \"Running topup on $in_b0\\n\"\n")
             f.write(
                 "topup --imain=\"$in_b0\" --datain={1} --config={2} "
                 "--out=\"{0}{3}\" --fout=\"{0}{4}\" "
@@ -174,6 +188,110 @@ class Topup(mrHARDIBaseApplication):
         chmod("{}_script.sh".format(self.output_prefix), 0o0777)
 
         save_metadata(self.output_prefix, metadata)
+
+        return super().execute()
+
+
+class BMEpiCorrection(BaseEpiCorrectionApplication):
+    configuration = Instance(BlockMatchingEPIConfiguration).tag(config=True)
+
+    def execute(self):
+        img = nib.load(self.b0_volumes)
+        if img.shape[-1] > 2:
+            raise ConfigError(
+                "BMEpi only supports 1 forward and 1 reverse b0 "
+                "volume. You supplied a total of {} volumes".format(
+                    img.shape[-1]
+                )
+            )
+
+        metadata = load_metadata(self.b0_volumes)
+
+        phase_encode_directions = metadata.get_directions()
+        if len(np.unique(np.absolute(phase_encode_directions), axis=0)) > 1:
+            raise ConfigError(
+                "BMEpi can only be applied on 1 set of phase "
+                "encoding directions align in either x, y or z"
+            )
+
+        self._generate_index_acqp(metadata)
+
+        with open("{}_movpar.txt", "w+") as f:
+            f.write("0 0 0 0 0 0\n")
+            f.write("0 0 0 0 0 0")
+
+        phase_encode_direction = np.argmax(phase_encode_directions[0])
+        phase_encode_sign = np.sign(phase_encode_directions[0, phase_encode_direction])
+        phase_encode_sign = "-" if phase_encode_sign < 0 else ""
+        readout = metadata.readout
+        knot_spacing = 4. * np.max(img.header.get_zooms()[:3])
+        with open("{}_script.sh".format(self.output_prefix), 'w+') as f:
+            f.write("#!/usr/bin/env bash\n\n")
+            f.write("# mrHARDI -------------------------\n")
+            f.write("# Autogenerated BMEpi script\n\n")
+            f.write("in_b0=$1\n")
+            f.write("in_rev=$2\n")
+            f.write("out_prefix=$3\n")
+            f.write("n_threads=$4\n")
+            f.write("echo \"Running BMEpi on $in_b0 and $in_rev\\n\"\n")
+
+            init_trans_arg = ""
+            if self.configuration.initialize_bm:
+                init_trans_arg = "-i ${out_prefix}_init_field.nii.gz"
+                f.write(
+                    "animaDistortionCorrection -f $in_b0 -b $in_rev "
+                    "-d {0} -T $n_threads -s {1} -o {2}{3}\n".format(
+                        phase_encode_direction,
+                        self.configuration.smoothing_sigma,
+                        "${out_prefix}",
+                        "_init_field.nii.gz"
+                    )
+                )
+
+            f.write(
+                "animaBMDistortionCorrection -f $in_b0 -b $in_rev "
+                "-d {0} -T $n_threads -o {1}{2} -O {1}{3} {4} {5}\n".format(
+                    phase_encode_direction,
+                    "${out_prefix}",
+                    "_bm_corrected.nii.gz",
+                    "_bm_field.nii.gz",
+                    self.configuration.serialize(),
+                    init_trans_arg
+                )
+            )
+
+            f.write(
+                "mrhardi disp_to_fmap --in {0}{1} --readout {2} "
+                "--pe {3} --out {0}{4}".format(
+                    "${out_prefix}",
+                    "_bm_field.nii.gz",
+                    readout,
+                    ["i", "j", "k"][phase_encode_direction] + phase_encode_sign,
+                    "_bm_fieldmap.nii.gz"
+                )
+            )
+
+            #f.write(
+            #    "mrhardi bspline_coeff --in {0}{1} "
+            #    "--spacing {2} --out {0}{3}".format(
+            #        "${out_prefix}",
+            #        "_bm_field.nii.gz",
+            #        knot_spacing,
+            #        "_bm_fieldcoef.nii.gz"
+            #    )
+            #)
+
+        chmod("{}_script.sh".format(self.output_prefix), 0o0777)
+
+        save_metadata(self.output_prefix, metadata)
+
+        return super().execute()
+
+class EpiCorrection(mrHARDIBaseApplication):
+    subcommands = dict(
+        topup=(TopupCorrection, "Topup correction subapp"),
+        bmepi=(BMEpiCorrection, "Block Matching EPI correction subapp")
+    )
 
 
 _apply_topup_aliases = dict(

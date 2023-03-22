@@ -2,6 +2,8 @@ from os.path import exists, basename, join, dirname
 
 import nibabel as nib
 import numpy as np
+from scipy.signal import cubic
+from scipy.sparse import kron, lil_array
 from traitlets import (Instance,
                        Integer,
                        Unicode,
@@ -25,6 +27,7 @@ from mrHARDI.base.dwi import (AcquisitionType,
                                    load_metadata,
                                    save_metadata)
 from mrHARDI.compute.dwi import identify_shells, sh_order_from
+from mrHARDI.compute.utils import resampling_affine
 from mrHARDI.config.utils import DwiMetadataUtilsConfiguration
 
 _mb_aliases = {
@@ -748,3 +751,115 @@ class DetermineSHOrder(mrHARDIBaseApplication):
 
         with open(self.output, "w+") as f:
             f.write("{}".format(sh_order))
+
+
+_bsc_aliases = {
+    "in": "ImageBSplineCoefficients.image",
+    "spacing": "ImageBSplineCoefficients.knot_spacing",
+    "out": "ImageBSplineCoefficients.output"
+}
+
+
+class ImageBSplineCoefficients(mrHARDIBaseApplication):
+    image = required_file(
+        description="Input image"
+    )
+
+    knot_spacing = required_arg(Float)
+
+    output = output_file_argument()
+
+    aliases = Dict(default_value=_bsc_aliases)
+
+    def execute(self):
+        img = nib.load(self.image)
+        target_shape = img.shape[:3]
+        target_zooms = img.header.get_zooms()[:3]
+
+        bspline_zooms = np.repeat(self.knot_spacing, 3)
+        bspline_affine = resampling_affine(
+            img.affine,
+            target_shape,
+            target_zooms,
+            bspline_zooms
+        )
+        bspline_shape = target_zooms / bspline_zooms * target_shape
+
+        target_to_grid = np.linalg.inv(bspline_affine.affine) @ img.affine
+        wd = []
+        for axis in range(3):
+            coords = np.zeros((3, target_shape[axis]))
+            coords[axis] = np.arange(target_shape[axis])
+
+            locs = nib.affines.apply_affine(target_to_grid, coords.T)[:, axis]
+            knots = np.arange(bspline_shape[axis])
+
+            distance = np.abs(locs[np.newaxis, ...] - knots[..., np.newaxis])
+            within_support = distance < 2.0
+            d_vals, d_idxs = np.unique(distance[within_support], return_inverse=True)
+            bs_w = cubic(d_vals)
+
+            colloc_ax = lil_array((bspline_shape[axis], bspline_shape[axis]))
+            colloc_ax[within_support] = bs_w[d_idxs]
+
+            wd.append(colloc_ax)
+
+        nib.save(
+            nib.Nifti1Image(
+                kron(kron(wd[0], wd[1]), wd[2]),
+                bspline_affine
+            ),
+            self.output
+        )
+
+_dftf_aliases = {
+    "in": "DisplacementFieldToFieldmap.image",
+    "readout": "DisplacementFieldToFieldmap.readout",
+    "pe": "DisplacementFieldToFieldmap.pe_direction",
+    "out": "DisplacementFieldToFieldmap.output"
+}
+
+
+class DisplacementFieldToFieldmap(mrHARDIBaseApplication):
+    image = required_file(
+        description="Input displacement field (4D with 3 "
+                    "components in last dimension aka dx,dy,dz)"
+    )
+
+    readout = required_arg(Float)
+    pe_direction = Enum(
+        ["i", "j", "k", "i-", "j-", "k-"], None
+    ).tag(config=True, required=True)
+
+    output = output_file_argument()
+
+    aliases = Dict(default_value=_dftf_aliases)
+
+    def execute(self):
+        disp = nib.load(self.image)
+        dxdydz = disp.get_fdata(dtype="float32").reshape((-1, 3))
+        dxdydz[:, (0, 1)] *= -1.
+
+        inv_rotation = np.linalg.inv(disp.affine)
+        inv_rotation[:3, 3] = 0
+
+        didjdk = nib.affines.apply_affine(
+            inv_rotation, dxdydz
+        ).astype("float32")
+        pe_axis = "ijk".index(self.pe_direction[0])
+        vsm = didjdk[:, pe_axis].reshape(disp.shape[:3])
+
+        scale = self.readout
+        if self.pe_direction.endswith("-"):
+            scale *= -1.
+
+        fmap = nib.Nifti1Image(vsm / scale, disp.affine)
+        fmap.header.set_intent("estimate", name="Delta_B0 [Hz]")
+        fmap.header.set_xyzt_units("mm")
+        fmap.header["cal_max"] = max((
+            abs(np.asanyarray(fmap.dataobj).min()),
+            np.asanyarray(fmap.dataobj).max(),
+        ))
+        fmap.header["cal_min"] = - fmap.header["cal_max"]
+
+        nib.save(fmap, self.output)
