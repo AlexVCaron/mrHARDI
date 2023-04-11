@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1-labs
 
 FROM nogpu as nvidia
 
@@ -37,4 +37,4 @@ ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-RUN ln -s /mrhs/dev/fsl/bin/eddy_cuda9.1 /mrhs/dev/fsl/bin/eddy_cuda
+RUN ln -s /fsl/bin/eddy_cuda10.2 /fsl/bin/eddy_cuda

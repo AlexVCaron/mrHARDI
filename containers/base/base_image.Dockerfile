@@ -1,6 +1,6 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1-labs
 
-FROM ubuntu:18.04 AS base_image
+FROM ubuntu:jammy-20230301 AS base_image
 
 RUN apt-get update && apt-get -y install --no-install-recommends \
     apt-transport-https \
