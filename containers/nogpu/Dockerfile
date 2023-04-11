@@ -1,27 +1,20 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1-labs
 
 FROM web_fetcher as mrhardi_cloner
 
-WORKDIR /
-RUN mkdir -p /mrhardi
-RUN git clone https://github.com/AlexVCaron/mrHARDI.git /mrhardi
-WORKDIR /mrhardi
 ARG mrhardi_ver=develop
-ARG mrhardi_is_tag=false
-RUN if [ "${mrhardi_is_tag}" = "true" ] ; \
-    then \
-        git fetch --all --tags --force && \
-        git checkout tags/$mrhardi_ver -b temp ; \
-    else \
-        git fetch && \
-        git checkout --track origin/$mrhardi_ver ; \
-    fi
 
 WORKDIR /
-RUN mkdir -p /anima
-RUN wget https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-Ubuntu-4.2.zip
-RUN unzip Anima-Ubuntu-4.2.zip && \
-    mv Anima-Binaries-4.2/* /anima/.
+RUN mkdir -p /mrhardi
+ADD https://github.com/AlexVCaron/mrHARDI.git#${mrhardi_ver} /mrhardi
+WORKDIR /mrhardi
+
+ADD https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-Ubuntu-4.2.zip /Anima-Ubuntu-4.2.zip
+WORKDIR /
+RUN mkdir -p /anima \
+    && unzip Anima-Ubuntu-4.2.zip \
+    && rm -rf Anima-Ubuntu-4.2.zip \
+    && mv Anima-Binaries-4.2/* /anima/.
 
 FROM scilpy_installed as nogpu
 
