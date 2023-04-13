@@ -176,7 +176,7 @@ class FitBox(mrHARDIBaseApplication):
         ref_bbox = WorldBoundingBox(
             voxel_to_world(voxel_mins, image.affine),
             voxel_to_world(voxel_maxs, image.affine),
-            image.get_header().get_zooms()[0:3]
+            image.header.get_zooms()[0:3]
         )
 
         with open("{}.pkl".format(self.output), 'wb') as pklf:
