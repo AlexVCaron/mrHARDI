@@ -81,7 +81,7 @@ target "mrhardi_cloner" {
 }
 
 target "latest" {
-    inherits = ["cpu-release-tagging"]
+    inherits = ["release-tagging"]
     context = "mrhardi/."
     contexts = {
         web_fetcher = "target:web_fetcher"
