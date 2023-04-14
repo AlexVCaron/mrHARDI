@@ -70,52 +70,11 @@ jobs:
           export SINGULARITY_TMPDIR="$(pwd)/sif_tmp"
           export SINGULARITY_CACHEDIR="$(pwd)/sif_cache"
           echo "Caching and temping singularity at : $SINGULARITY_CACHEDIR and $SINGULARITY_TMPDIR"
-          singularity build mrhardi_dev_gpu.sif docker://avcaron/mrhardi-gpu:pr-${{ github.event.number }}
+          singularity build mrhardi_dev.sif docker://avcaron/mrhardi:pr-${{ github.event.number }}
           echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
-          singularity push mrhardi_dev_gpu.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
+          singularity push mrhardi_dev.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
 
-  create_docker_cpu_dev:
-    if: github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
-    environment: CI
-
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v3
-      -
-        name: Get git diff for the current modifications
-        uses: technote-space/get-diff-action@v6.1.2
-        id: git_diff
-        with:
-          GET_FILE_DIFF: true
-          PATTERNS: |
-            mrHARDI/**/*.py
-            setup.py
-            .github/workflows/*-develop.yml
-            containers/**/*
-      - 
-        name: Create CPU docker dev tag from PR tag
-        if: ${{ steps.git_diff.outputs.lines > 0 }}
-        uses: julb/action-copy-docker-tag@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          from: avcaron/mrhardi-nogpu:pr-${{ github.event.number }}
-          tags: |
-            avcaron/mrhardi-nogpu:dev
-      -
-        name: Delete CPU PR tag from dockerhub
-        if: ${{ steps.git_diff.outputs.lines > 0 }}
-        uses: mhl787156/dockerhub-delete-tag-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_SECRET }}
-          organisation: avcaron
-          image: mrhardi-nogpu
-          tag: pr-${{ github.event.number }}
-
-  create_docker_gpu_dev:
+  create_docker_dev:
     needs: create_singularity_dev
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
@@ -123,22 +82,22 @@ jobs:
 
     steps:
       - 
-        name: Create GPU docker dev tag from PR tag
+        name: Create docker dev tag from PR tag
         if: ${{ steps.git_diff.outputs.lines > 0 }}
         uses: julb/action-copy-docker-tag@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          from: avcaron/mrhardi-gpu:pr-${{ github.event.number }}
+          from: avcaron/mrhardi:pr-${{ github.event.number }}
           tags: |
-            avcaron/mrhardi-gpu:dev
+            avcaron/mrhardi:dev
       -
-        name: Delete GPU PR tag from dockerhub
+        name: Delete PR tag from dockerhub
         if: ${{ steps.git_diff.outputs.lines > 0 }}
         uses: mhl787156/dockerhub-delete-tag-action@v1
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_SECRET }}
           organisation: avcaron
-          image: mrhardi-gpu
+          image: mrhardi
           tag: pr-${{ github.event.number }}

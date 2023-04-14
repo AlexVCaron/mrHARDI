@@ -54,16 +54,14 @@ jobs:
           pull: true
           push: true
           set: |
-            nogpu.tags=docker.io/avcaron/mrhardi-nogpu:pr-${{ github.event.number }}
-            latest.tags=docker.io/avcaron/mrhardi-gpu:pr-${{ github.event.number }}
+            latest.tags=docker.io/avcaron/mrhardi:pr-${{ github.event.number }}
             mrhardi_cloner.args.mrhardi_ver=${{ github.head_ref }}
       -
         name: Write artifacts manifest
         run: |
           echo "Warning !!! Artifacts will be deleted when pull request closes" >> artifacts.MANIFEST
           echo "Artifacts pull commands:" >> artifacts.MANIFEST
-          echo "docker pull avcaron/mrhardi-nogpu:pr-${{ github.event.number }}" >> artifacts.MANIFEST
-          echo "docker pull avcaron/mrhardi-gpu:pr-${{ github.event.number }}" >> artifacts.MANIFEST
+          echo "docker pull avcaron/mrhardi:pr-${{ github.event.number }}" >> artifacts.MANIFEST
       -
         name: Upload workflow artifacts
         uses: actions/upload-artifact@v3

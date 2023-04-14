@@ -16,7 +16,7 @@ RUN mkdir -p /anima \
     && rm -rf Anima-Ubuntu-4.2.zip \
     && mv Anima-Binaries-4.2/* /anima/.
 
-FROM scilpy_installed as nogpu
+FROM scilpy_installed as mrhardi
 
 WORKDIR /
 RUN mkdir -p /mrhs/dev/mrhardi
@@ -29,3 +29,5 @@ RUN python3 -m pip install -e . && \
     python3 -m pip cache purge
 
 ENV PATH=$PATH:/mrhs/dev/anima
+
+RUN ln -s /fsl/share/fsl/bin/eddy_cuda10.2 /fsl/share/fsl/bin/eddy_cuda

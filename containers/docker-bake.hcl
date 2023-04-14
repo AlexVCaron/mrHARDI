@@ -1,19 +1,14 @@
 # docker-bake.hcl
 
 group "default" {
-    targets = ["nogpu", "latest"]
+    targets = ["latest"]
 }
 
-target "gpu-release-tagging" {
+target "release-tagging" {
     tags = [
-        "docker.io/avcaron/mrhardi-gpu:latest",
         "docker.io/avcaron/mrhardi:latest"
     ]
 }
-
-target "cpu-release-tagging" {
-    tags = ["docker.io/avcaron/mrhardi-nogpu:latest"]
-} 
 
 target "base" {
     context = "base/."
@@ -65,7 +60,7 @@ target "dependencies" {
 }
 
 target "scilpy" {
-    context = "nogpu/builders/."
+    context = "mrhardi/builders/."
     contexts = {
         web_fetcher = "target:web_fetcher"
         dependencies = "target:dependencies"
@@ -76,7 +71,7 @@ target "scilpy" {
 }
 
 target "mrhardi_cloner" {
-    context = "nogpu/."
+    context = "mrhardi/."
     contexts = {
         web_fetcher = "target:web_fetcher"
     }
@@ -85,25 +80,16 @@ target "mrhardi_cloner" {
     output = ["type=cacheonly"]
 }
 
-target "nogpu" {
+target "latest" {
     inherits = ["cpu-release-tagging"]
-    context = "nogpu/."
+    context = "mrhardi/."
     contexts = {
         web_fetcher = "target:web_fetcher"
         scilpy_installed = "target:scilpy"
         mrhardi_cloner = "target:mrhardi_cloner"
     }
     dockerfile = "Dockerfile"
-    target = "nogpu"
-    output = ["type=image"]
-}
-
-target "latest" {
-    inherits = ["gpu-release-tagging"]
-    contexts = {
-        nogpu = "target:nogpu"
-    }
-    dockerfile = "nvidia/Dockerfile"
-    target = "nvidia"
-    output = ["type=image"]
+    target = "mrhardi"
+    tags = ["mrhardi:local"]
+    output = ["type=docker"]
 }

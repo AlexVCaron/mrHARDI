@@ -23,39 +23,21 @@ jobs:
             username: ${{ secrets.DOCKERHUB_USERNAME }}
             password: ${{ secrets.DOCKERHUB_TOKEN }}
         - 
-          name: Configure docker tags for the GPU release
-          id: docker_tags_gpu
+          name: Configure docker tags for the release
+          id: release_tags
           uses: docker/metadata-action@v4
           with:
             images: |
               docker.io/avcaron/mrhardi
-              docker.io/avcaron/mrhardi-gpu
             tags: |
               type=semver,pattern={{raw}}
               type=ref,event=branch
-            bake-target: gpu-release-tagging
-        - 
-          name: Configure docker tags for the CPU release
-          id: docker_tags_cpu
-          uses: docker/metadata-action@v4
-          with:
-            images: |
-              docker.io/avcaron/mrhardi-nogpu
-            tags: |
-              type=semver,pattern={{raw}}
-              type=ref,event=branch
-            bake-target: cpu-release-tagging
-        -
-          name: Merge tag baking files for buildx
-          id: release_tags
-          run: |
-            jq -s '.[0] * .[1]' ${{ steps.docker_tags_gpu.outputs.bake-file }} ${{ steps.docker_tags_cpu.outputs.bake-file }} > tag_baking.json
-            echo "::set-output name=bake-file::$(pwd)/tag_baking.json"
+            bake-target: release-tagging
         - 
           uses: actions/upload-artifact@v3
           with:
             name: tag-baking-recipe
-            path: tag_baking.json
+            path: ${{ steps.release_tags.outputs.bake-file }}
         -
           name: Rebuild complete docker image stack with dependencies
           uses: docker/bake-action@v2.3.0
