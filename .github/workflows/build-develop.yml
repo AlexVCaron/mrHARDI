@@ -34,6 +34,20 @@ jobs:
             .github/workflows/*-develop.yml
             containers/**/*
       -
+        name: Maximize disk usage
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
+        uses: easimon/maximize-build-space@v7
+        with:
+          root-reserve-mb: 40960
+          temp-reserve-mb: 4096
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+      -
+        name: Checkout
+        if: ${{ steps.git_diff.outputs.lines > 0 }}
+        uses: actions/checkout@v3
+      -
         name: Set up Docker Buildx
         if: ${{ steps.git_diff.outputs.lines > 0 }}
         id: buildx
@@ -54,16 +68,14 @@ jobs:
           pull: true
           push: true
           set: |
-            nogpu.tags=docker.io/avcaron/mrhardi-nogpu:pr-${{ github.event.number }}
-            latest.tags=docker.io/avcaron/mrhardi-gpu:pr-${{ github.event.number }}
+            mrhardi.tags=docker.io/avcaron/mrhardi:pr-${{ github.event.number }}
             mrhardi_cloner.args.mrhardi_ver=${{ github.head_ref }}
       -
         name: Write artifacts manifest
         run: |
           echo "Warning !!! Artifacts will be deleted when pull request closes" >> artifacts.MANIFEST
           echo "Artifacts pull commands:" >> artifacts.MANIFEST
-          echo "docker pull avcaron/mrhardi-nogpu:pr-${{ github.event.number }}" >> artifacts.MANIFEST
-          echo "docker pull avcaron/mrhardi-gpu:pr-${{ github.event.number }}" >> artifacts.MANIFEST
+          echo "docker pull avcaron/mrhardi:pr-${{ github.event.number }}" >> artifacts.MANIFEST
       -
         name: Upload workflow artifacts
         uses: actions/upload-artifact@v3

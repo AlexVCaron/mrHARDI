@@ -17,5 +17,5 @@ RUN tar -xzf cmake.tar.gz \
     && rm -rf cmake.tar.gz
 WORKDIR /tmp/cmake-${CMAKE_version}.${CMAKE_build}
 RUN ./bootstrap
-RUN make -j $(nproc --all)
+RUN make -j 6
 RUN make install
