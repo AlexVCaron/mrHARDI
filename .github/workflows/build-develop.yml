@@ -68,6 +68,7 @@ jobs:
           pull: true
           push: true
           set: |
+            mrhardi.output=type=registry
             mrhardi.tags=docker.io/avcaron/mrhardi:pr-${{ github.event.number }}
             mrhardi_cloner.args.mrhardi_ver=${{ github.head_ref }}
       -
