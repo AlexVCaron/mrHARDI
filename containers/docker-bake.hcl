@@ -1,7 +1,7 @@
 # docker-bake.hcl
 
 group "default" {
-    targets = ["latest"]
+    targets = ["mrhardi"]
 }
 
 target "release-tagging" {
@@ -15,6 +15,7 @@ target "base" {
     dockerfile = "base_image.Dockerfile"
     target = "base_image"
     output = ["type=cacheonly"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-base"]
 }
 
 target "cmake" {
@@ -25,6 +26,7 @@ target "cmake" {
     dockerfile = "cmake_builder.Dockerfile"
     target = "cmake_builder"
     output = ["type=cacheonly"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-cmake"]
 }
 
 target "web_fetcher" {
@@ -32,6 +34,7 @@ target "web_fetcher" {
     dockerfile = "web_fetcher.Dockerfile"
     target = "web_fetcher"
     output = ["type=cacheonly"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-web-fetcher"]
 }
 
 target "diamond" {
@@ -42,6 +45,7 @@ target "diamond" {
     dockerfile = "diamond.Dockerfile"
     target = "diamond_builder"
     output = ["type=cacheonly"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-diamond"]
 }
 
 target "dependencies" {
@@ -57,6 +61,7 @@ target "dependencies" {
     cache-from = ["avcaron/mrhardi:dependencies"]
     pull = true
     output = ["type=image"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-dependencies"]
 }
 
 target "scilpy" {
@@ -68,6 +73,7 @@ target "scilpy" {
     dockerfile = "scilpy.Dockerfile"
     target = "scilpy_installed"
     output = ["type=cacheonly"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-scilpy"]
 }
 
 target "mrhardi_cloner" {
@@ -78,9 +84,10 @@ target "mrhardi_cloner" {
     dockerfile = "Dockerfile"
     target = "mrhardi_cloner"
     output = ["type=cacheonly"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-cloner"]
 }
 
-target "latest" {
+target "mrhardi" {
     inherits = ["release-tagging"]
     context = "mrhardi/."
     contexts = {
@@ -92,4 +99,5 @@ target "latest" {
     target = "mrhardi"
     tags = ["mrhardi:local"]
     output = ["type=docker"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi"]
 }

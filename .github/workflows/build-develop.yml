@@ -54,7 +54,7 @@ jobs:
           pull: true
           push: true
           set: |
-            latest.tags=docker.io/avcaron/mrhardi:pr-${{ github.event.number }}
+            mrhardi.tags=docker.io/avcaron/mrhardi:pr-${{ github.event.number }}
             mrhardi_cloner.args.mrhardi_ver=${{ github.head_ref }}
       -
         name: Write artifacts manifest
