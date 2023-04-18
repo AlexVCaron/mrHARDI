@@ -53,8 +53,8 @@ jobs:
         with:
           workdir: ./containers
           files: |
-            ${{ steps.release_tags.outputs.bake-file }}
             ./docker-bake.hcl
+            ${{ steps.release_tags.outputs.bake-file }}
           pull: true
           push: true
           set: |
