@@ -57,11 +57,10 @@ jobs:
             ${{ steps.release_tags.outputs.bake-file }}
           pull: true
           push: true
-          no-cache: true
           set: |
+            mrhardi.output=type=registry
             mrhardi_cloner.args.mrhardi_ver=${{ github.event.release.tag_name }}
-            mrhardi_cloner.args.mrhardi_is_tag=true
-
+  
   mrhardi-packaging:
     needs: mrhardi-bakery
     runs-on: ubuntu-latest
