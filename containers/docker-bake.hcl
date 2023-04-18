@@ -5,9 +5,7 @@ group "default" {
 }
 
 target "release-tagging" {
-    tags = [
-        "docker.io/avcaron/mrhardi:latest"
-    ]
+    tags = ["mrhardi:local"]
 }
 
 target "base" {
@@ -96,7 +94,6 @@ target "mrhardi" {
     }
     dockerfile = "Dockerfile"
     target = "mrhardi"
-    tags = ["mrhardi:local"]
     output = ["type=docker"]
     cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi"]
 }
