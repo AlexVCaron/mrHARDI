@@ -1,33 +1,21 @@
 # docker-bake.hcl
 
 group "default" {
-    targets = ["nogpu", "latest"]
+    targets = ["mrhardi"]
 }
 
-group "dependencies" {
-    targets = ["dependencies"]
-}
-
-group "full" {
-    targets = ["dependencies", "nogpu-full", "latest-full"]
-}
-
-target "gpu-release-tagging" {
+target "release-tagging" {
     tags = [
-        "docker.io/avcaron/mrhardi-gpu:latest",
         "docker.io/avcaron/mrhardi:latest"
     ]
 }
-
-target "cpu-release-tagging" {
-    tags = ["docker.io/avcaron/mrhardi-nogpu:latest"]
-} 
 
 target "base" {
     context = "base/."
     dockerfile = "base_image.Dockerfile"
     target = "base_image"
     output = ["type=cacheonly"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-base"]
 }
 
 target "cmake" {
@@ -38,6 +26,7 @@ target "cmake" {
     dockerfile = "cmake_builder.Dockerfile"
     target = "cmake_builder"
     output = ["type=cacheonly"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-cmake"]
 }
 
 target "web_fetcher" {
@@ -45,26 +34,7 @@ target "web_fetcher" {
     dockerfile = "web_fetcher.Dockerfile"
     target = "web_fetcher"
     output = ["type=cacheonly"]
-}
-
-target "fsl" {
-    context = "dependencies/builders/."
-    contexts = {
-        base_image = "target:base"
-    }
-    dockerfile = "fsl.Dockerfile"
-    target = "fsl_builder"
-    output = ["type=cacheonly"]
-}
-
-target "mrtrix" {
-    context = "dependencies/builders/."
-    contexts = {
-        base_image = "target:base"
-    }
-    dockerfile = "mrtrix.Dockerfile"
-    target = "mrtrix_builder"
-    output = ["type=cacheonly"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-web-fetcher"]
 }
 
 target "diamond" {
@@ -75,83 +45,26 @@ target "diamond" {
     dockerfile = "diamond.Dockerfile"
     target = "diamond_builder"
     output = ["type=cacheonly"]
-}
-
-target "ants" {
-    context = "dependencies/builders/."
-    contexts = {
-        cmake_builder = "target:cmake"
-    }
-    dockerfile = "ants.Dockerfile"
-    target = "ants_builder"
-    output = ["type=cacheonly"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-diamond"]
 }
 
 target "dependencies" {
     context = "dependencies/."
     contexts = {
-        base_image = "target:base"
+        base_image = "docker-image://scilus/scilus:1.5.0"
         web_fetcher = "target:web_fetcher"
-        fsl_builder = "target:fsl"
-        ants_builder = "target:ants"
         diamond_builder = "target:diamond"
-        mrtrix_builder = "target:mrtrix"
     }
     dockerfile = "Dockerfile"
     target = "dependencies"
     tags = ["docker.io/avcaron/mrhardi:dependencies"]
-    cache-from = ["avcaron/mrhardi:dependencies"]
     pull = true
     output = ["type=image"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-dependencies"]
 }
 
 target "scilpy" {
-    context = "nogpu/builders/."
-    contexts = {
-        web_fetcher = "target:web_fetcher"
-        dependencies = "docker-image://avcaron/mrhardi:dependencies"
-    }
-    dockerfile = "scilpy.Dockerfile"
-    target = "scilpy_installed"
-    output = ["type=cacheonly"]
-}
-
-target "mrhardi_cloner" {
-    context = "nogpu/."
-    contexts = {
-        web_fetcher = "target:web_fetcher"
-    }
-    dockerfile = "Dockerfile"
-    target = "mrhardi_cloner"
-    no-cache = true
-    output = ["type=cacheonly"]
-}
-
-target "nogpu" {
-    inherits = ["cpu-release-tagging"]
-    context = "nogpu/."
-    contexts = {
-        web_fetcher = "target:web_fetcher"
-        scilpy_installed = "target:scilpy"
-        mrhardi_cloner = "target:mrhardi_cloner"
-    }
-    dockerfile = "Dockerfile"
-    target = "nogpu"
-    output = ["type=image"]
-}
-
-target "latest" {
-    inherits = ["gpu-release-tagging"]
-    contexts = {
-        nogpu = "target:nogpu"
-    }
-    dockerfile = "nvidia/Dockerfile"
-    target = "nvidia"
-    output = ["type=image"]
-}
-
-target "scilpy-full" {
-    context = "nogpu/builders/."
+    context = "mrhardi/builders/."
     contexts = {
         web_fetcher = "target:web_fetcher"
         dependencies = "target:dependencies"
@@ -159,27 +72,31 @@ target "scilpy-full" {
     dockerfile = "scilpy.Dockerfile"
     target = "scilpy_installed"
     output = ["type=cacheonly"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-scilpy"]
 }
 
-target "nogpu-full" {
-    inherits = ["cpu-release-tagging"]
-    context = "nogpu/."
+target "mrhardi_cloner" {
+    context = "mrhardi/."
     contexts = {
         web_fetcher = "target:web_fetcher"
-        scilpy_installed = "target:scilpy-full"
+    }
+    dockerfile = "Dockerfile"
+    target = "mrhardi_cloner"
+    output = ["type=cacheonly"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-cloner"]
+}
+
+target "mrhardi" {
+    inherits = ["release-tagging"]
+    context = "mrhardi/."
+    contexts = {
+        web_fetcher = "target:web_fetcher"
+        scilpy_installed = "target:scilpy"
         mrhardi_cloner = "target:mrhardi_cloner"
     }
     dockerfile = "Dockerfile"
-    target = "nogpu"
-    output = ["typ=image"]
-}
-
-target "latest-full" {
-    inherits = ["gpu-release-tagging"]
-    contexts = {
-        nogpu = "target:nogpu-full"
-    }
-    dockerfile = "nvidia/Dockerfile"
-    target = "nvidia"
-    output = ["type=image"]
+    target = "mrhardi"
+    tags = ["mrhardi:local"]
+    output = ["type=docker"]
+    cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi"]
 }

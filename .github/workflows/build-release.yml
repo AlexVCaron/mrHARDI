@@ -6,70 +6,61 @@ on:
 
 jobs:
   mrhardi-bakery:
-      runs-on: ubuntu-latest
-      environment: CI
+    runs-on: ubuntu-latest
+    environment: CI
 
-      steps:
-        -
-          name: Checkout
-          uses: actions/checkout@v3
-        -
-          name: Set up Docker Buildx
-          uses: docker/setup-buildx-action@v2
-        -
-          name: Login to DockerHub
-          uses: docker/login-action@v2
-          with:
-            username: ${{ secrets.DOCKERHUB_USERNAME }}
-            password: ${{ secrets.DOCKERHUB_TOKEN }}
-        - 
-          name: Configure docker tags for the GPU release
-          id: docker_tags_gpu
-          uses: docker/metadata-action@v4
-          with:
-            images: |
-              docker.io/avcaron/mrhardi
-              docker.io/avcaron/mrhardi-gpu
-            tags: |
-              type=semver,pattern={{raw}}
-              type=ref,event=branch
-            bake-target: gpu-release-tagging
-        - 
-          name: Configure docker tags for the CPU release
-          id: docker_tags_cpu
-          uses: docker/metadata-action@v4
-          with:
-            images: |
-              docker.io/avcaron/mrhardi-nogpu
-            tags: |
-              type=semver,pattern={{raw}}
-              type=ref,event=branch
-            bake-target: cpu-release-tagging
-        -
-          name: Merge tag baking files for buildx
-          id: release_tags
-          run: |
-            jq -s '.[0] * .[1]' ${{ steps.docker_tags_gpu.outputs.bake-file }} ${{ steps.docker_tags_cpu.outputs.bake-file }} > tag_baking.json
-            echo "::set-output name=bake-file::$(pwd)/tag_baking.json"
-        - 
-          uses: actions/upload-artifact@v3
-          with:
-            name: tag-baking-recipe
-            path: tag_baking.json
-        -
-          name: Rebuild complete docker image stack with dependencies
-          uses: docker/bake-action@v2.3.0
-          with:
-            workdir: ./containers
-            files: |
-              ./docker-bake.hcl
-              ${{ steps.release_tags.outputs.bake-file }}
-            pull: true
-            push: true
-            no-cache: true
-            set: |
-              mrhardi_cloner.args.mrhardi_ver=${{ github.event.release.tag_name }}
-              mrhardi_cloner.args.mrhardi_is_tag=true
+    steps:
+      -
+        name: Maximize disk usage
+        uses: easimon/maximize-build-space@v7
+        with:
+          root-reserve-mb: 40960
+          temp-reserve-mb: 4096
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      -
+        name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - 
+        name: Configure docker tags for the release
+        id: release_tags
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            docker.io/avcaron/mrhardi
+          tags: |
+            type=semver,pattern={{raw}}
+            type=ref,event=branch
+          bake-target: release-tagging
+      - 
+        uses: actions/upload-artifact@v3
+        with:
+          name: tag-baking-recipe
+          path: ${{ steps.release_tags.outputs.bake-file }}
+      -
+        name: Rebuild complete docker image stack with dependencies
+        uses: docker/bake-action@v2.3.0
+        with:
+          workdir: ./containers
+          files: |
+            ./docker-bake.hcl
+            ${{ steps.release_tags.outputs.bake-file }}
+          pull: true
+          push: true
+          no-cache: true
+          set: |
+            mrhardi_cloner.args.mrhardi_ver=${{ github.event.release.tag_name }}
+            mrhardi_cloner.args.mrhardi_is_tag=true
 
   mrhardi-packaging:
     needs: mrhardi-bakery
@@ -79,7 +70,7 @@ jobs:
     steps:
       -
         name: Maximize disk usage
-        uses: easimon/maximize-build-space@master
+        uses: easimon/maximize-build-space@v7
         with:
           root-reserve-mb: 4096
           temp-reserve-mb: 4096

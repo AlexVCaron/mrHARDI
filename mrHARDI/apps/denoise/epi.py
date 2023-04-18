@@ -207,7 +207,7 @@ class BMEpiCorrection(BaseEpiCorrectionApplication):
 
         metadata = load_metadata(self.b0_volumes)
 
-        phase_encode_directions = metadata.get_directions()
+        phase_encode_directions = np.array(metadata.get_directions())
         if len(np.unique(np.absolute(phase_encode_directions), axis=0)) > 1:
             raise ConfigError(
                 "BMEpi can only be applied on 1 set of phase "
