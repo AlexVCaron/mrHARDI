@@ -1,5 +1,5 @@
-[![Actions Status](https://github.com/AlexVCaron/mrHARDI/workflows/Release%20build/badge.svg)](https://github.com/AlexVCaron/mrHARDI/workflows/actions)
-[![Actions Status](https://github.com/AlexVCaron/mrHARDI/workflows/Development%20PR%20builds/badge.svg)](https://github.com/AlexVCaron/mrHARDI/workflows/actions)
+[![Actions Status](https://github.com/AlexVCaron/mrHARDI/workflows/Release%20build/badge.svg)](https://github.com/AlexVCaron/mrHARDI/actions/workflows/build-release.yml)
+[![Actions Status](https://github.com/AlexVCaron/mrHARDI/workflows/Development%20PR%20builds/badge.svg)](https://github.com/AlexVCaron/mrHARDI/actions/workflows/build-develop.yml)
 [![Latest Stable Version](https://img.shields.io/github/v/release/AlexVCaron/mrHARDI)](https://github.com/AlexVCaron/mrHARDI/releases)
 
 # mrHARDI

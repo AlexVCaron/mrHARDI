@@ -5,6 +5,11 @@ on:
     branches:
       - master
     types: [closed]
+    paths:
+      - 'mrHARDI/**/*.py'
+      - 'setup.py'
+      - 'requirements.txt'
+      - 'containers/**/*'
 
 jobs:
   create_release:
