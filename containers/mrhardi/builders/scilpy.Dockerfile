@@ -2,7 +2,7 @@
 
 FROM web_fetcher as scilpy_cloner
 
-ARG scilpy_ver=develop
+ARG scilpy_ver=feat/subdivide_tracking_sphere
 
 WORKDIR /
 RUN mkdir -p /scilpy
@@ -12,7 +12,6 @@ WORKDIR /scilpy
 FROM dependencies as scilpy_installed
 
 ENV MATPLOTLIBRC="/usr/local/lib/python3.7/dist-packages/matplotlib/mpl-data/"
-ENV LC_ALL=en_US.utf8
 
 RUN apt-get update && apt-get -y install \
     git \
