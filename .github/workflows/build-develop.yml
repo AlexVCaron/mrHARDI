@@ -31,6 +31,7 @@ jobs:
           PATTERNS: |
             mrHARDI/**/*.py
             setup.py
+            requirements.txt
             .github/workflows/*-develop.yml
             containers/**/*
       -
