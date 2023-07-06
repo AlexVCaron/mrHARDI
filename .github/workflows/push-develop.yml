@@ -8,6 +8,7 @@ on:
     paths:
       - 'mrHARDI/**/*.py'
       - 'setup.py'
+      - 'requirements.txt'
       - '!.github/**'
       - '.github/workflows/*-develop.yml'
       - 'containers/**/*'
@@ -35,6 +36,7 @@ jobs:
           PATTERNS: |
             mrHARDI/**/*.py
             setup.py
+            requirements.txt
             .github/workflows/*-develop.yml
             containers/**/*
       -
@@ -81,6 +83,21 @@ jobs:
     environment: CI
 
     steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v3
+      -
+        name: Get git diff for the current modifications
+        uses: technote-space/get-diff-action@v6.1.2
+        id: git_diff
+        with:
+          GET_FILE_DIFF: true
+          PATTERNS: |
+            mrHARDI/**/*.py
+            setup.py
+            requirements.txt
+            .github/workflows/*-develop.yml
+            containers/**/*
       - 
         name: Create docker dev tag from PR tag
         if: ${{ steps.git_diff.outputs.lines > 0 }}
