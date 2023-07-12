@@ -50,7 +50,7 @@ jobs:
           path: ${{ steps.release_tags.outputs.bake-file }}
       -
         name: Rebuild complete docker image stack with dependencies
-        uses: docker/bake-action@v2.3.0
+        uses: docker/bake-action@v3.1.0
         with:
           workdir: ./containers
           files: |
