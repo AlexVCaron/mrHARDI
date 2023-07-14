@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1-labs
+# syntax=docker.io/docker/dockerfile:1.5-labs
 
 FROM ubuntu:jammy-20230301 AS base_image
 

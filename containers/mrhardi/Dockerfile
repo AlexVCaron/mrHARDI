@@ -1,15 +1,15 @@
-# syntax=docker/dockerfile:1-labs
+# syntax=docker.io/docker/dockerfile:1.5-labs
 
 FROM web_fetcher as mrhardi_cloner
 
 ARG mrhardi_ver=develop
 
+ADD https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-Ubuntu-4.2.zip /Anima-Ubuntu-4.2.zip
+
 WORKDIR /
 RUN mkdir -p /mrhardi
 ADD https://github.com/AlexVCaron/mrHARDI.git#${mrhardi_ver} /mrhardi
-WORKDIR /mrhardi
 
-ADD https://github.com/Inria-Empenn/Anima-Public/releases/download/v4.2/Anima-Ubuntu-4.2.zip /Anima-Ubuntu-4.2.zip
 WORKDIR /
 RUN mkdir -p /anima \
     && unzip Anima-Ubuntu-4.2.zip \
