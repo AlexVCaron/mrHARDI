@@ -1,9 +1,10 @@
-# syntax=docker/dockerfile:1-labs
+# syntax=docker.io/docker/dockerfile:1.5-labs
 
 FROM web_fetcher AS template_fetcher
 
-ADD https://afni.nimh.nih.gov/pub/dist/atlases/macaque/nmt/NMT_v2.0_asym.tgz /NMT_v2.0_asym.tgz
 WORKDIR /
+ADD https://afni.nimh.nih.gov/pub/dist/atlases/macaque/nmt/NMT_v2.0_asym.tgz /NMT_v2.0_asym.tgz
+
 RUN tar -xf NMT_v2.0_asym.tgz \
     && rm -rf NMT_v2.0_asym.tgz
 

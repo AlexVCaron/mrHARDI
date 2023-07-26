@@ -85,13 +85,16 @@ class MetricMI(AntsMetric):
     def __init__(
         self, target_index, moving_index, weight=1.,
         bins=32, sampling="Regular", sampling_p=0.25,
-        args=None, **_
+        grad_filtering=False, args=None, **_
     ):
         if args and len(args) == 4:
             weight, bins, sampling, sampling_p = args
+        elif args and len(args) == 5:
+            weight, bins, sampling, sampling_p, grad_filtering = args
 
         super().__init__(
-            target_index, moving_index, (weight, bins, sampling, sampling_p)
+            target_index, moving_index, 
+            (weight, bins, sampling, sampling_p, grad_filtering)
         )
 
         self._name = "MI"

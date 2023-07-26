@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1-labs
+# syntax=docker.io/docker/dockerfile:1.5-labs
 
 FROM cmake_builder AS diamond_builder
 
