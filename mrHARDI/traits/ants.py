@@ -94,7 +94,7 @@ class MetricMI(AntsMetric):
 
         super().__init__(
             target_index, moving_index, 
-            (weight, bins, sampling, sampling_p, grad_filtering)
+            (weight, bins, sampling, sampling_p, int(grad_filtering))
         )
 
         self._name = "MI"
