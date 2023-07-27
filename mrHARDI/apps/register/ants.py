@@ -82,7 +82,7 @@ class AntsRegistration(mrHARDIBaseApplication):
 
     output_prefix = output_prefix_argument()
 
-    init_with_ants_ai = Bool(False).tag(coonfig=True)
+    init_with_ants_ai = Bool(False).tag(config=True)
 
     verbose = Bool(False).tag(config=True)
 
