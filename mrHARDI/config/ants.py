@@ -94,6 +94,20 @@ class AntsConfiguration(mrHARDIConfigurable):
                 "Dimension of input images must be between 2 and 4"
             )
 
+    def set_initial_transform_from_ants_ai(self, transform_mat):
+        self.init_moving_transform = InitialTransform(transform_mat)
+
+    def is_initializable(self):
+        return any(p.name in ["Rigid", "Affine"] for p in self.passes)
+
+    def get_ant_ai_parameters(self, voxel_size):
+        options = []
+        for ants_pass in self.passes:
+            if ants_pass.name in ["Rigid", "Affine"]:
+                options.append(
+                    ants_pass.serialize(voxel_size, for_ants_ai=True)
+                )
+
     def serialize(self, voxel_size, *args, **kwargs):
         optionals, init_i = [''], 0
 

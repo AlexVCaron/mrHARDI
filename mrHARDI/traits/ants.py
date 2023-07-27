@@ -173,7 +173,13 @@ class AntsPass(mrHARDIConfigurable):
             "x".join(str(i) for i in self.conv_max_iter)
         )
 
-    def serialize(self, voxel_size, with_convergence=True):
+    def serialize(self, voxel_size, with_convergence=True, for_ants_ai=False):
+        if for_ants_ai:
+            return " ".join(
+                "--metric {}".format(metric)
+                for i, metric in enumerate(self.metrics)
+            )
+
         return " ".join([
             " ".join(
                 "--metric {}".format(metric)
@@ -199,6 +205,8 @@ class AntsRigid(AntsPass):
             ["1" for _ in range(ndim - 1)] + ["0"]
         )
 
+    name = "Rigid"
+
     @default("metrics")
     def _metrics_default(self):
         return [MetricMI(0, 0)]
@@ -218,6 +226,8 @@ class AntsAffine(AntsPass):
         trans = list("1" for _ in range(ndim - 1)) + ["0"]
         return "x".join(list(mat.astype(str).flatten().tolist()) + trans)
 
+    name = "Affine"
+
     @default("metrics")
     def _metrics_default(self):
         return [MetricMI(0, 0)]
@@ -236,6 +246,7 @@ class AntsSyN(AntsPass):
     type = Unicode(u'SyN').tag(config=True)
     var_penality = Integer(3).tag(config=True)
     var_total = Integer(0).tag(config=True)
+    name = "SyN"
 
     @default("metrics")
     def _metrics_default(self):

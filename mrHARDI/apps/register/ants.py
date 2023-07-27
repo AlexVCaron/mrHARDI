@@ -1,4 +1,4 @@
-from os import getcwd
+from os import getcwd, makedirs
 from os.path import basename, join
 from tempfile import TemporaryDirectory, mkdtemp
 
@@ -35,6 +35,10 @@ _reg_flags = dict(
     verbose=(
         {"AntsRegistration": {'verbose': True}},
         "Enables verbose output"
+    ),
+    init_ai=(
+        {"AntsRegistration": {'init_with_ants_ai': True}},
+        "Generates initial transformation using grid search"
     )
 )
 
@@ -78,6 +82,8 @@ class AntsRegistration(mrHARDIBaseApplication):
 
     output_prefix = output_prefix_argument()
 
+    init_with_ants_ai = Bool(False).tag(coonfig=True)
+
     verbose = Bool(False).tag(config=True)
 
     aliases = Dict(default_value=_reg_aliases)
@@ -91,6 +97,26 @@ class AntsRegistration(mrHARDIBaseApplication):
 
     def execute(self):
         current_path = getcwd()
+
+        if self.init_with_ants_ai and self.configuration.is_initializable():
+            ai_subpath = join(current_path, "init_transform")
+            ai_init_params = self.configuration.get_ant_ai_parameters()
+            output_tranform = "{}/init_transform.mat".format(ai_subpath)
+            ai_init_params += " -p --output {}".format(output_tranform)
+            if self.verbose:
+                ai_init_params += " --verbose 1"
+
+            makedirs(ai_subpath)
+            launch_shell_process(
+                "antsAI {}".format(ai_init_params),
+                join(current_path, "{}.log".format(
+                    "{}_init_transform".format(basename(self.output_prefix))
+                )),
+                additional_env=additional_env
+            )
+            self.configuration.set_initial_transform_from_ants_ai(
+                output_tranform
+            )
 
         max_spacing = np.max(
             nib.load(self.moving_images[0]).header.get_zooms()[:3]
