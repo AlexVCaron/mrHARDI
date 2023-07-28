@@ -98,15 +98,80 @@ class AntsRegistration(mrHARDIBaseApplication):
     def execute(self):
         current_path = getcwd()
 
+        max_spacing = np.max(
+            nib.load(self.moving_images[0]).header.get_zooms()[:3]
+        )
+
+        additional_env = {}
+        if self.configuration.seed is not None:
+            additional_env["ANTS_RANDOM_SEED"] = self.configuration.seed
+
+        config_dict, ai_config_dict = {}, {}
+
+        for i, target in enumerate(self.target_images):
+            ext = ".".join(target.split(".")[1:])
+            name = target.split(".")[0]
+            config_dict["t{}".format(i)] = target
+            ai_config_dict["t{}".format(i)] = "init_transform/{}_res.{}".format(name, ext)
+
+        for i, moving in enumerate(self.moving_images):
+            ext = ".".join(moving.split(".")[1:])
+            name = moving.split(".")[0]
+            config_dict["m{}".format(i)] = moving
+            ai_config_dict["m{}".format(i)] = "init_transform/{}_res.{}".format(name, ext)
+
+        masks_param = ""
+        if self.mask:
+            mask = self.mask
+            if len(mask) == 1:
+                mask += self.mask
+            masks_param = " --masks [{}]".format(",".join(mask))
+
         if self.init_with_ants_ai and self.configuration.is_initializable():
             ai_subpath = join(current_path, "init_transform")
-            ai_init_params = self.configuration.get_ant_ai_parameters()
+            ai_init_params = self.configuration.get_ants_ai_parameters(
+                max_spacing
+            )
+            ai_init_params = ai_init_params.format(**ai_config_dict)
+            ai_init_params += " -s [20,0.04]"
+
+            if self.mask:
+                ai_init_params += masks_param
+
             output_tranform = "{}/init_transform.mat".format(ai_subpath)
-            ai_init_params += " -p --output {}".format(output_tranform)
+            ai_init_params += " -g [5,10x10x20] -p 0 --output {}".format(output_tranform)
+
             if self.verbose:
                 ai_init_params += " --verbose 1"
 
-            makedirs(ai_subpath)
+            makedirs(ai_subpath, exist_ok=True)
+
+            for i, target in enumerate(self.target_images):
+                ext = ".".join(target.split(".")[1:])
+                name = target.split(".")[0]
+                launch_shell_process(
+                    "ResampleImageBySpacing 3 {} {} 1 1 1 1".format(
+                        target, "init_transform/{}_res.{}".format(name, ext)
+                    ),
+                    join(current_path, "{}.log".format(
+                        "{}_init_transform".format(basename(self.output_prefix))
+                    )),
+                    additional_env=additional_env
+                )
+
+            for i, moving in enumerate(self.moving_images):
+                ext = ".".join(moving.split(".")[1:])
+                name = moving.split(".")[0]
+                launch_shell_process(
+                    "ResampleImageBySpacing 3 {} {} 1 1 1 1".format(
+                        moving, "init_transform/{}_res.{}".format(name, ext)
+                    ),
+                    join(current_path, "{}.log".format(
+                        "{}_init_transform".format(basename(self.output_prefix))
+                    )),
+                    additional_env=additional_env
+                )
+
             launch_shell_process(
                 "antsAI {}".format(ai_init_params),
                 join(current_path, "{}.log".format(
@@ -118,37 +183,15 @@ class AntsRegistration(mrHARDIBaseApplication):
                 output_tranform
             )
 
-        max_spacing = np.max(
-            nib.load(self.moving_images[0]).header.get_zooms()[:3]
-        )
-
-        ants_config_fmt = self.configuration.serialize(max_spacing)
-        config_dict = {}
-
-        for i, target in enumerate(self.target_images):
-            config_dict["t{}".format(i)] = target
-
-        for i, moving in enumerate(self.moving_images):
-            config_dict["m{}".format(i)] = moving
-
+        ants_config_fmt = self.configuration.serialize(max_spacing, masks_param)
         ants_config_fmt = ants_config_fmt.format(**config_dict)
-
-        ants_config_fmt += " --output [{},{}]".format(
-            self.output_prefix, "{}_warped.nii.gz".format(self.output_prefix)
-        )
-
-        if self.mask:
-            mask = self.mask
-            if len(mask) == 1:
-                mask += self.mask
-            ants_config_fmt += " --masks [{}]".format(",".join(mask))
 
         if self.verbose:
             ants_config_fmt += " --verbose"
 
-        additional_env = {}
-        if self.configuration.seed is not None:
-            additional_env["ANTS_RANDOM_SEED"] = self.configuration.seed
+        ants_config_fmt += " --output [{},{}]".format(
+            self.output_prefix, "{}_warped.nii.gz".format(self.output_prefix)
+        )
 
         launch_shell_process(
             "antsRegistration {}".format(ants_config_fmt),

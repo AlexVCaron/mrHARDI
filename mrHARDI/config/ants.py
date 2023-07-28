@@ -95,20 +95,22 @@ class AntsConfiguration(mrHARDIConfigurable):
             )
 
     def set_initial_transform_from_ants_ai(self, transform_mat):
-        self.init_moving_transform = InitialTransform(transform_mat)
+        self.init_moving_transform = transform_mat
 
     def is_initializable(self):
-        return any(p.name in ["Rigid", "Affine"] for p in self.passes)
+        return any(p.name in ["AntsRigid", "AntsAffine"] for p in self.passes)
 
-    def get_ant_ai_parameters(self, voxel_size):
-        options = []
+    def get_ants_ai_parameters(self, voxel_size):
+        options = ["-d {}".format(self.dimension)]
         for ants_pass in self.passes:
-            if ants_pass.name in ["Rigid", "Affine"]:
+            if ants_pass.name in ["AntsRigid"]:
                 options.append(
                     ants_pass.serialize(voxel_size, for_ants_ai=True)
                 )
 
-    def serialize(self, voxel_size, *args, **kwargs):
+        return " ".join(options)
+
+    def serialize(self, voxel_size, *args, masks=None, **kwargs):
         optionals, init_i = [''], 0
 
         if self.match_histogram:
@@ -116,13 +118,12 @@ class AntsConfiguration(mrHARDIConfigurable):
                 0 if self.accross_modalities else 1
             ))
 
+        if masks:
+            optionals.append(masks)
+
         if self.init_moving_transform and len(self.init_moving_transform) > 0:
             for transform in self.init_moving_transform:
-                optionals.append(
-                    "--initial-moving-transform [$t{}%,$m{}%,{}]".format(
-                        *transform
-                    ).replace("$", "{").replace("%", "}")
-                )
+                optionals.append(transform)
                 if not self.register_last_dimension:
                     optionals.append("--restrict-deformation {}x0".format(
                         "x".join(str(1) for _ in range(self.dimension - 1))
@@ -130,11 +131,7 @@ class AntsConfiguration(mrHARDIConfigurable):
 
         if self.init_fixed_transform and len(self.init_fixed_transform) > 0:
             for transform in self.init_fixed_transform:
-                optionals.append(
-                    "--initial-fixed-transform [$t{}%,$m{}%,{}]".format(
-                        *transform
-                    ).replace("$", "{").replace("%", "}")
-                )
+                optionals.append(transform)
                 if not self.register_last_dimension:
                     optionals.append("--restrict-deformation {}x0".format(
                         "x".join(str(1) for _ in range(self.dimension - 1))
