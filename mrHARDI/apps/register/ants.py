@@ -5,6 +5,7 @@ from tempfile import TemporaryDirectory, mkdtemp
 import nibabel as nib
 import numpy as np
 from scipy.io import loadmat
+from scipy.spatial.transform import Rotation
 from traitlets import Dict, Instance, Unicode, Bool, Enum
 from traitlets.config.loader import ArgumentError
 
@@ -260,13 +261,24 @@ class AntsTransform(mrHARDIBaseApplication):
     aliases = Dict(default_value=_tr_aliases)
 
     def _get_mat_rotation(self, filename):
+        # TODO: check center of rotation for all transforms 
+        # and order of rotation for Euler 3D 
         mat = loadmat(filename)
         if "AffineTransform_double_3_3" in mat:
             arr = mat["AffineTransform_double_3_3"]
         elif "AffineTransform_float_3_3" in mat:
             arr = mat["AffineTransform_float_3_3"]
+        elif "Euler3DTransform_double_3_3" in mat:
+            arr = Rotation.from_euler(
+                'zyx', mat["Euler3DTransform_double_3_3"][:3].flatten()
+            ).as_matrix().flatten()
+        elif "Euler3DTransform_float_3_3" in mat:
+            arr = Rotation.from_euler(
+                'zyx', mat["Euler3DTransform_float_3_3"][:3].flatten()
+            ).as_matrix().flatten()
         else:
-            return None
+            print("Could not load rotation matrix from : {}".format(filename))
+            return np.eye(3)
 
         return arr[:9].reshape((3, 3))
 
