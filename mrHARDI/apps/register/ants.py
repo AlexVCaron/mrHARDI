@@ -242,8 +242,8 @@ class AntsRegistration(mrHARDIBaseApplication):
             ))
 
             for i, moving in enumerate(self.moving_images[1:]):
-                ext = ".".join(moving[i].split(".")[1:])
-                name = moving[i].split(".")[0]
+                ext = ".".join(moving.split(".")[1:])
+                name = moving.split(".")[0]
                 cmd.append(
                     "antsApplyTransforms -d 3 -e 0 -n Linear "
                     "-t {} -i {} -r {} -o {}".format(
