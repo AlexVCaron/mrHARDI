@@ -13,6 +13,10 @@ on:
       - '.github/workflows/*-develop.yml'
       - 'containers/**/*'
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   mrhardi-creative-bakery:
     runs-on: ubuntu-latest
