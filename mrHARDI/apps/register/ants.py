@@ -233,14 +233,14 @@ class AntsRegistration(mrHARDIBaseApplication):
 
             ext = ".".join(self.moving_images[0].split(".")[1:])
             name = self.moving_images[0].split(".")[0]
-            cmd.append("antsAlignOrigin -d 3 -i {} -r {} -o [{},{}]".format(
-                "init_transform/{}_res.{}".format(name, ext),
-                self.target_images[0],
+            cmd.append("antsAlignOrigin -d 3 -o [{},{}] -i {} -r {}".format(
                 "init_transform/origin.mat",
-                "init_transform/{}_origin.{}".format(name, ext)
+                "init_transform/{}_origin.{}".format(name, ext),
+                "init_transform/{}_res.{}".format(name, ext),
+                self.target_images[0]
             ))
 
-            for i, moving in enumerate(self.moving_images[1:]):
+            for i, moving in enumerate(self.moving_images):
                 ext = ".".join(moving.split(".")[1:])
                 name = moving.split(".")[0]
                 cmd.append(
