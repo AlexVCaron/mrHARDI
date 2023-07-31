@@ -134,7 +134,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             ))
             mask_fname = "init_transform/{}_mask_cropped.{}".format(name, ext)
 
-        if ref_fname:
+        if ref_fname and self.configuration.match_histogram:
             cmd.append("ImageMath 3 {} HistogramMatch {} {}".format(
                 "init_transform/{}_hmatch.{}".format(name, ext),
                 image_fname,
@@ -182,9 +182,10 @@ class AntsRegistration(mrHARDIBaseApplication):
             ext = ".".join(moving.split(".")[1:])
             name = moving.split(".")[0]
             config_dict["m{}".format(i)] = moving
-            ai_config_dict["m{}".format(i)] = "init_transform/{}_origin.{}".format(
-                name, ext
-            )
+            ai_config_dict["m{}".format(i)] = \
+                "init_transform/{}_origin.{}".format(
+                    name, ext
+                )
 
         target_mask, moving_mask, masks_param = None, None, ""
         if self.mask:
