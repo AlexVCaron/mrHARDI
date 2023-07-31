@@ -137,13 +137,14 @@ class AntsRegistration(mrHARDIBaseApplication):
             spacing, spacing, spacing
         ))
 
-        launch_shell_process(
-            "\n".join(cmd),
-            join(cwd, "{}.log".format(
-                "{}_init_transform".format(basename(self.output_prefix))
-            )),
-            additional_env=env
-        )
+        for c in cmd:
+            launch_shell_process(
+                c,
+                join(cwd, "{}.log".format(
+                    "{}_init_transform".format(basename(self.output_prefix))
+                )),
+                additional_env=env
+            )
 
     def execute(self):
         current_path = getcwd()
