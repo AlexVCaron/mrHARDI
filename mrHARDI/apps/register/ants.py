@@ -227,10 +227,14 @@ class AntsRegistration(mrHARDIBaseApplication):
                 ai_init_params += " --verbose 1"
 
             makedirs(ai_subpath, exist_ok=True)
+            spacing = 2.5 * self._get_common_spacing(
+                self.moving_images + self.target_images
+            )
 
             for i, target in enumerate(self.target_images):
                 self._setup_ants_ai_input(
-                    target, current_path, target_mask, additional_env
+                    target, current_path, target_mask, additional_env,
+                    spacing=spacing
                 )
 
             cmd, spacing = [], self._get_common_spacing(self.moving_images)
@@ -241,7 +245,7 @@ class AntsRegistration(mrHARDIBaseApplication):
                     moving_mask,
                     additional_env,
                     self.target_images[min(i, len(self.target_images) - 1)],
-                    spacing=2.5 * spacing
+                    spacing=spacing
                 )
 
             ext = ".".join(self.moving_images[0].split(".")[1:])
