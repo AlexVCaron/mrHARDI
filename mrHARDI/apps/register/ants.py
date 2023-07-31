@@ -237,7 +237,7 @@ class AntsRegistration(mrHARDIBaseApplication):
                     spacing=spacing
                 )
 
-            cmd, spacing = [], self._get_common_spacing(self.moving_images)
+            cmd = []
             for i, moving in enumerate(self.moving_images):
                 self._setup_ants_ai_input(
                     moving,
