@@ -97,7 +97,9 @@ class AntsRegistration(mrHARDIBaseApplication):
         ]
         super()._generate_config_file(filename)
 
-    def _setup_ants_ai_input(self, image_fname, cwd, mask_fname=None, env=None):
+    def _setup_ants_ai_input(
+        self, image_fname, cwd, mask_fname=None, env=None, ref_fname=None
+    ):
         ext = ".".join(image_fname.split(".")[1:])
         name = image_fname.split(".")[0]
 
@@ -122,6 +124,7 @@ class AntsRegistration(mrHARDIBaseApplication):
                 "init_transform/{}_bbox.pkl".format(name)
             )
         ]
+        image_fname = "init_transform/{}_cropped.{}".format(name, ext)
 
         if mask_fname:
             cmd.append("scil_crop_volume.py {} {} --input_bbox {}".format(
@@ -131,8 +134,16 @@ class AntsRegistration(mrHARDIBaseApplication):
             ))
             mask_fname = "init_transform/{}_mask_cropped.{}".format(name, ext)
 
+        if ref_fname:
+            cmd.append("ImageMath 3 {} HistogramMatch {} {}".format(
+                "init_transform/{}_hmatch.{}".format(name, ext),
+                image_fname,
+                ref_fname
+            ))
+            image_fname = "init_transform/{}_hmatch.{}".format(name, ext)
+
         cmd.append("ResampleImageBySpacing 3 {} {} {} {} {} 1".format(
-            "init_transform/{}_cropped.{}".format(name, ext),
+            image_fname,
             "init_transform/{}_res.{}".format(name, ext),
             spacing, spacing, spacing
         ))
@@ -212,7 +223,11 @@ class AntsRegistration(mrHARDIBaseApplication):
 
             for i, moving in enumerate(self.moving_images):
                 self._setup_ants_ai_input(
-                    moving, current_path, moving_mask, additional_env
+                    moving,
+                    current_path,
+                    moving_mask,
+                    additional_env,
+                    self.target_images[min(i, len(self.target_images) - 1)]
                 )
 
             launch_shell_process(
