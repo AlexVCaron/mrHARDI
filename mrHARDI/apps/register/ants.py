@@ -1,6 +1,7 @@
 from os import getcwd, makedirs
 from os.path import basename, join
 from tempfile import TemporaryDirectory, mkdtemp
+from mrHARDI.apps.utils.dimensions import FitToBox
 
 import nibabel as nib
 import numpy as np
@@ -96,6 +97,54 @@ class AntsRegistration(mrHARDIBaseApplication):
         ]
         super()._generate_config_file(filename)
 
+    def _setup_ants_ai_input(self, image_fname, cwd, mask_fname=None, env=None):
+        ext = ".".join(image_fname.split(".")[1:])
+        name = image_fname.split(".")[0]
+
+        image = nib.load(image_fname)
+        spacing = min(image.header.get_zooms()[:3])
+        if mask_fname:
+            mask = nib.load(mask_fname).get_fdata().astype(bool)
+            data = image.get_fdata()
+            data[~mask] = 0.
+            nib.save(
+                nib.Nifti1Image(
+                    data, image.affine, image.header
+                ),
+                "init_transform/{}_masked.{}".format(name, ext)
+            )
+            image_fname = "init_transform/{}_masked.{}".format(name, ext)
+
+        cmd = [
+            "scil_crop_volume.py {} {} --output_bbox {}".format(
+                image_fname,
+                "init_transform/{}_cropped.{}".format(name, ext),
+                "init_transform/{}_bbox.pkl".format(name)
+            )
+        ]
+
+        if mask_fname:
+            cmd.append("scil_crop_volume.py {} {} --input_bbox {}".format(
+                mask_fname,
+                "init_transform/{}_mask_cropped.{}".format(name, ext),
+                "init_transform/{}_bbox.pkl".format(name)
+            ))
+            mask_fname = "init_transform/{}_mask_cropped.{}".format(name, ext)
+
+        cmd.append("ResampleImageBySpacing 3 {} {} {} {} {} 1".format(
+            "init_transform/{}_cropped.{}".format(name, ext),
+            "init_transform/{}_res.{}".format(name, ext),
+            spacing, spacing, spacing
+        ))
+
+        launch_shell_process(
+            "\n".join(cmd),
+            join(cwd, "{}.log".format(
+                "{}_init_transform".format(basename(self.output_prefix))
+            )),
+            additional_env=env
+        )
+
     def execute(self):
         current_path = getcwd()
 
@@ -113,20 +162,26 @@ class AntsRegistration(mrHARDIBaseApplication):
             ext = ".".join(target.split(".")[1:])
             name = target.split(".")[0]
             config_dict["t{}".format(i)] = target
-            ai_config_dict["t{}".format(i)] = "init_transform/{}_res.{}".format(name, ext)
+            ai_config_dict["t{}".format(i)] = "init_transform/{}_res.{}".format(
+                name, ext
+            )
 
         for i, moving in enumerate(self.moving_images):
             ext = ".".join(moving.split(".")[1:])
             name = moving.split(".")[0]
             config_dict["m{}".format(i)] = moving
-            ai_config_dict["m{}".format(i)] = "init_transform/{}_res.{}".format(name, ext)
+            ai_config_dict["m{}".format(i)] = "init_transform/{}_res.{}".format(
+                name, ext
+            )
 
-        masks_param = ""
+        target_mask, moving_mask, masks_param = None, None, ""
         if self.mask:
-            mask = self.mask
-            if len(mask) == 1:
-                mask += self.mask
-            masks_param = " --masks [{}]".format(",".join(mask))
+            if len(self.mask) == 1:
+                target_mask = moving_mask = self.mask
+            else:
+                target_mask, moving_mask = self.mask
+
+            masks_param = " --masks [{},{}]".format(target_mask, moving_mask)
 
         if self.init_with_ants_ai and self.configuration.is_initializable():
             ai_subpath = join(current_path, "init_transform")
@@ -140,7 +195,9 @@ class AntsRegistration(mrHARDIBaseApplication):
                 ai_init_params += masks_param
 
             output_tranform = "{}/init_transform.mat".format(ai_subpath)
-            ai_init_params += " -g [5,10x10x20] -p 0 --output {}".format(output_tranform)
+            ai_init_params += " -g [5,10x10x20] -p 0 --output {}".format(
+                output_tranform
+            )
 
             if self.verbose:
                 ai_init_params += " --verbose 1"
@@ -148,29 +205,13 @@ class AntsRegistration(mrHARDIBaseApplication):
             makedirs(ai_subpath, exist_ok=True)
 
             for i, target in enumerate(self.target_images):
-                ext = ".".join(target.split(".")[1:])
-                name = target.split(".")[0]
-                launch_shell_process(
-                    "ResampleImageBySpacing 3 {} {} 1 1 1 1".format(
-                        target, "init_transform/{}_res.{}".format(name, ext)
-                    ),
-                    join(current_path, "{}.log".format(
-                        "{}_init_transform".format(basename(self.output_prefix))
-                    )),
-                    additional_env=additional_env
+                self._setup_ants_ai_input(
+                    target, current_path, target_mask, additional_env
                 )
 
             for i, moving in enumerate(self.moving_images):
-                ext = ".".join(moving.split(".")[1:])
-                name = moving.split(".")[0]
-                launch_shell_process(
-                    "ResampleImageBySpacing 3 {} {} 1 1 1 1".format(
-                        moving, "init_transform/{}_res.{}".format(name, ext)
-                    ),
-                    join(current_path, "{}.log".format(
-                        "{}_init_transform".format(basename(self.output_prefix))
-                    )),
-                    additional_env=additional_env
+                self._setup_ants_ai_input(
+                    moving, current_path, moving_mask, additional_env
                 )
 
             launch_shell_process(
