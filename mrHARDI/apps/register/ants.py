@@ -254,6 +254,10 @@ class AntsRegistration(mrHARDIBaseApplication):
                 ))
 
             cmd.append("antsAI {}".format(ai_init_params))
+            cmd.append(
+                "cp init_transform/init_transform.mat "
+                "init_transform/init_transform.mat.bak"
+            )
             cmd.append("antsApplyTransforms -t {} -t {} -o {}".format(
                 "init_transform/init_transform.mat",
                 "init_transform/origin.mat",
