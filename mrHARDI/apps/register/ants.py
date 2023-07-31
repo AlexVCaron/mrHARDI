@@ -232,8 +232,8 @@ class AntsRegistration(mrHARDIBaseApplication):
                     self.target_images[min(i, len(self.target_images) - 1)]
                 )
 
-            ext = ".".join(moving[0].split(".")[1:])
-            name = moving[0].split(".")[0]
+            ext = ".".join(self.moving_images[0].split(".")[1:])
+            name = self.moving_images[0].split(".")[0]
             cmd.append("antsAlignOrigin -d 3 -i {} -r {} -o [{},{}]".format(
                 "init_transform/{}_res.{}".format(name, ext),
                 self.target_images[0],
