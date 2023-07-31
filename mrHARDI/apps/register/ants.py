@@ -1,7 +1,6 @@
 from os import getcwd, makedirs
 from os.path import basename, join
-from tempfile import TemporaryDirectory, mkdtemp
-from mrHARDI.apps.utils.dimensions import FitToBox
+from tempfile import TemporaryDirectory
 
 import nibabel as nib
 import numpy as np
