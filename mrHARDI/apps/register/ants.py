@@ -182,7 +182,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             ext = ".".join(moving.split(".")[1:])
             name = moving.split(".")[0]
             config_dict["m{}".format(i)] = moving
-            ai_config_dict["m{}".format(i)] = "init_transform/{}_res.{}".format(
+            ai_config_dict["m{}".format(i)] = "init_transform/{}_origin.{}".format(
                 name, ext
             )
 
@@ -221,6 +221,7 @@ class AntsRegistration(mrHARDIBaseApplication):
                     target, current_path, target_mask, additional_env
                 )
 
+            cmd = []
             for i, moving in enumerate(self.moving_images):
                 self._setup_ants_ai_input(
                     moving,
@@ -230,13 +231,43 @@ class AntsRegistration(mrHARDIBaseApplication):
                     self.target_images[min(i, len(self.target_images) - 1)]
                 )
 
-            launch_shell_process(
-                "antsAI {}".format(ai_init_params),
-                join(current_path, "{}.log".format(
-                    "{}_init_transform".format(basename(self.output_prefix))
-                )),
-                additional_env=additional_env
-            )
+            ext = ".".join(moving[0].split(".")[1:])
+            name = moving[0].split(".")[0]
+            cmd.append("antsAlignOrigin -d 3 -i {} -r {} -o [{},{}]".format(
+                "init_transform/{}_res.{}".format(name, ext),
+                self.target_images[0],
+                "init_transform/origin.mat",
+                "init_transform/{}_origin.{}".format(name, ext)
+            ))
+
+            for i, moving in enumerate(self.moving_images[1:]):
+                ext = ".".join(moving[0].split(".")[1:])
+                name = moving[0].split(".")[0]
+                cmd.append(
+                    "antsApplyTransforms -d 3 -e 0 -n Linear "
+                    "-t {} -i {} -r {} -o {}".format(
+                        "init_transform/origin.mat",
+                        moving,
+                        self.target_images[0],
+                        "init_transform/{}_origin.{}".format(name, ext)
+                ))
+
+            cmd.append("antsAI {}".format(ai_init_params))
+            cmd.append("antsApplyTransforms -t {} -t {} -o {}".format(
+                "init_transform/init_transform.mat",
+                "init_transform/origin.mat",
+                "Linear[init_transform/init_transform.mat,1]"
+            ))
+
+            for c in cmd:
+                launch_shell_process(
+                    c,
+                    join(current_path, "{}.log".format(
+                        "{}_init_transform".format(basename(self.output_prefix))
+                    )),
+                    additional_env=additional_env
+                )
+
             self.configuration.set_initial_transform_from_ants_ai(
                 output_tranform
             )
