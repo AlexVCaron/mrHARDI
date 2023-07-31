@@ -118,7 +118,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             image_fname = "init_transform/{}_masked.{}".format(name, ext)
 
         cmd = [
-            "scil_crop_volume.py {} {} --output_bbox {}".format(
+            "scil_crop_volume.py {} {} --output_bbox {} -f".format(
                 image_fname,
                 "init_transform/{}_cropped.{}".format(name, ext),
                 "init_transform/{}_bbox.pkl".format(name)
@@ -127,7 +127,7 @@ class AntsRegistration(mrHARDIBaseApplication):
         image_fname = "init_transform/{}_cropped.{}".format(name, ext)
 
         if mask_fname:
-            cmd.append("scil_crop_volume.py {} {} --input_bbox {}".format(
+            cmd.append("scil_crop_volume.py {} {} --input_bbox {} -f".format(
                 mask_fname,
                 "init_transform/{}_mask_cropped.{}".format(name, ext),
                 "init_transform/{}_bbox.pkl".format(name)
