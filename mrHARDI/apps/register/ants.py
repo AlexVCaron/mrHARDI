@@ -96,14 +96,26 @@ class AntsRegistration(mrHARDIBaseApplication):
         ]
         super()._generate_config_file(filename)
 
+    def _get_common_spacing(self, img_list):
+        spacing = []
+        for img in img_list:
+            _img = nib.load(img)
+            spacing.append(min(_img.header.get_zooms()[:3]))
+
+        return min(spacing)
+
     def _setup_ants_ai_input(
-        self, image_fname, cwd, mask_fname=None, env=None, ref_fname=None
+        self, image_fname, cwd,
+        mask_fname=None, env=None, ref_fname=None, spacing=None
     ):
         ext = ".".join(image_fname.split(".")[1:])
         name = image_fname.split(".")[0]
 
         image = nib.load(image_fname)
-        spacing = 2.5 * min(image.header.get_zooms()[:3])
+
+        if spacing is None:
+            spacing = 2.5 * min(image.header.get_zooms()[:3])
+
         if mask_fname:
             mask = nib.load(mask_fname).get_fdata().astype(bool)
             data = image.get_fdata()
@@ -221,23 +233,23 @@ class AntsRegistration(mrHARDIBaseApplication):
                     target, current_path, target_mask, additional_env
                 )
 
-            cmd = []
+            cmd, spacing = [], self._get_common_spacing(self.moving_images)
             for i, moving in enumerate(self.moving_images):
                 self._setup_ants_ai_input(
                     moving,
                     current_path,
                     moving_mask,
                     additional_env,
-                    self.target_images[min(i, len(self.target_images) - 1)]
+                    self.target_images[min(i, len(self.target_images) - 1)],
+                    spacing=2.5 * spacing
                 )
 
             ext = ".".join(self.moving_images[0].split(".")[1:])
             name = self.moving_images[0].split(".")[0]
             text = ".".join(self.target_images[0].split(".")[1:])
             tname = self.target_images[0].split(".")[0]
-            cmd.append("antsAlignOrigin -d 3 -o [{},{}] -i {} -r {}".format(
+            cmd.append("antsAlignOrigin -d 3 -o {} -i {} -r {}".format(
                 "init_transform/origin.mat",
-                "init_transform/{}_origin.{}".format(name, ext),
                 "init_transform/{}_res.{}".format(name, ext),
                 "init_transform/{}_res.{}".format(tname, text)
             ))
