@@ -104,7 +104,7 @@ class AntsRegistration(mrHARDIBaseApplication):
         name = image_fname.split(".")[0]
 
         image = nib.load(image_fname)
-        spacing = min(image.header.get_zooms()[:3])
+        spacing = 2.5 * min(image.header.get_zooms()[:3])
         if mask_fname:
             mask = nib.load(mask_fname).get_fdata().astype(bool)
             data = image.get_fdata()
