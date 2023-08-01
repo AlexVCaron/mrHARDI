@@ -260,7 +260,14 @@ class AntsRegistration(mrHARDIBaseApplication):
             ai_init_params += " -s [20,0.04]"
 
             if self.mask:
-                ai_init_params += masks_param
+                ai_init_params += " --masks [{},{}]".format(
+                    "{}_cm_aligned.{}".format(
+                        *self._split_filename(target_mask)
+                    ),
+                    "{}_cm_aligned.{}".format(
+                        *self._split_filename(moving_mask)
+                    )
+                )
 
             output_tranform = "{}/init_transform.mat".format(ai_subpath)
             ai_init_params += " -g [5,10x10x20] -p 0 --output {}".format(
@@ -292,12 +299,17 @@ class AntsRegistration(mrHARDIBaseApplication):
                 )
 
             name, ext = self._split_filename(self.target_images[0])
+            # TODO : if needed, add masks back, but they 
+            # will have to be resampled and cropped for that to work
+            masks = []
+            if self.mask:
+                masks = [target_mask, moving_mask]
+
             self._align_by_center_of_mass(
                 "init_transform/{}_res.{}".format(name, ext),
                 list("init_transform/{}_res.{}".format(*self._split_filename(m))
-                 for m in self.moving_images),
-                "init_transform/center_of_mass.mat",
-                target_mask, moving_mask
+                 for m in self.moving_images) + masks,
+                "init_transform/center_of_mass.mat"
             )
 
             cmd = []
