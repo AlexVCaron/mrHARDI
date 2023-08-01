@@ -294,7 +294,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             name, ext = self._split_filename(self.target_images[0])
             self._align_by_center_of_mass(
                 "init_transform/{}_res.{}".format(name, ext),
-                list("init_transform/{}_res.{}".format(self._split_filename(m))
+                list("init_transform/{}_res.{}".format(*self._split_filename(m))
                  for m in self.moving_images),
                 "init_transform/center_of_mass.mat",
                 target_mask, moving_mask
