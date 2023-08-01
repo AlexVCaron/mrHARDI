@@ -4,7 +4,8 @@ from tempfile import TemporaryDirectory
 
 import nibabel as nib
 import numpy as np
-from scipy.io import loadmat
+from scipy.io import loadmat, savemat
+from scipy.ndimage import center_of_mass
 from scipy.spatial.transform import Rotation
 from traitlets import Dict, Instance, Unicode, Bool, Enum
 from traitlets.config.loader import ArgumentError
@@ -168,6 +169,51 @@ class AntsRegistration(mrHARDIBaseApplication):
                 additional_env=env
             )
 
+    def _align_by_center_of_mass(
+        self, ref_fname, moving_fnames, out_mat_fname,
+        ref_mask_fname=None, moving_mask_fname=None
+    ):
+        ref_img, main_img = nib.load(ref_fname), nib.load(moving_fnames[0])
+        if ref_mask_fname:
+            ref_mask = nib.load(ref_mask_fname)
+        else:
+            ref_mask = np.ones(ref_img.shape)
+
+        if moving_mask_fname:
+            mov_mask = nib.load(moving_mask_fname)
+        else:
+            mov_mask = np.ones(ref_img.shape)
+
+        ref_data = ref_img.get_fdata().astype(ref_img.get_data_dtype())
+        main_data = main_img.get_fdata().astype(main_img.get_data_dtype())
+        ref_data[~ref_mask] = 0
+        main_data[~mov_mask] = 0
+        ref_cm = center_of_mass(ref_data)
+        mov_cm = center_of_mass(main_data)
+
+        ref_cm = ref_img.affine @ np.append(ref_cm, [1.])
+        mov_cm = main_img.affine @ np.append(mov_cm, [1.])
+        trans =  ref_cm - mov_cm
+
+        for fname in moving_fnames:
+            img = nib.load(fname)
+            affine = img.affine
+            affine[:-1, 3] += trans
+            img.affine = affine
+            name, ext = self._split_filename(fname)
+            nib.save(img, "{}_cm_aligned.{}".format(name, ext))
+
+        out_mat = {
+            'fixed': np.zeros((3, 1)),
+            'MatrixOffsetTransformBase_double_3_3': np.concatenate(
+                (np.eye(3).flatten(), trans) 
+            ).reshape((-1, 1))
+        }
+        savemat(out_mat_fname, out_mat, long_field_names=True)
+
+    def _split_filename(self, _fname):
+            return _fname.split(".")[0], ".".join(_fname.split(".")[1:])
+
     def execute(self):
         current_path = getcwd()
 
@@ -182,19 +228,17 @@ class AntsRegistration(mrHARDIBaseApplication):
         config_dict, ai_config_dict = {}, {}
 
         for i, target in enumerate(self.target_images):
-            ext = ".".join(target.split(".")[1:])
-            name = target.split(".")[0]
+            name, ext = self._split_filename(target)
             config_dict["t{}".format(i)] = target
             ai_config_dict["t{}".format(i)] = "init_transform/{}_res.{}".format(
                 name, ext
             )
 
         for i, moving in enumerate(self.moving_images):
-            ext = ".".join(moving.split(".")[1:])
-            name = moving.split(".")[0]
+            name, ext = self._split_filename(moving)
             config_dict["m{}".format(i)] = moving
             ai_config_dict["m{}".format(i)] = \
-                "init_transform/{}_origin.{}".format(
+                "init_transform/{}_cm_aligned.{}".format(
                     name, ext
                 )
 
@@ -237,7 +281,6 @@ class AntsRegistration(mrHARDIBaseApplication):
                     spacing=spacing
                 )
 
-            cmd = []
             for i, moving in enumerate(self.moving_images):
                 self._setup_ants_ai_input(
                     moving,
@@ -248,28 +291,16 @@ class AntsRegistration(mrHARDIBaseApplication):
                     spacing=spacing
                 )
 
-            ext = ".".join(self.moving_images[0].split(".")[1:])
-            name = self.moving_images[0].split(".")[0]
-            text = ".".join(self.target_images[0].split(".")[1:])
-            tname = self.target_images[0].split(".")[0]
-            cmd.append("antsAlignOrigin -d 3 -o {} -i {} -r {}".format(
-                "init_transform/origin.mat",
+            name, ext = self._split_filename(self.target_images[0])
+            self._align_by_center_of_mass(
                 "init_transform/{}_res.{}".format(name, ext),
-                "init_transform/{}_res.{}".format(tname, text)
-            ))
+                list("init_transform/{}_res.{}".format(self._split_filename(m))
+                 for m in self.moving_images),
+                "init_transform/center_of_mass.mat",
+                target_mask, moving_mask
+            )
 
-            for i, moving in enumerate(self.moving_images):
-                ext = ".".join(moving.split(".")[1:])
-                name = moving.split(".")[0]
-                cmd.append(
-                    "antsApplyTransforms -d 3 -e 0 -n Linear "
-                    "-t {} -i {} -r {} -o {}".format(
-                        "init_transform/origin.mat",
-                        moving,
-                        self.target_images[0],
-                        "init_transform/{}_origin.{}".format(name, ext)
-                ))
-
+            cmd = []
             cmd.append("antsAI {}".format(ai_init_params))
             cmd.append(
                 "cp init_transform/init_transform.mat "
@@ -277,7 +308,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             )
             cmd.append("antsApplyTransforms -t {} -t {} -o {}".format(
                 "init_transform/init_transform.mat",
-                "init_transform/origin.mat",
+                "init_transform/center_of_mass.mat",
                 "Linear[init_transform/init_transform.mat,1]"
             ))
 
