@@ -199,9 +199,11 @@ class AntsRegistration(mrHARDIBaseApplication):
             img = nib.load(fname)
             affine = img.affine
             affine[:-1, 3] += trans
-            img.affine = affine
             name, ext = self._split_filename(fname)
-            nib.save(img, "{}_cm_aligned.{}".format(name, ext))
+            nib.save(
+                nib.Nifti1Image(img.get_fdata(), affine, img.header),
+                "{}_cm_aligned.{}".format(name, ext)
+            )
 
         out_mat = {
             'fixed': np.zeros((3, 1)),
