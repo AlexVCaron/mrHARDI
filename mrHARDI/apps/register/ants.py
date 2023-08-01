@@ -209,9 +209,9 @@ class AntsRegistration(mrHARDIBaseApplication):
         strides = self._get_strides(main_img.affine)
         out_mat = {
             'MatrixOffsetTransformBase_double_3_3': np.concatenate(
-                (np.eye(3).flatten(), trans * strides) 
+                (np.eye(3).flatten(), trans * strides * [-1., 1., -1.]) 
             ).reshape((-1, 1)).tolist(),
-            'fixed': np.zeros((3, 1)).tolist()
+            'fixed': main_img.affine[:-1, 3].reshape((3, 1)).tolist()
         }
         with open(out_mat_fname, 'wb') as file_stream:
             fw = MatFile4Writer(
@@ -221,6 +221,10 @@ class AntsRegistration(mrHARDIBaseApplication):
             fw.put_variables(out_mat)
 
     def _get_strides(self, affine):
+        def _ordering():
+            def _closest(_axes, _main_axis):
+                return np.argmax(_a @ _main_axis for _a in _axes)
+
         # From https://github.com/matthew-brett/transforms3d/blob/main/transforms3d/affines.py
         RSZ = affine[:-1, :-1]
         M0, M1, M2 = RSZ.T
