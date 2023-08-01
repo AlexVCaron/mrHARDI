@@ -193,7 +193,7 @@ class AntsRegistration(mrHARDIBaseApplication):
 
         ref_cm = ref_img.affine @ np.append(ref_cm, [1.])
         mov_cm = main_img.affine @ np.append(mov_cm, [1.])
-        trans =  ref_cm - mov_cm
+        trans =  (ref_cm - mov_cm)[:3]
 
         for fname in moving_fnames:
             img = nib.load(fname)
