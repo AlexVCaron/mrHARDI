@@ -329,7 +329,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             cmd.append("antsApplyTransforms -t {} -t {} -o {}".format(
                 "init_transform/init_transform.mat",
                 "init_transform/center_of_mass.mat",
-                "Linear[init_transform/init_transform.mat,1]"
+                "Linear[init_transform/init_transform.mat,0]"
             ))
 
             for c in cmd:
