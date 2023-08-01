@@ -175,14 +175,14 @@ class AntsRegistration(mrHARDIBaseApplication):
     ):
         ref_img, main_img = nib.load(ref_fname), nib.load(moving_fnames[0])
         if ref_mask_fname:
-            ref_mask = nib.load(ref_mask_fname)
+            ref_mask = nib.load(ref_mask_fname).get_fdata().astype(bool)
         else:
-            ref_mask = np.ones(ref_img.shape)
+            ref_mask = np.ones(ref_img.shape, dtype=bool)
 
         if moving_mask_fname:
-            mov_mask = nib.load(moving_mask_fname)
+            mov_mask = nib.load(moving_mask_fname).get_fdata().astype(bool)
         else:
-            mov_mask = np.ones(ref_img.shape)
+            mov_mask = np.ones(ref_img.shape, dtype=bool)
 
         ref_data = ref_img.get_fdata().astype(ref_img.get_data_dtype())
         main_data = main_img.get_fdata().astype(main_img.get_data_dtype())
