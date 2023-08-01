@@ -209,8 +209,8 @@ class AntsRegistration(mrHARDIBaseApplication):
         out_mat = {
             'MatrixOffsetTransformBase_double_3_3': np.concatenate(
                 (np.eye(3).flatten(), trans) 
-            ).reshape((-1, 1)),
-            'fixed': np.zeros((3, 1))
+            ).reshape((-1, 1)).tolist(),
+            'fixed': np.zeros((3, 1)).tolist()
         }
         with open(out_mat_fname, 'wb') as file_stream:
             fw = MatFile5Writer(
