@@ -212,7 +212,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             ).reshape((-1, 1)),
             'fixed': np.zeros((3, 1))
         }
-        with open(out_mat_fname, 'w+') as file_stream:
+        with open(out_mat_fname, 'wb') as file_stream:
             fw = MatFile5Writer(
                 file_stream,
                 unicode_strings=True,
