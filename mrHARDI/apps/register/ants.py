@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 import nibabel as nib
 import numpy as np
 from scipy.io import loadmat
-from scipy.io.matlab.mio5 import MatFile5Writer
+from scipy.io.matlab.mio4 import MatFile4Writer
 from scipy.ndimage import center_of_mass
 from scipy.spatial.transform import Rotation
 from traitlets import Dict, Instance, Unicode, Bool, Enum
@@ -213,7 +213,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             'fixed': np.zeros((3, 1)).tolist()
         }
         with open(out_mat_fname, 'wb') as file_stream:
-            fw = MatFile5Writer(
+            fw = MatFile4Writer(
                 file_stream,
                 unicode_strings=True,
                 long_field_names=True,
