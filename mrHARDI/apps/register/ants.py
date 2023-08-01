@@ -4,7 +4,8 @@ from tempfile import TemporaryDirectory
 
 import nibabel as nib
 import numpy as np
-from scipy.io import loadmat, savemat
+from scipy.io import loadmat
+from scipy.io.mio5 import MatFile5Writer
 from scipy.ndimage import center_of_mass
 from scipy.spatial.transform import Rotation
 from traitlets import Dict, Instance, Unicode, Bool, Enum
@@ -206,12 +207,19 @@ class AntsRegistration(mrHARDIBaseApplication):
             )
 
         out_mat = {
-            'fixed': np.zeros((3, 1)),
             'MatrixOffsetTransformBase_double_3_3': np.concatenate(
                 (np.eye(3).flatten(), trans) 
-            ).reshape((-1, 1))
+            ).reshape((-1, 1)),
+            'fixed': np.zeros((3, 1))
         }
-        savemat(out_mat_fname, out_mat, long_field_names=True)
+        with open(out_mat_fname, 'w+') as file_stream:
+            fw = MatFile5Writer(
+                file_stream,
+                unicode_strings=True,
+                long_field_names=True,
+                oned_as='row'
+            )
+            fw.put_variables(out_mat, write_header=False)
 
     def _split_filename(self, _fname):
             return _fname.split(".")[0], ".".join(_fname.split(".")[1:])
