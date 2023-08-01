@@ -230,24 +230,18 @@ class AntsRegistration(mrHARDIBaseApplication):
         M0 /= sx
 
         # ortho M1 with M0
-        sx_sxy = np.dot(M0, M1)
-        M1 -= sx_sxy * M0
+        M1 -= np.dot(M0, M1) * M0
 
         # spacing in y
         sy = np.sqrt(np.sum(M1 ** 2.))
         M1 /= sy
-        sxy = sx_sxy / sx
 
         # ortho M2 with M1 and M0
-        sx_sxz = np.dot(M0, M2)
-        sy_syz = np.dot(M1, M2)
-        M2 -= (sx_sxz * M0 + sy_syz * M1)
+        M2 -= (np.dot(M0, M2) * M0 + np.dot(M1, M2) * M1)
 
         # spacing in z
         sz = np.sqrt(np.sum(M2**2))
         M2 /= sz
-        sxz = sx_sxz / sx
-        syz = sy_syz / sy
 
         # check rotation determinant
         Rmat = np.array([M0, M1, M2]).T
