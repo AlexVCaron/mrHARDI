@@ -206,9 +206,10 @@ class AntsRegistration(mrHARDIBaseApplication):
                 "{}_cm_aligned.{}".format(name, ext)
             )
 
+        strides = self._get_strides(main_img.affine)
         out_mat = {
             'MatrixOffsetTransformBase_double_3_3': np.concatenate(
-                (np.eye(3).flatten(), trans) 
+                (np.eye(3).flatten(), trans * strides) 
             ).reshape((-1, 1)).tolist(),
             'fixed': np.zeros((3, 1)).tolist()
         }
@@ -218,6 +219,48 @@ class AntsRegistration(mrHARDIBaseApplication):
                 oned_as='row'
             )
             fw.put_variables(out_mat)
+
+    def _get_strides(self, affine):
+        # From https://github.com/matthew-brett/transforms3d/blob/main/transforms3d/affines.py
+        RSZ = affine[:-1, :-1]
+        M0, M1, M2 = RSZ.T
+
+        # spacing in x
+        sx = np.sqrt(np.sum(M0 ** 2.))
+        M0 /= sx
+
+        # ortho M1 with M0
+        sx_sxy = np.dot(M0, M1)
+        M1 -= sx_sxy * M0
+
+        # spacing in y
+        sy = np.sqrt(np.sum(M1 ** 2.))
+        M1 /= sy
+        sxy = sx_sxy / sx
+
+        # ortho M2 with M1 and M0
+        sx_sxz = np.dot(M0, M2)
+        sy_syz = np.dot(M1, M2)
+        M2 -= (sx_sxz * M0 + sy_syz * M1)
+
+        # spacing in z
+        sz = np.sqrt(np.sum(M2**2))
+        M2 /= sz
+        sxz = sx_sxz / sx
+        syz = sy_syz / sy
+
+        # check rotation determinant
+        Rmat = np.array([M0, M1, M2]).T
+        if np.linalg.det(Rmat) < 0:
+            sx *= -1
+            Rmat[:,0] *= -1
+
+        def _stride(_v, _sv):
+            return np.sign(np.linalg.norm(_v) * _sv)
+
+        return _stride(Rmat[:, 0], sx), \
+            _stride(Rmat[:, 1], sy), \
+            _stride(Rmat[:, 2], sz)
 
     def _split_filename(self, _fname):
             return _fname.split(".")[0], ".".join(_fname.split(".")[1:])
