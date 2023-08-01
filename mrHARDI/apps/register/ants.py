@@ -221,10 +221,6 @@ class AntsRegistration(mrHARDIBaseApplication):
             fw.put_variables(out_mat)
 
     def _get_strides(self, affine):
-        def _ordering():
-            def _closest(_axes, _main_axis):
-                return np.argmax(_a @ _main_axis for _a in _axes)
-
         # From https://github.com/matthew-brett/transforms3d/blob/main/transforms3d/affines.py
         RSZ = affine[:-1, :-1]
         M0, M1, M2 = RSZ.T
