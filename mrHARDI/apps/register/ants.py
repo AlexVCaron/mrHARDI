@@ -240,7 +240,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             name, ext = self._split_filename(moving)
             config_dict["m{}".format(i)] = moving
             ai_config_dict["m{}".format(i)] = \
-                "init_transform/{}_cm_aligned.{}".format(
+                "init_transform/{}_res_cm_aligned.{}".format(
                     name, ext
                 )
 
