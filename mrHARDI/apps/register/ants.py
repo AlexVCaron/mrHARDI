@@ -5,7 +5,7 @@ from tempfile import TemporaryDirectory
 import nibabel as nib
 import numpy as np
 from scipy.io import loadmat
-from scipy.io.mio5 import MatFile5Writer
+from scipy.io.matlab.mio5 import MatFile5Writer
 from scipy.ndimage import center_of_mass
 from scipy.spatial.transform import Rotation
 from traitlets import Dict, Instance, Unicode, Bool, Enum
