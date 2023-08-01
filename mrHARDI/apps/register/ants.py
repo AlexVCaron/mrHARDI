@@ -215,11 +215,9 @@ class AntsRegistration(mrHARDIBaseApplication):
         with open(out_mat_fname, 'wb') as file_stream:
             fw = MatFile4Writer(
                 file_stream,
-                unicode_strings=True,
-                long_field_names=True,
                 oned_as='row'
             )
-            fw.put_variables(out_mat, write_header=False)
+            fw.put_variables(out_mat)
 
     def _split_filename(self, _fname):
             return _fname.split(".")[0], ".".join(_fname.split(".")[1:])
