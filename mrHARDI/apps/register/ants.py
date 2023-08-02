@@ -206,10 +206,11 @@ class AntsRegistration(mrHARDIBaseApplication):
                 "{}_cm_aligned.{}".format(name, ext)
             )
 
-        strides = self._get_strides(main_img.affine)
+        strides = self._get_strides(main_img.affine) * [-1., 1., -1.]
+        lengths = main_img.affine @ np.diag(main_img.shape)
         out_mat = {
             'MatrixOffsetTransformBase_double_3_3': np.concatenate(
-                (np.eye(3).flatten(), trans * strides * [-1., 1., -1.]) 
+                (np.eye(3).flatten(), trans * strides + (strides < 0) * lengths) 
             ).reshape((-1, 1)).tolist(),
             'fixed': main_img.affine[:-1, 3].reshape((3, 1)).tolist()
         }
