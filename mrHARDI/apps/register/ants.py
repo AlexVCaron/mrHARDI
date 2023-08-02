@@ -174,6 +174,10 @@ class AntsRegistration(mrHARDIBaseApplication):
         self, ref_fname, moving_fnames, out_mat_fname,
         ref_mask_fname=None, moving_mask_fname=None
     ):
+        def _sort_axes(data, ortn):
+            _ix = ortn[:, 0].astype(int)
+            return data[_ix] * ortn[:, 1]
+
         ref_img, main_img = nib.load(ref_fname), nib.load(moving_fnames[0])
         if ref_mask_fname:
             ref_mask = nib.load(ref_mask_fname).get_fdata().astype(bool)
@@ -184,6 +188,17 @@ class AntsRegistration(mrHARDIBaseApplication):
             mov_mask = nib.load(moving_mask_fname).get_fdata().astype(bool)
         else:
             mov_mask = np.ones(main_img.shape, dtype=bool)
+
+        ref_ornt = nib.io_orientation(ref_img.affine)
+        main_ornt = nib.io_orientation(main_img.affine)
+        ras_ornt = nib.orientations.axcodes2ornt(('R', 'A', 'S'))
+        lps_ornt = nib.orientations.axcodes2ornt(('L', 'P', 'S'))
+        ref_to_lps = nib.orientations.ornt_transform(ref_ornt, lps_ornt)
+        main_to_lps = nib.orientations.ornt_transform(main_ornt, lps_ornt)
+        ras_to_lps = nib.orientations.ornt_transform(ras_ornt, lps_ornt)
+        ras_to_lps[:, 1] *= -1.
+        ref_img = ref_img.as_reoriented(ref_to_lps)
+        main_img = main_img.as_reoriented(main_to_lps)
 
         ref_data = ref_img.get_fdata().astype(ref_img.get_data_dtype())
         main_data = main_img.get_fdata().astype(main_img.get_data_dtype())
@@ -206,13 +221,11 @@ class AntsRegistration(mrHARDIBaseApplication):
                 "{}_cm_aligned.{}".format(name, ext)
             )
 
-        strides = self._get_strides(main_img.affine) * [-1., 1., -1.]
-        lengths = main_img.affine @ np.diag(main_img.shape)
         out_mat = {
             'MatrixOffsetTransformBase_double_3_3': np.concatenate(
-                (np.eye(3).flatten(), trans * strides + (strides < 0) * lengths) 
+                (np.eye(3).flatten(), _sort_axes(trans, ras_to_lps))
             ).reshape((-1, 1)).tolist(),
-            'fixed': main_img.affine[:-1, 3].reshape((3, 1)).tolist()
+            'fixed': np.zeros((3, 1)).tolist()
         }
         with open(out_mat_fname, 'wb') as file_stream:
             fw = MatFile4Writer(
@@ -328,21 +341,21 @@ class AntsRegistration(mrHARDIBaseApplication):
                 self.moving_images + self.target_images
             )
 
-            for i, target in enumerate(self.target_images):
-                self._setup_ants_ai_input(
-                    target, current_path, target_mask, additional_env,
-                    spacing=spacing
-                )
+            # for i, target in enumerate(self.target_images):
+            #     self._setup_ants_ai_input(
+            #         target, current_path, target_mask, additional_env,
+            #         spacing=spacing
+            #     )
 
-            for i, moving in enumerate(self.moving_images):
-                self._setup_ants_ai_input(
-                    moving,
-                    current_path,
-                    moving_mask,
-                    additional_env,
-                    self.target_images[min(i, len(self.target_images) - 1)],
-                    spacing=spacing
-                )
+            # for i, moving in enumerate(self.moving_images):
+            #     self._setup_ants_ai_input(
+            #         moving,
+            #         current_path,
+            #         moving_mask,
+            #         additional_env,
+            #         self.target_images[min(i, len(self.target_images) - 1)],
+            #         spacing=spacing
+            #     )
 
             name, ext = self._split_filename(self.target_images[0])
             # TODO : if needed, add masks back, but they 
