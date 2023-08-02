@@ -341,21 +341,21 @@ class AntsRegistration(mrHARDIBaseApplication):
                 self.moving_images + self.target_images
             )
 
-            # for i, target in enumerate(self.target_images):
-            #     self._setup_ants_ai_input(
-            #         target, current_path, target_mask, additional_env,
-            #         spacing=spacing
-            #     )
+            for i, target in enumerate(self.target_images):
+                self._setup_ants_ai_input(
+                    target, current_path, target_mask, additional_env,
+                    spacing=spacing
+                )
 
-            # for i, moving in enumerate(self.moving_images):
-            #     self._setup_ants_ai_input(
-            #         moving,
-            #         current_path,
-            #         moving_mask,
-            #         additional_env,
-            #         self.target_images[min(i, len(self.target_images) - 1)],
-            #         spacing=spacing
-            #     )
+            for i, moving in enumerate(self.moving_images):
+                self._setup_ants_ai_input(
+                    moving,
+                    current_path,
+                    moving_mask,
+                    additional_env,
+                    self.target_images[min(i, len(self.target_images) - 1)],
+                    spacing=spacing
+                )
 
             name, ext = self._split_filename(self.target_images[0])
             # TODO : if needed, add masks back, but they 
