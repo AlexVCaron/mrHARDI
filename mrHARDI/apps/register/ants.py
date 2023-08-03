@@ -754,9 +754,11 @@ class AntsTransform(mrHARDIBaseApplication):
 
         def _sort_axes(data, ortn):
             _ix = ortn[:, 0].astype(int)
-            return data[_ix] * ortn[:, 1]
+            _or = ortn[:, 1] if len(data.shape) == 1 else ortn[:, 1, None]
+            return data[_ix] * _or
 
         if self.bvecs:
+            ref = nib.load(self.transformation_ref)
             bvecs = np.loadtxt(self.bvecs)
 
             ref_ornt = nib.io_orientation(ref.affine)
@@ -788,7 +790,6 @@ class AntsTransform(mrHARDIBaseApplication):
 
             bvecs = _sort_axes(bvecs, lps_to_ras)
             bvecs = _sort_axes(bvecs, lps_to_ref)
-            ref = nib.load(self.transformation_ref)
             bvecs = ref.affine[:3, :3] @ bvecs
 
             np.savetxt("{}.bvec".format(self.output), bvecs)
