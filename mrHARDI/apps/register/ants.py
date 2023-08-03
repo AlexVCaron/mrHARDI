@@ -535,6 +535,7 @@ class AntsTransform(mrHARDIBaseApplication):
 
             args += " -u {}".format(out_type)
 
+        invert = []
         if self.transformations and len(self.transformations) > 0:
             if not self.invert or len(self.invert) == 0:
                 invert = [False for _ in range(len(self.transformations))]
@@ -751,19 +752,42 @@ class AntsTransform(mrHARDIBaseApplication):
         if metadata:
             save_metadata(self.output, metadata)
 
+        def _sort_axes(data, ortn):
+            _ix = ortn[:, 0].astype(int)
+            return data[_ix] * ortn[:, 1]
+
         if self.bvecs:
             bvecs = np.loadtxt(self.bvecs)
-            bvecs = np.linalg.inv(image.affine[:3, :3]) @ bvecs
 
-            for trans in self.transformations[::-1]:
+            ref_ornt = nib.io_orientation(ref.affine)
+            source_ornt = nib.io_orientation(image.affine)
+            ras_ornt = nib.orientations.axcodes2ornt(('R', 'A', 'S'))
+            lps_ornt = nib.orientations.axcodes2ornt(('L', 'P', 'S'))
+
+            source_to_lps = nib.orientations.ornt_transform(source_ornt, lps_ornt)
+            lps_to_ras = nib.orientations.ornt_transform(lps_ornt, ras_ornt)
+            lps_to_ref = nib.orientations.ornt_transform(lps_ornt, ref_ornt)
+
+            bvecs = np.linalg.inv(image.affine[:3, :3]) @ bvecs
+            bvecs = _sort_axes(bvecs, source_to_lps)
+            bvecs = _sort_axes(bvecs, lps_to_ras)
+
+            for trans, inv in zip(self.transformations[::-1], invert[::-1]):
                 if trans.split(".")[-1] == "mat":
                     self.log.debug(
                         "Rotating bvecs with respect to transform {}".format(
                             basename(trans)
                         )
                     )
-                    bvecs = self._get_mat_rotation(trans) @ bvecs
 
+                    rot = self._get_mat_rotation(trans)
+                    if inv:
+                        rot = np.linalg.inv(rot)
+
+                    bvecs = rot @ bvecs
+
+            bvecs = _sort_axes(bvecs, lps_to_ras)
+            bvecs = _sort_axes(bvecs, lps_to_ref)
             ref = nib.load(self.transformation_ref)
             bvecs = ref.affine[:3, :3] @ bvecs
 
