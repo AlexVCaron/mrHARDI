@@ -553,200 +553,200 @@ class AntsTransform(mrHARDIBaseApplication):
                 )
             )
 
-        # command = "antsApplyTransforms {}".format(
-        #     self.configuration.serialize()
-        # )
-        # if img_type == ImageType.RGB.value:
-        #     with TemporaryDirectory(dir=current_path) as tmp_dir:
-        #         data = (image.get_fdata() / 255.)[..., None, :]
-        #         nib.save(
-        #             nib.Nifti1Image(data, image.affine, image.header),
-        #             join(tmp_dir, "rgb_vec.nii.gz")
-        #         )
+        command = "antsApplyTransforms {}".format(
+            self.configuration.serialize()
+        )
+        if img_type == ImageType.RGB.value:
+            with TemporaryDirectory(dir=current_path) as tmp_dir:
+                data = (image.get_fdata() / 255.)[..., None, :]
+                nib.save(
+                    nib.Nifti1Image(data, image.affine, image.header),
+                    join(tmp_dir, "rgb_vec.nii.gz")
+                )
 
-        #         launch_shell_process(
-        #             "{} {} -i {} -o {}".format(
-        #                 command, args,
-        #                 join(tmp_dir, "rgb_vec.nii.gz"),
-        #                 join(tmp_dir, "rgb_vec_trans.nii.gz")
-        #             ),
-        #             join(tmp_dir, "rgb_vec_trans.log")
-        #         )
+                launch_shell_process(
+                    "{} {} -i {} -o {}".format(
+                        command, args,
+                        join(tmp_dir, "rgb_vec.nii.gz"),
+                        join(tmp_dir, "rgb_vec_trans.nii.gz")
+                    ),
+                    join(tmp_dir, "rgb_vec_trans.log")
+                )
 
-        #         output = nib.load(join(tmp_dir, "rgb_vec_trans.nii.gz"))
-        #         nib.save(
-        #             nib.Nifti1Image(
-        #                 output.get_fdata().squeeze() * 255.,
-        #                 output.affine, output.header
-        #             ),
-        #             "{}.nii.gz".format(self.output)
-        #         )
-        # elif (img_type == ImageType.SCALAR.value
-        #       and len(shape) > 3 and shape[-1] > 1):
-        #     with TemporaryDirectory(dir=current_path) as tmp_dir:
-        #         data = image.get_fdata().reshape(shape[:3] + (-1,))
+                output = nib.load(join(tmp_dir, "rgb_vec_trans.nii.gz"))
+                nib.save(
+                    nib.Nifti1Image(
+                        output.get_fdata().squeeze() * 255.,
+                        output.affine, output.header
+                    ),
+                    "{}.nii.gz".format(self.output)
+                )
+        elif (img_type == ImageType.SCALAR.value
+              and len(shape) > 3 and shape[-1] > 1):
+            with TemporaryDirectory(dir=current_path) as tmp_dir:
+                data = image.get_fdata().reshape(shape[:3] + (-1,))
 
-        #         for i in range(data.shape[-1]):
-        #             nib.save(
-        #                 nib.Nifti1Image(
-        #                     data[..., i], image.affine, image.header
-        #                 ),
-        #                 join(tmp_dir, "v{}.nii.gz".format(i))
-        #             )
-        #             launch_shell_process(
-        #                 "{} {} -i {} -o {}".format(
-        #                     command, args,
-        #                     join(tmp_dir, "v{}.nii.gz".format(i)),
-        #                     join(tmp_dir, "v{}_trans.nii.gz".format(i))
-        #                 ),
-        #                 join(tmp_dir, "v{}_trans.log".format(i))
-        #             )
+                for i in range(data.shape[-1]):
+                    nib.save(
+                        nib.Nifti1Image(
+                            data[..., i], image.affine, image.header
+                        ),
+                        join(tmp_dir, "v{}.nii.gz".format(i))
+                    )
+                    launch_shell_process(
+                        "{} {} -i {} -o {}".format(
+                            command, args,
+                            join(tmp_dir, "v{}.nii.gz".format(i)),
+                            join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                        ),
+                        join(tmp_dir, "v{}_trans.log".format(i))
+                    )
 
-        #         base_output = nib.load(
-        #             join(tmp_dir, "v0_trans.nii.gz")
-        #         )
-        #         out_data = base_output.get_fdata()[..., None]
-        #         for i in range(1, data.shape[-1]):
-        #             other_data = nib.load(
-        #                 join(tmp_dir, "v{}_trans.nii.gz".format(i))
-        #             ).get_fdata()[..., None]
-        #             out_data = np.concatenate((out_data, other_data), axis=-1)
+                base_output = nib.load(
+                    join(tmp_dir, "v0_trans.nii.gz")
+                )
+                out_data = base_output.get_fdata()[..., None]
+                for i in range(1, data.shape[-1]):
+                    other_data = nib.load(
+                        join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                    ).get_fdata()[..., None]
+                    out_data = np.concatenate((out_data, other_data), axis=-1)
 
-        #         nib.save(
-        #             nib.Nifti1Image(
-        #                 out_data.reshape(out_data.shape[:3] + shape[3:]),
-        #                 base_output.affine, image.header
-        #             ),
-        #             "{}.nii.gz".format(self.output)
-        #         )
-        # elif img_type == ImageType.VECTOR.value and len(shape) == 4:
-        #     with TemporaryDirectory(dir=current_path) as tmp_dir:
-        #         data = image.get_fdata()
-        #         header = image.header.copy()
-        #         header.set_intent('vector')
+                nib.save(
+                    nib.Nifti1Image(
+                        out_data.reshape(out_data.shape[:3] + shape[3:]),
+                        base_output.affine, image.header
+                    ),
+                    "{}.nii.gz".format(self.output)
+                )
+        elif img_type == ImageType.VECTOR.value and len(shape) == 4:
+            with TemporaryDirectory(dir=current_path) as tmp_dir:
+                data = image.get_fdata()
+                header = image.header.copy()
+                header.set_intent('vector')
 
-        #         if shape[-1] == 15:
-        #             for i in range(5):
-        #                 nib.save(
-        #                     nib.Nifti1Image(
-        #                         data[..., None, (3 * i):(3 * (i + 1))],
-        #                         image.affine, header
-        #                     ),
-        #                     join(tmp_dir, "v{}.nii.gz".format(i))
-        #                 )
-        #                 launch_shell_process(
-        #                     "{} {} -i {} -o {}".format(
-        #                         command, args,
-        #                         join(tmp_dir, "v{}.nii.gz".format(i)),
-        #                         join(tmp_dir, "v{}_trans.nii.gz".format(i))
-        #                     ),
-        #                     join(tmp_dir, "v{}_trans.log".format(i))
-        #                 )
+                if shape[-1] == 15:
+                    for i in range(5):
+                        nib.save(
+                            nib.Nifti1Image(
+                                data[..., None, (3 * i):(3 * (i + 1))],
+                                image.affine, header
+                            ),
+                            join(tmp_dir, "v{}.nii.gz".format(i))
+                        )
+                        launch_shell_process(
+                            "{} {} -i {} -o {}".format(
+                                command, args,
+                                join(tmp_dir, "v{}.nii.gz".format(i)),
+                                join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                            ),
+                            join(tmp_dir, "v{}_trans.log".format(i))
+                        )
 
-        #             base_output = nib.load(join(tmp_dir, "v0_trans.nii.gz"))
-        #             data = base_output.get_fdata()
-        #             for i in range(1, 5):
-        #                 other_data = nib.load(
-        #                     join(tmp_dir, "v{}_trans.nii.gz".format(i))
-        #                 ).get_fdata()
-        #                 data = np.concatenate((data, other_data), axis=-1)
-        #         else:
-        #             nib.save(
-        #                 nib.Nifti1Image(
-        #                     data[..., None, :], image.affine, header
-        #                 ),
-        #                 join(tmp_dir, "vectors.nii.gz")
-        #             )
-        #             launch_shell_process(
-        #                 "{} {} -i {} -o {}".format(
-        #                     command, args,
-        #                     join(tmp_dir, "vectors.nii.gz"),
-        #                     join(tmp_dir, "v_trans.nii.gz")
-        #                 ),
-        #                 join(tmp_dir, "v_trans.log")
-        #             )
+                    base_output = nib.load(join(tmp_dir, "v0_trans.nii.gz"))
+                    data = base_output.get_fdata()
+                    for i in range(1, 5):
+                        other_data = nib.load(
+                            join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                        ).get_fdata()
+                        data = np.concatenate((data, other_data), axis=-1)
+                else:
+                    nib.save(
+                        nib.Nifti1Image(
+                            data[..., None, :], image.affine, header
+                        ),
+                        join(tmp_dir, "vectors.nii.gz")
+                    )
+                    launch_shell_process(
+                        "{} {} -i {} -o {}".format(
+                            command, args,
+                            join(tmp_dir, "vectors.nii.gz"),
+                            join(tmp_dir, "v_trans.nii.gz")
+                        ),
+                        join(tmp_dir, "v_trans.log")
+                    )
 
-        #             base_output = nib.load(join(tmp_dir, "v_trans.nii.gz"))
-        #             data = base_output.get_fdata()
+                    base_output = nib.load(join(tmp_dir, "v_trans.nii.gz"))
+                    data = base_output.get_fdata()
 
-        #         nib.save(
-        #             nib.Nifti1Image(
-        #                 data.squeeze(), base_output.affine, image.header
-        #             ),
-        #             "{}.nii.gz".format(self.output)
-        #         )
-        # elif img_type == ImageType.TENSOR.value and len(shape) == 4:
-        #     with TemporaryDirectory(dir=current_path) as tmp_dir:
-        #         data = image.get_fdata()[..., None, (0, 1, 3, 2, 4, 5)]
-        #         header = image.header.copy()
-        #         zooms = header.get_zooms()
-        #         header.set_zooms(zooms[:3] + (0.,))
-        #         header.set_intent("symmetric matrix")
-        #         nib.save(
-        #             nib.Nifti1Image(data, image.affine, header),
-        #             join(tmp_dir, "tensor.nii.gz")
-        #         )
+                nib.save(
+                    nib.Nifti1Image(
+                        data.squeeze(), base_output.affine, image.header
+                    ),
+                    "{}.nii.gz".format(self.output)
+                )
+        elif img_type == ImageType.TENSOR.value and len(shape) == 4:
+            with TemporaryDirectory(dir=current_path) as tmp_dir:
+                data = image.get_fdata()[..., None, (0, 1, 3, 2, 4, 5)]
+                header = image.header.copy()
+                zooms = header.get_zooms()
+                header.set_zooms(zooms[:3] + (0.,))
+                header.set_intent("symmetric matrix")
+                nib.save(
+                    nib.Nifti1Image(data, image.affine, header),
+                    join(tmp_dir, "tensor.nii.gz")
+                )
 
-        #         launch_shell_process(
-        #             "{} {} -i {} -o {}".format(
-        #                 command, args,
-        #                 join(tmp_dir, "tensor.nii.gz"),
-        #                 join(tmp_dir, "tensor_trans.nii.gz")
-        #             ),
-        #             join(tmp_dir, "tensor_trans.log")
-        #         )
+                launch_shell_process(
+                    "{} {} -i {} -o {}".format(
+                        command, args,
+                        join(tmp_dir, "tensor.nii.gz"),
+                        join(tmp_dir, "tensor_trans.nii.gz")
+                    ),
+                    join(tmp_dir, "tensor_trans.log")
+                )
 
-        #         output = nib.load(join(tmp_dir, "tensor_trans.nii.gz"))
-        #         data = output.get_fdata().squeeze()[..., (0, 1, 3, 2, 4, 5)]
-        #         nib.save(
-        #             nib.Nifti1Image(data, output.affine, output.header),
-        #             "{}.nii.gz".format(self.output)
-        #         )
-        # elif img_type == ImageType.TIMESERIES.value and len(shape) == 4:
-        #     with TemporaryDirectory(dir=current_path) as tmp_dir:
-        #         data = image.get_fdata().astype(image.header.get_data_dtype())
+                output = nib.load(join(tmp_dir, "tensor_trans.nii.gz"))
+                data = output.get_fdata().squeeze()[..., (0, 1, 3, 2, 4, 5)]
+                nib.save(
+                    nib.Nifti1Image(data, output.affine, output.header),
+                    "{}.nii.gz".format(self.output)
+                )
+        elif img_type == ImageType.TIMESERIES.value and len(shape) == 4:
+            with TemporaryDirectory(dir=current_path) as tmp_dir:
+                data = image.get_fdata().astype(image.header.get_data_dtype())
 
-        #         for i in range(data.shape[-1]):
-        #             nib.save(
-        #                 nib.Nifti1Image(
-        #                     data[..., i], image.affine, image.header
-        #                 ),
-        #                 join(tmp_dir, "v{}.nii.gz".format(i))
-        #             )
-        #             launch_shell_process(
-        #                 "{} {} -i {} -o {}".format(
-        #                     command, args,
-        #                     join(tmp_dir, "v{}.nii.gz".format(i)),
-        #                     join(tmp_dir, "v{}_trans.nii.gz".format(i))
-        #                 ),
-        #                 join(tmp_dir, "v{}_trans.log".format(i))
-        #             )
+                for i in range(data.shape[-1]):
+                    nib.save(
+                        nib.Nifti1Image(
+                            data[..., i], image.affine, image.header
+                        ),
+                        join(tmp_dir, "v{}.nii.gz".format(i))
+                    )
+                    launch_shell_process(
+                        "{} {} -i {} -o {}".format(
+                            command, args,
+                            join(tmp_dir, "v{}.nii.gz".format(i)),
+                            join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                        ),
+                        join(tmp_dir, "v{}_trans.log".format(i))
+                    )
 
-        #         base_output = nib.load(
-        #             join(tmp_dir, "v0_trans.nii.gz")
-        #         )
-        #         out_data = base_output.get_fdata()[..., None]
-        #         for i in range(1, data.shape[-1]):
-        #             other_data = nib.load(
-        #                 join(tmp_dir, "v{}_trans.nii.gz".format(i))
-        #             ).get_fdata()[..., None]
-        #             out_data = np.concatenate((out_data, other_data), axis=-1)
+                base_output = nib.load(
+                    join(tmp_dir, "v0_trans.nii.gz")
+                )
+                out_data = base_output.get_fdata()[..., None]
+                for i in range(1, data.shape[-1]):
+                    other_data = nib.load(
+                        join(tmp_dir, "v{}_trans.nii.gz".format(i))
+                    ).get_fdata()[..., None]
+                    out_data = np.concatenate((out_data, other_data), axis=-1)
 
-        #         nib.save(
-        #             nib.Nifti1Image(
-        #                 out_data.reshape(out_data.shape[:3] + shape[3:]),
-        #                 base_output.affine, image.header
-        #             ),
-        #             "{}.nii.gz".format(self.output)
-        #         )
-        # else:
-        #     command += " {} -i {} -o {}".format(
-        #         args, self.image, "{}.nii.gz".format(self.output)
-        #     )
+                nib.save(
+                    nib.Nifti1Image(
+                        out_data.reshape(out_data.shape[:3] + shape[3:]),
+                        base_output.affine, image.header
+                    ),
+                    "{}.nii.gz".format(self.output)
+                )
+        else:
+            command += " {} -i {} -o {}".format(
+                args, self.image, "{}.nii.gz".format(self.output)
+            )
 
-        #     launch_shell_process(command, join(current_path, "{}.log".format(
-        #         basename(self.output)
-        #     )))
+            launch_shell_process(command, join(current_path, "{}.log".format(
+                basename(self.output)
+            )))
 
         metadata = load_metadata(self.image)
         if metadata:
