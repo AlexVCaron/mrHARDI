@@ -316,13 +316,11 @@ class AntsRegistration(mrHARDIBaseApplication):
                 max_spacing
             )
             ai_init_params = ai_init_params.format(**ai_config_dict)
-            ai_init_params += " -s [20,0.04]"
+            ai_init_params += " -s [15,0.12]"
 
             if self.mask:
                 ai_init_params += " --masks [{},{}]".format(
-                    "{}_cm_aligned.{}".format(
-                        *self._split_filename(target_mask)
-                    ),
+                    target_mask,
                     "{}_cm_aligned.{}".format(
                         *self._split_filename(moving_mask)
                     )
@@ -358,16 +356,10 @@ class AntsRegistration(mrHARDIBaseApplication):
                 )
 
             name, ext = self._split_filename(self.target_images[0])
-            # TODO : if needed, add masks back, but they 
-            # will have to be resampled and cropped for that to work
-            masks = []
-            if self.mask:
-                masks = [target_mask, moving_mask]
-
             self._align_by_center_of_mass(
                 "init_transform/{}_res.{}".format(name, ext),
                 list("init_transform/{}_res.{}".format(*self._split_filename(m))
-                 for m in self.moving_images) + masks,
+                 for m in self.moving_images) + [moving_mask],
                 "init_transform/center_of_mass.mat"
             )
 
