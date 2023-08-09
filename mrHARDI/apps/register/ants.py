@@ -172,7 +172,8 @@ class AntsRegistration(mrHARDIBaseApplication):
 
     def _align_by_center_of_mass(
         self, ref_fname, moving_fnames, out_mat_fname,
-        ref_mask_fname=None, moving_mask_fname=None
+        ref_mask_fname=None, moving_mask_fname=None, 
+        align_mask_fnames=None, apply_inverse_masks=False
     ):
         def _sort_axes(data, ortn):
             _ix = ortn[:, 0].astype(int)
@@ -220,6 +221,24 @@ class AntsRegistration(mrHARDIBaseApplication):
                 nib.Nifti1Image(img.get_fdata(), affine, img.header),
                 "{}_cm_aligned.{}".format(name, ext)
             )
+
+        if align_mask_fnames is not None:
+            if apply_inverse_masks:
+                trans *= -1.
+
+            for fname in align_mask_fnames:
+                img = nib.load(fname)
+                affine = img.affine
+                affine[:-1, 3] += trans
+                name, ext = self._split_filename(fname)
+                nib.save(
+                    nib.Nifti1Image(img.get_fdata(), affine, img.header),
+                    "{}_cm_aligned.{}".format(name, ext)
+                )
+
+            if apply_inverse_masks:
+                trans *= -1.
+
 
         out_mat = {
             'MatrixOffsetTransformBase_double_3_3': np.concatenate(
@@ -304,7 +323,7 @@ class AntsRegistration(mrHARDIBaseApplication):
         target_mask, moving_mask, masks_param = None, None, ""
         if self.mask:
             if len(self.mask) == 1:
-                target_mask = moving_mask = self.mask
+                target_mask = moving_mask = self.mask[0]
             else:
                 target_mask, moving_mask = self.mask
 
@@ -319,11 +338,14 @@ class AntsRegistration(mrHARDIBaseApplication):
             ai_init_params += " -s [15,0.12]"
 
             if self.mask:
+                _moving_mask = "{}_cm_aligned.{}".format(
+                    *self._split_filename(moving_mask)
+                )
+                if len(self.mask) == 1:
+                    _moving_mask = target_mask
+
                 ai_init_params += " --masks [{},{}]".format(
-                    target_mask,
-                    "{}_cm_aligned.{}".format(
-                        *self._split_filename(moving_mask)
-                    )
+                    target_mask, _moving_mask
                 )
 
             output_tranform = "{}/init_transform.mat".format(ai_subpath)
@@ -359,8 +381,10 @@ class AntsRegistration(mrHARDIBaseApplication):
             self._align_by_center_of_mass(
                 "init_transform/{}_res.{}".format(name, ext),
                 list("init_transform/{}_res.{}".format(*self._split_filename(m))
-                 for m in self.moving_images) + [moving_mask],
-                "init_transform/center_of_mass.mat"
+                 for m in self.moving_images),
+                "init_transform/center_of_mass.mat",
+                align_masks_fnames=[moving_mask],
+                apply_inverse_masks=len(self.mask) > 1
             )
 
             cmd = []
