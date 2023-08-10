@@ -102,13 +102,16 @@ class AntsConfiguration(mrHARDIConfigurable):
 
     def get_ants_ai_parameters(self, voxel_size):
         options = ["-d {}".format(self.dimension)]
+        transform = []
         for ants_pass in self.passes:
-            if ants_pass.name in ["AntsRigid"]:
-                options.append(
+            if ants_pass.name == "AntsRigid" and len(transform) == 0:
+                transform.append(
                     ants_pass.serialize(voxel_size, for_ants_ai=True)
                 )
+            elif ants_pass.name == "AntsAffine":
+                transform = [ants_pass.serialize(voxel_size, for_ants_ai=True)]
 
-        return " ".join(options)
+        return " ".join(options + transform)
 
     def serialize(self, voxel_size, *args, masks=None, **kwargs):
         optionals, init_i = [''], 0

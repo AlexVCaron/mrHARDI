@@ -6,7 +6,8 @@ from numpy import (concatenate,
                    array,
                    dtype as datatype,
                    r_ as row)
-
+from scipy.io import loadmat
+from scipy.spatial.transform import Rotation
 
 def apply_mask_on_data(
     in_data, in_mask, fill_value=0., dtype=float, in_place=True
@@ -117,3 +118,40 @@ def resampling_affine(ref_affine, ref_shape, ref_zooms, new_zooms):
     zoom_matrix = np.eye(4)
     zoom_matrix[:3, :3] = np.diag(new_zooms)
     return np.dot(affine, zoom_matrix)
+
+
+def load_transform(filename):
+    mat = loadmat(filename)
+
+    def _affine(_type, t_sign=-1.):
+        _m = np.vstack((mat[_type].reshape((4, 3)).T, [0, 0, 0, 1])).T
+        _m[[0, 1, 2, -1, -1, -1], [-1, -1, -1, 0, 1, 2]] = \
+            _m[[-1, -1, -1, 0, 1, 2], [0, 1, 2, -1, -1, -1]]
+        offset = mat['fixed']
+        _m[:3, -1] += offset - np.dot(_m[:3, :3], offset)
+        _m[:3, -1] *= t_sign
+        return _m
+
+    def _euler(_type, t_sign=-1.):
+        _r = Rotation.from_euler('zyx', mat[_type][:3].flatten()).as_matrix()
+        _m = np.vstack((np.vstack((_r.T, mat[_type][3:])).T, [0, 0, 0, 1]))
+        offset = mat['fixed']
+        _m[:3, -1] += offset - np.dot(_m[:3, :3], offset)
+        _m[:3, -1] *= t_sign
+        return _m
+
+    if "AffineTransform_double_3_3" in mat:
+        return _affine("AffineTransform_double_3_3")
+    elif "AffineTransform_float_3_3" in mat:
+        return _affine("AffineTransform_float_3_3")
+    elif "MatrixOffsetTransformBase_double_3_3" in mat:
+        return _affine("MatrixOffsetTransformBase_double_3_3", 1.)
+    elif "MatrixOffsetTransformBase_float_3_3" in mat:
+        return _affine("MatrixOffsetTransformBase_float_3_3", 1.)
+    elif "Euler3DTransform_double_3_3" in mat:
+        return _euler("Euler3DTransform_double_3_3")
+    elif "Euler3DTransform_float_3_3" in mat:
+        return _euler("Euler3DTransform_float_3_3")
+    else:
+        print("Could not load rotation matrix from : {}".format(filename))
+        return np.eye(4)
