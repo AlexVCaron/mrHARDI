@@ -1,3 +1,4 @@
+import nibabel as nib
 import numpy as np
 from numpy import (concatenate,
                    ones_like,
@@ -120,7 +121,13 @@ def resampling_affine(ref_affine, ref_shape, ref_zooms, new_zooms):
     return np.dot(affine, zoom_matrix)
 
 
-def load_transform(filename):
+def orientation_to_transform(ornt):
+    return np.diag(ornt[:, 1][ornt[:, 0].astype(int)])
+
+
+def load_transform(
+    filename, target_ornt=nib.orientations.axcodes2ornt(('R', 'A', 'S'))
+):
     mat = loadmat(filename)
 
     def _affine(_type, t_sign=-1.):
@@ -129,29 +136,48 @@ def load_transform(filename):
             _m[[-1, -1, -1, 0, 1, 2], [0, 1, 2, -1, -1, -1]]
         offset = mat['fixed'].flatten()[:3]
         _m[:3, -1] += offset - np.dot(_m[:3, :3], offset)
-        _m[:3, -1] *= t_sign
         return _m
 
     def _euler(_type, t_sign=-1.):
         _r = Rotation.from_euler('zyx', mat[_type][:3].flatten()).as_matrix()
         _m = np.vstack((np.vstack((_r.T, mat[_type][3:])).T, [0, 0, 0, 1]))
-        offset = mat['fixed']
+        offset = mat['fixed'].flatten()[:3]
         _m[:3, -1] += offset - np.dot(_m[:3, :3], offset)
-        _m[:3, -1] *= t_sign
         return _m
 
     if "AffineTransform_double_3_3" in mat:
-        return _affine("AffineTransform_double_3_3")
+        _t = _affine("AffineTransform_double_3_3")
     elif "AffineTransform_float_3_3" in mat:
-        return _affine("AffineTransform_float_3_3")
+        _t = _affine("AffineTransform_float_3_3")
     elif "MatrixOffsetTransformBase_double_3_3" in mat:
-        return _affine("MatrixOffsetTransformBase_double_3_3", 1.)
+        _t = _affine("MatrixOffsetTransformBase_double_3_3", 1.)
     elif "MatrixOffsetTransformBase_float_3_3" in mat:
-        return _affine("MatrixOffsetTransformBase_float_3_3", 1.)
+        _t = _affine("MatrixOffsetTransformBase_float_3_3", 1.)
     elif "Euler3DTransform_double_3_3" in mat:
-        return _euler("Euler3DTransform_double_3_3")
+        _t = _euler("Euler3DTransform_double_3_3")
     elif "Euler3DTransform_float_3_3" in mat:
-        return _euler("Euler3DTransform_float_3_3")
+        _t = _euler("Euler3DTransform_float_3_3")
     else:
         print("Could not load rotation matrix from : {}".format(filename))
-        return np.eye(4)
+        _t = np.eye(4)
+
+    lps_ornt = nib.orientations.axcodes2ornt(("L", "P", "S"))
+    target_to_lps = nib.orientations.ornt_transform(target_ornt, lps_ornt)
+    ornt_trans = orientation_to_transform(target_to_lps)
+    _t[:3, :3] = ornt_trans @ _t[:3, :3] @ ornt_trans
+    _t[:3, 3] = ornt_trans @ _t[:3, 3]
+
+    return np.linalg.inv(_t)
+
+
+def save_transform(matrix, out_type, out_name):
+    trans_ornt = nib.io_orientation(matrix)
+    lps_ornt = nib.orientations.axcodes2ornt(("L", "P", "S"))
+    trans_to_lps = nib.orientations.ornt_transform(trans_ornt, lps_ornt)
+
+    if "AffineTransform" in out_type:
+        return 1
+    elif "MatrixOffsetTransformBase" in out_type:
+        return 1
+    elif "Euler3DTransform_double_3_3" in out_type:
+        return 1

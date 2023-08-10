@@ -264,23 +264,24 @@ class AntsRegistration(mrHARDIBaseApplication):
     def _split_filename(self, _fname):
             return _fname.split(".")[0], ".".join(_fname.split(".")[1:])
 
-    def _transform_images(self, images, transform_fname, suffix=None):
-        transform = load_transform(transform_fname)
+    def _transform_images(
+        self, images, transform_fname, suffix=None, base_dir=None
+    ):
+        if base_dir is None:
+            base_dir = getcwd()
+
         names = []
-        lps_ornt = nib.orientations.axcodes2ornt(("L", "P", "S"))
         for image in images:
             name, ext = self._split_filename(image)
-            names.append("{}.{}".format(
-                [n for n in [basename(name), suffix] if n], ext
-            ))
+            names.append(join(base_dir, "{}.{}".format(
+                "_".join([n for n in [basename(name), suffix] if n]), ext
+            )))
             img = nib.load(image)
             img_ornt = nib.io_orientation(img.affine)
-            img_to_lps = nib.orientations.ornt_transform(img_ornt, lps_ornt)
-            img = img.as_reoriented(img_to_lps)
+            transform = load_transform(transform_fname, img_ornt)
             img = nib.Nifti1Image(
                 img.get_fdata(), transform @ img.affine, img.header
             )
-            img.as_reoriented(img_to_lps)
             nib.save(img, names[-1])
 
         return names
@@ -310,7 +311,11 @@ class AntsRegistration(mrHARDIBaseApplication):
         with TemporaryDirectory(dir=base_dir) as prep_dir:
 
             if initial_transform is not None:
-                targets = self._transform_images(targets, initial_transform)
+                movings = self._transform_images(
+                    movings, initial_transform,
+                    suffix="_init_transform",
+                    base_dir=prep_dir
+                )
 
             for i, target in enumerate(targets):
                 _, ext = self._split_filename(target)
