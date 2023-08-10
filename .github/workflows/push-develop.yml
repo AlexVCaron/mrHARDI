@@ -113,7 +113,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           from: avcaron/mrhardi:pr-${{ github.event.number }}
           tags: |
-            avcaron/mrhardi:dev
+            avcaron/versa:dev
       -
         name: Delete PR tag from dockerhub
         if: ${{ steps.git_diff.outputs.lines > 0 }}
