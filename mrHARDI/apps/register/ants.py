@@ -267,15 +267,20 @@ class AntsRegistration(mrHARDIBaseApplication):
     def _transform_images(self, images, transform_fname, suffix=None):
         transform = load_transform(transform_fname)
         names = []
+        lps_ornt = nib.orientations.axcodes2ornt(("L", "P", "S"))
         for image in images:
             name, ext = self._split_filename(image)
             names.append("{}.{}".format(
                 [n for n in [basename(name), suffix] if n], ext
             ))
             img = nib.load(image)
+            img_ornt = nib.io_orientation(img.affine)
+            img_to_lps = nib.orientations.ornt_transform(img_ornt, lps_ornt)
+            img = img.as_reoriented(img_to_lps)
             img = nib.Nifti1Image(
                 img.get_fdata(), transform @ img.affine, img.header
             )
+            img.as_reoriented(img_to_lps)
             nib.save(img, names[-1])
 
         return names
