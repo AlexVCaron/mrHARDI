@@ -42,7 +42,7 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: |
-            docker.io/avcaron/mrhardi
+            docker.io/avcaron/versa
           tags: |
             type=semver,pattern={{raw}}
             type=ref,event=branch
@@ -64,6 +64,7 @@ jobs:
           push: true
           set: |
             mrhardi.output=type=registry
+            mrhardi.targs=versa:local
             mrhardi_cloner.args.mrhardi_ver=${{ github.event.release.tag_name }}
   
   mrhardi-packaging:
@@ -102,7 +103,7 @@ jobs:
           export SINGULARITY_TMPDIR="$(pwd)/sif_tmp"
           export SINGULARITY_CACHEDIR="$(pwd)/sif_cache"
           echo "Caching and temping singularity at : $SINGULARITY_CACHEDIR and $SINGULARITY_TMPDIR"
-          singularity build --disable-cache mrhardi.sif docker://avcaron/mrhardi:latest
+          singularity build --disable-cache mrhardi.sif docker://avcaron/versa:latest
           echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
           singularity push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:latest
           singularity push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:${{ github.event.release.tag_name }}

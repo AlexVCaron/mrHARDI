@@ -338,7 +338,7 @@ class AntsRegistration(mrHARDIBaseApplication):
 
             if align_center_of_mass:
                 movings = self._align_by_center_of_mass(
-                    targets[0], movings, "center_of_mass.mat",
+                    targets[0], movings, join(prep_dir, "center_of_mass.mat"),
                     align_mask_fnames=[moving_mask] \
                         if moving_mask is not None else None,
                     suffix="cm", base_dir=prep_dir
@@ -400,15 +400,17 @@ class AntsRegistration(mrHARDIBaseApplication):
                 )
 
             if keep_files:
-                copytree(prep_dir, join(base_dir, "prepare"))
+                copytree(
+                    prep_dir, join(base_dir, "prepare"), dirs_exist_ok=True
+                )
 
     def _merge_transforms(
         self, out_transform, log_file, *transforms, additional_env=None
     ):
-        cmd = ["antsApplyTransforms {} -o Linear[{},0]".format(
+        cmd = "antsApplyTransforms {} -o Linear[{},0]".format(
             " ".join("-t {}".format(t) for t in transforms[::-1]),
             out_transform
-        )]
+        )
 
         launch_shell_process(
             cmd, log_file,
@@ -453,16 +455,16 @@ class AntsRegistration(mrHARDIBaseApplication):
                 basename(self.output_prefix)
             ))
 
-            self._call_ants_ai(
-                self.target_images, self.moving_images,
-                self.configuration, "coarse_initializer.mat",
-                target_mask=target_mask,
-                moving_mask=moving_mask if moving_mask != target_mask else None,
-                base_dir=coarse_subpath,
-                log_file=log_file,
-                additional_env=additional_env,
-                keep_files=True
-            )
+            #self._call_ants_ai(
+            #    self.target_images, self.moving_images,
+            #    self.configuration, "coarse_initializer.mat",
+            #    target_mask=target_mask,
+            #    moving_mask=moving_mask if moving_mask != target_mask else None,
+            #    base_dir=coarse_subpath,
+            #    log_file=log_file,
+            #    additional_env=additional_env,
+            #    keep_files=True
+            #)
 
             self._call_ants_ai(
                 self.target_images, self.moving_images,

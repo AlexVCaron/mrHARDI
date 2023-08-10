@@ -127,7 +127,7 @@ def load_transform(filename):
         _m = np.vstack((mat[_type].reshape((4, 3)).T, [0, 0, 0, 1])).T
         _m[[0, 1, 2, -1, -1, -1], [-1, -1, -1, 0, 1, 2]] = \
             _m[[-1, -1, -1, 0, 1, 2], [0, 1, 2, -1, -1, -1]]
-        offset = mat['fixed']
+        offset = mat['fixed'].flatten()[:3]
         _m[:3, -1] += offset - np.dot(_m[:3, :3], offset)
         _m[:3, -1] *= t_sign
         return _m
