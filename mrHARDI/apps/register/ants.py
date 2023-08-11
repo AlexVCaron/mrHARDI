@@ -465,16 +465,16 @@ class AntsRegistration(mrHARDIBaseApplication):
                 basename(self.output_prefix)
             ))
 
-            #self._call_ants_ai(
-            #    self.target_images, self.moving_images,
-            #    self.configuration, "coarse_initializer.mat",
-            #    target_mask=target_mask,
-            #    moving_mask=moving_mask if moving_mask != target_mask else None,
-            #    base_dir=coarse_subpath,
-            #    log_file=log_file,
-            #    additional_env=additional_env,
-            #    keep_files=True
-            #)
+            self._call_ants_ai(
+                self.target_images, self.moving_images,
+                self.configuration, "coarse_initializer.mat",
+                target_mask=target_mask,
+                moving_mask=moving_mask if moving_mask != target_mask else None,
+                base_dir=coarse_subpath,
+                log_file=log_file,
+                additional_env=additional_env,
+                keep_files=True
+            )
 
             self._call_ants_ai(
                 self.target_images, self.moving_images,
