@@ -466,7 +466,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             ))
 
             self._call_ants_ai(
-                self.target_images, self.moving_images,
+                self.target_images.copy(), self.moving_images.copy(),
                 self.configuration, "coarse_initializer.mat",
                 target_mask=target_mask,
                 moving_mask=moving_mask if moving_mask != target_mask else None,
@@ -477,7 +477,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             )
 
             self._call_ants_ai(
-                self.target_images, self.moving_images,
+                self.target_images.copy(), self.moving_images.copy(),
                 self.configuration, "fine_initializer.mat",
                 angular_step=5, angular_range=20,
                 translation_step=1, translation_range=[0, 0, 0],
