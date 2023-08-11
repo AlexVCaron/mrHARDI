@@ -108,8 +108,6 @@ class AntsConfiguration(mrHARDIConfigurable):
                 transform.append(
                     ants_pass.serialize(voxel_size, for_ants_ai=True)
                 )
-            elif ants_pass.name == "AntsAffine":
-                transform = [ants_pass.serialize(voxel_size, for_ants_ai=True)]
 
         return " ".join(options + transform)
 
