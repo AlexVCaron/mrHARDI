@@ -8,11 +8,15 @@ from mrHARDI.base.application import (DictInstantiatingInstance,
                                            convert_enum)
 from mrHARDI.traits.ants import AntsPass, InitialTransform
 
-_aliases = {
-    "seed": "AntsConfiguration.seed"
+_a_aliases = {
+    "seed": "AntsConfiguration.seed",
+    "ca-split": "AntsConfiguration.coarse_angular_split",
+    "cl-split": "AntsConfiguration.coarse_linear_split",
+    "fa-split": "AntsConfiguration.fine_angular_split",
+    "fl-split": "AntsConfiguration.fine_linear_split"
 }
 
-_flags = {
+_a_flags = {
     "no-HM": (
         {"AntsConfiguration": {"match_histogram": False}},
         "Disable histogram matching between input and output image"
@@ -77,16 +81,21 @@ class AntsConfiguration(mrHARDIConfigurable):
     register_last_dimension = Bool(True).tag(config=True)
     seed = Integer(None, allow_none=True).tag(config=True)
 
+    coarse_angular_split = Integer(4).tag(config=True)
+    fine_angular_split = Integer(9).tag(config=True)
+    coarse_linear_split = Integer(3).tag(config=True)
+    fine_linear_split = Integer(0).tag(config=True)
+
     def _config_section(self):
         return super()._config_section()
 
     @default('app_flags')
     def _app_flags_default(self):
-        return _flags
+        return _a_flags
 
     @default('app_aliases')
     def _app_aliases_default(self):
-        return _aliases
+        return _a_aliases
 
     def _validate(self):
         if not 2 <= self.dimension <= 4:
@@ -158,7 +167,7 @@ class AntsConfiguration(mrHARDIConfigurable):
         ]) + " ".join(optionals)
 
 
-_aliases = {
+_at_aliases = {
     "dim": "AntsTransformConfiguration.dimensionality",
     "interp": "AntsTransformConfiguration.interpolation",
     "fill": "AntsTransformConfiguration.fill_value",
@@ -185,7 +194,7 @@ class AntsTransformConfiguration(mrHARDIConfigurable):
 
     @default('app_aliases')
     def _app_aliases_default(self):
-        return _aliases
+        return _at_aliases
 
     def _validate(self):
         pass

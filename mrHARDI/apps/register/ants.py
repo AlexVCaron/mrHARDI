@@ -1,14 +1,10 @@
 from os import getcwd, makedirs
-from os.path import basename, join
+from os.path import basename, dirname, join
 from shutil import copyfile, copytree
 from tempfile import TemporaryDirectory
 
 import nibabel as nib
 import numpy as np
-from scipy.io import loadmat
-from scipy.io.matlab.mio4 import MatFile4Writer
-from scipy.ndimage import center_of_mass
-from scipy.spatial.transform import Rotation
 from traitlets import Dict, Instance, Unicode, Bool, Enum
 from traitlets.config.loader import ArgumentError
 
@@ -21,13 +17,18 @@ from mrHARDI.base.application import (mrHARDIBaseApplication,
                                       required_file)
 from mrHARDI.base.dwi import load_metadata, save_metadata
 from mrHARDI.base.shell import launch_shell_process
+from mrHARDI.base.utils import split_ext
+from mrHARDI.compute.image import (align_by_center_of_mass,
+                                   get_common_spacing,
+                                   transform_images,
+                                   merge_transforms)
 from mrHARDI.compute.utils import load_transform
 from mrHARDI.config.ants import (AntsConfiguration,
                                  AntsTransformConfiguration,
                                  AntsMotionCorrectionConfiguration,
                                  ImageType)
-
 from mrHARDI.traits.ants import AntsAffine, AntsRigid, AntsSyN
+
 
 _reg_aliases = {
     'target': 'AntsRegistration.target_images',
@@ -100,14 +101,6 @@ class AntsRegistration(mrHARDIBaseApplication):
         ]
         super()._generate_config_file(filename)
 
-    def _get_common_spacing(self, img_list):
-        spacing = []
-        for img in img_list:
-            _img = nib.load(img)
-            spacing.append(min(_img.header.get_zooms()[:3]))
-
-        return min(spacing)
-
     def _setup_ants_ai_input(
         self, image_fname, log_file,
         ref_fname=None, mask_fname=None,
@@ -117,9 +110,7 @@ class AntsRegistration(mrHARDIBaseApplication):
         if base_dir is None:
             base_dir = getcwd()
 
-        ext = ".".join(image_fname.split(".")[1:])
-        name = image_fname.split(".")[0]
-
+        name, ext = split_ext(image_fname)
         image = nib.load(image_fname)
 
         if spacing is None:
@@ -127,9 +118,11 @@ class AntsRegistration(mrHARDIBaseApplication):
 
         if mask_fname:
             image_fname = join(base_dir, "{}_masked.{}".format(name, ext))
+
             mask = nib.load(mask_fname).get_fdata().astype(bool)
             data = image.get_fdata()
             data[~mask] = 0.
+
             nib.save(
                 nib.Nifti1Image(data, image.affine, image.header),
                 image_fname
@@ -173,119 +166,6 @@ class AntsRegistration(mrHARDIBaseApplication):
 
         return join(base_dir, "{}_res.{}".format(name, ext))
 
-    def _align_by_center_of_mass(
-        self, ref_fname, moving_fnames, out_mat_fname,
-        ref_mask_fname=None, moving_mask_fname=None, 
-        align_mask_fnames=None, suffix=None, base_dir=None
-    ):
-        def _sort_axes(data, ortn):
-            _ix = ortn[:, 0].astype(int)
-            return data[_ix] * ortn[:, 1]
-
-        if base_dir is None:
-            base_dir = getcwd()
-
-        ref_img, main_img = nib.load(ref_fname), nib.load(moving_fnames[0])
-        if ref_mask_fname:
-            ref_mask = nib.load(ref_mask_fname).get_fdata().astype(bool)
-        else:
-            ref_mask = np.ones(ref_img.shape, dtype=bool)
-
-        if moving_mask_fname:
-            mov_mask = nib.load(moving_mask_fname).get_fdata().astype(bool)
-        else:
-            mov_mask = np.ones(main_img.shape, dtype=bool)
-
-        ref_ornt = nib.io_orientation(ref_img.affine)
-        main_ornt = nib.io_orientation(main_img.affine)
-        ras_ornt = nib.orientations.axcodes2ornt(('R', 'A', 'S'))
-        lps_ornt = nib.orientations.axcodes2ornt(('L', 'P', 'S'))
-        ref_to_lps = nib.orientations.ornt_transform(ref_ornt, lps_ornt)
-        main_to_lps = nib.orientations.ornt_transform(main_ornt, lps_ornt)
-        ras_to_lps = nib.orientations.ornt_transform(ras_ornt, lps_ornt)
-        ras_to_lps[:, 1] *= -1.
-        ref_img = ref_img.as_reoriented(ref_to_lps)
-        main_img = main_img.as_reoriented(main_to_lps)
-
-        ref_data = ref_img.get_fdata().astype(ref_img.get_data_dtype())
-        main_data = main_img.get_fdata().astype(main_img.get_data_dtype())
-        ref_data[~ref_mask] = 0
-        main_data[~mov_mask] = 0
-        ref_cm = center_of_mass(ref_data)
-        mov_cm = center_of_mass(main_data)
-
-        ref_cm = ref_img.affine @ np.append(ref_cm, [1.])
-        mov_cm = main_img.affine @ np.append(mov_cm, [1.])
-        trans =  (ref_cm - mov_cm)[:3]
-
-        out_files = []
-        for fname in moving_fnames:
-            img = nib.load(fname)
-            affine = img.affine
-            affine[:-1, 3] += trans
-            name, ext = self._split_filename(fname)
-            out_files.append(join(base_dir, "{}.{}".format(
-                "_".join([n for n in [basename(name), suffix] if n]), ext
-            )))
-            nib.save(
-                nib.Nifti1Image(img.get_fdata(), affine, img.header),
-                out_files[-1]
-            )
-
-        if align_mask_fnames is not None:
-            for fname in align_mask_fnames:
-                img = nib.load(fname)
-                affine = img.affine
-                affine[:-1, 3] += trans
-                name, ext = self._split_filename(fname)
-                out_files.append(join(base_dir, "{}.{}".format(
-                    "_".join([n for n in [basename(name), suffix] if n]), ext
-                )))
-                nib.save(
-                    nib.Nifti1Image(img.get_fdata(), affine, img.header),
-                    out_files[-1]
-                )
-
-        out_mat = {
-            'MatrixOffsetTransformBase_double_3_3': np.concatenate(
-                (np.eye(3).flatten(), _sort_axes(trans, ras_to_lps))
-            ).reshape((-1, 1)).tolist(),
-            'fixed': np.zeros((3, 1)).tolist()
-        }
-        with open(out_mat_fname, 'wb') as file_stream:
-            fw = MatFile4Writer(
-                file_stream,
-                oned_as='row'
-            )
-            fw.put_variables(out_mat)
-
-        return out_files
-
-    def _split_filename(self, _fname):
-            return _fname.split(".")[0], ".".join(_fname.split(".")[1:])
-
-    def _transform_images(
-        self, images, transform_fname, suffix=None, base_dir=None
-    ):
-        if base_dir is None:
-            base_dir = getcwd()
-
-        names = []
-        for image in images:
-            name, ext = self._split_filename(image)
-            names.append(join(base_dir, "{}.{}".format(
-                "_".join([n for n in [basename(name), suffix] if n]), ext
-            )))
-            img = nib.load(image)
-            img_ornt = nib.io_orientation(img.affine)
-            transform = load_transform(transform_fname, img_ornt)
-            img = nib.Nifti1Image(
-                img.get_fdata(), transform @ img.affine, img.header
-            )
-            nib.save(img, names[-1])
-
-        return names
-
     def _call_ants_ai(
         self, targets, movings, ants_config, transform_fname,
         resampling_factor=3.,
@@ -298,7 +178,7 @@ class AntsRegistration(mrHARDIBaseApplication):
         additional_env=None, keep_files=False
     ):
         ai_config_dict = {}
-        spacing = resampling_factor * self._get_common_spacing(
+        spacing = resampling_factor * get_common_spacing(
             movings + targets
         )
 
@@ -311,14 +191,14 @@ class AntsRegistration(mrHARDIBaseApplication):
         with TemporaryDirectory(dir=base_dir) as prep_dir:
 
             if initial_transform is not None:
-                movings = self._transform_images(
+                movings = transform_images(
                     movings, initial_transform,
                     suffix="_init_transform",
                     base_dir=prep_dir
                 )
 
             for i, target in enumerate(targets):
-                _, ext = self._split_filename(target)
+                _, ext = split_ext(target)
                 ai_config_dict["t{}".format(i)] = join(
                     base_dir, "ants_ai_target{}.{}".format(i, ext)
                 )
@@ -332,7 +212,7 @@ class AntsRegistration(mrHARDIBaseApplication):
                 )
 
             for i, moving in enumerate(movings):
-                _, ext = self._split_filename(moving)
+                _, ext = split_ext(moving)
                 ai_config_dict["m{}".format(i)] = join(
                     base_dir, "ants_ai_moving{}.{}".format(i, ext)
                 )
@@ -347,7 +227,7 @@ class AntsRegistration(mrHARDIBaseApplication):
                 )
 
             if align_center_of_mass:
-                movings = self._align_by_center_of_mass(
+                movings = align_by_center_of_mass(
                     targets[0], movings, join(prep_dir, "center_of_mass.mat"),
                     align_mask_fnames=[moving_mask] \
                         if moving_mask is not None else None,
@@ -358,13 +238,13 @@ class AntsRegistration(mrHARDIBaseApplication):
                     movings, moving_mask = movings[:-1], movings[-1]
 
             for i, target in enumerate(targets):
-                _, ext = self._split_filename(target)
+                _, ext = split_ext(target)
                 copyfile(target, join(
                     base_dir, "ants_ai_target{}.{}".format(i, ext)
                 ))
 
             for i, moving in enumerate(movings):
-                _, ext = self._split_filename(moving)
+                _, ext = split_ext(moving)
                 copyfile(moving, join(
                     base_dir, "ants_ai_moving{}.{}".format(i, ext)
                 ))
@@ -414,22 +294,8 @@ class AntsRegistration(mrHARDIBaseApplication):
                     prep_dir, join(base_dir, "prepare"), dirs_exist_ok=True
                 )
 
-    def _merge_transforms(
-        self, out_transform, log_file, *transforms, additional_env=None
-    ):
-        cmd = "antsApplyTransforms {} -o Linear[{},0]".format(
-            " ".join("-t {}".format(t) for t in transforms[::-1]),
-            out_transform
-        )
-
-        launch_shell_process(
-            cmd, log_file,
-            additional_env=additional_env
-        )
-
     def execute(self):
         current_path = getcwd()
-
         max_spacing = np.max(
             nib.load(self.moving_images[0]).header.get_zooms()[:3]
         )
@@ -468,6 +334,8 @@ class AntsRegistration(mrHARDIBaseApplication):
             self._call_ants_ai(
                 self.target_images.copy(), self.moving_images.copy(),
                 self.configuration, "coarse_initializer.mat",
+                angular_step=160. / self.configuration.coarse_angular_split,
+                translation_step=16. / self.configuration.coarse_linear_split,
                 target_mask=target_mask,
                 moving_mask=moving_mask if moving_mask != target_mask else None,
                 base_dir=coarse_subpath,
@@ -479,8 +347,9 @@ class AntsRegistration(mrHARDIBaseApplication):
             self._call_ants_ai(
                 self.target_images.copy(), self.moving_images.copy(),
                 self.configuration, "fine_initializer.mat",
-                angular_step=5, angular_range=20,
-                translation_step=1, translation_range=[0, 0, 0],
+                angular_step=45. / self.configuration.fine_angular_split,
+                translation_range=3 * [self.configuration.fine_linear_split],
+                angular_range=20, translation_step=1,
                 align_center_of_mass=False,
                 initial_transform="coarse_initializer.mat",
                 target_mask=target_mask,
@@ -491,7 +360,7 @@ class AntsRegistration(mrHARDIBaseApplication):
                 keep_files=True
             )
 
-            self._merge_transforms(
+            merge_transforms(
                 "init_transform.mat", log_file, 
                 "coarse_initializer.mat", "fine_initializer.mat",
                 additional_env=additional_env
@@ -511,12 +380,9 @@ class AntsRegistration(mrHARDIBaseApplication):
             self.output_prefix, "{}_warped.nii.gz".format(self.output_prefix)
         )
 
-        print("Running registration")
         launch_shell_process(
             "antsRegistration {}".format(ants_config_fmt),
-            join(current_path, "{}.log".format(
-                basename(self.output_prefix)
-            )),
+            join(current_path, "{}.log".format(basename(self.output_prefix))),
             additional_env=additional_env
         )
 
@@ -577,28 +443,6 @@ class AntsTransform(mrHARDIBaseApplication):
     output = output_prefix_argument()
 
     aliases = Dict(default_value=_tr_aliases)
-
-    def _get_mat_rotation(self, filename):
-        # TODO: check center of rotation for all transforms 
-        # and order of rotation for Euler 3D 
-        mat = loadmat(filename)
-        if "AffineTransform_double_3_3" in mat:
-            arr = mat["AffineTransform_double_3_3"]
-        elif "AffineTransform_float_3_3" in mat:
-            arr = mat["AffineTransform_float_3_3"]
-        elif "Euler3DTransform_double_3_3" in mat:
-            arr = Rotation.from_euler(
-                'zyx', mat["Euler3DTransform_double_3_3"][:3].flatten()
-            ).as_matrix().flatten()
-        elif "Euler3DTransform_float_3_3" in mat:
-            arr = Rotation.from_euler(
-                'zyx', mat["Euler3DTransform_float_3_3"][:3].flatten()
-            ).as_matrix().flatten()
-        else:
-            print("Could not load rotation matrix from : {}".format(filename))
-            return np.eye(3)
-
-        return arr[:9].reshape((3, 3))
 
     def execute(self):
         current_path = getcwd()
@@ -858,44 +702,25 @@ class AntsTransform(mrHARDIBaseApplication):
         if metadata:
             save_metadata(self.output, metadata)
 
-        def _sort_axes(data, ortn):
-            _ix = ortn[:, 0].astype(int)
-            _or = ortn[:, 1] if len(data.shape) == 1 else ortn[:, 1, None]
-            return data[_ix] * _or
-
         if self.bvecs:
             ref = nib.load(self.transformation_ref)
+            ref_ornt = nib.io_orientation(ref.affine)
             bvecs = np.loadtxt(self.bvecs)
-            ras_ornt = nib.orientations.axcodes2ornt(('R', 'A', 'S'))
-            lps_ornt = nib.orientations.axcodes2ornt(('L', 'P', 'S'))
-            lps_to_ras = nib.orientations.ornt_transform(ras_ornt, lps_ornt)
-
-            source_rot = nib.affines.rescale_affine(
-                image.affine, image.shape[:3], (1, 1, 1)
-            )[:3, :3]
-            ref_rot = nib.affines.rescale_affine(
-                ref.affine, ref.shape[:3], (1, 1, 1)
-            )[:3, :3]
-
-            bvecs = np.linalg.inv(source_rot) @ bvecs
-            bvecs = _sort_axes(bvecs, lps_to_ras)
 
             for trans, inv in zip(self.transformations[::-1], invert[::-1]):
                 if trans.split(".")[-1] == "mat":
                     self.log.debug(
-                        "Rotating bvecs with respect to transform {}".format(
-                            basename(trans)
+                        "Rotating bvecs with {} : {} (in {})".format(
+                            "inverse_transform" if inv else "transform",
+                            basename(trans),
+                            dirname(trans)
                         )
                     )
-
-                    rot = self._get_mat_rotation(trans)
+                    rot = load_transform(trans, ref_ornt)[:3, :3]
                     if inv:
                         rot = np.linalg.inv(rot)
 
                     bvecs = rot @ bvecs
-
-            bvecs = _sort_axes(bvecs, lps_to_ras)
-            bvecs = ref_rot @ bvecs
 
             np.savetxt("{}.bvec".format(self.output), bvecs)
 

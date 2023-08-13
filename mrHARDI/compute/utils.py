@@ -8,7 +8,11 @@ from numpy import (concatenate,
                    dtype as datatype,
                    r_ as row)
 from scipy.io import loadmat
+from scipy.io.matlab.mio4 import MatFile4Writer
 from scipy.spatial.transform import Rotation
+
+from mrHARDI.compute.math.linalg import homo_mat
+
 
 def apply_mask_on_data(
     in_data, in_mask, fill_value=0., dtype=float, in_place=True
@@ -125,12 +129,31 @@ def orientation_to_transform(ornt):
     return np.diag(ornt[:, 1][ornt[:, 0].astype(int)])
 
 
+def compute_reorientation(_ornt1, _ornt2):
+    o1_to_o2 = nib.orientations.ornt_transform(_ornt1, _ornt2)
+    return homo_mat(orientation_to_transform(o1_to_o2))
+
+
+
+def compute_reorientation_to_frame(_img, _frame=('R', 'A', 'S')):
+    return compute_reorientation(
+        nib.io_orientation(_img.affine),
+        nib.orientations.axcodes2ornt(_frame)
+    )
+
+
+def compute_reorientation_to_image(_img1, _img2):
+    return compute_reorientation(
+        nib.io_orientation(_img1.affine), nib.io_orientation(_img2.affine)
+    )
+
+
 def load_transform(
     filename, target_ornt=nib.orientations.axcodes2ornt(('R', 'A', 'S'))
 ):
     mat = loadmat(filename)
 
-    def _affine(_type, t_sign=-1.):
+    def _affine(_type):
         _m = np.vstack((mat[_type].reshape((4, 3)).T, [0, 0, 0, 1])).T
         _m[[0, 1, 2, -1, -1, -1], [-1, -1, -1, 0, 1, 2]] = \
             _m[[-1, -1, -1, 0, 1, 2], [0, 1, 2, -1, -1, -1]]
@@ -138,11 +161,12 @@ def load_transform(
         _m[:3, -1] += offset - np.dot(_m[:3, :3], offset)
         return _m
 
-    def _euler(_type, t_sign=-1.):
-        _r = Rotation.from_euler('zyx', mat[_type][:3].flatten()).as_matrix()
-        _m = np.vstack((np.vstack((_r.T, mat[_type][3:])).T, [0, 0, 0, 1]))
+    def _euler(_type):
         offset = mat['fixed'].flatten()[:3]
-        _m[:3, -1] += offset - np.dot(_m[:3, :3], offset)
+        _m = homo_mat(
+            Rotation.from_euler('zyx', mat[_type][:3].flatten()).as_matrix()
+        )
+        _m[:3, 3] = mat[_type][3:] + offset - np.dot(_m[:3, :3], offset)
         return _m
 
     if "AffineTransform_double_3_3" in mat:
@@ -150,9 +174,9 @@ def load_transform(
     elif "AffineTransform_float_3_3" in mat:
         _t = _affine("AffineTransform_float_3_3")
     elif "MatrixOffsetTransformBase_double_3_3" in mat:
-        _t = _affine("MatrixOffsetTransformBase_double_3_3", 1.)
+        _t = _affine("MatrixOffsetTransformBase_double_3_3")
     elif "MatrixOffsetTransformBase_float_3_3" in mat:
-        _t = _affine("MatrixOffsetTransformBase_float_3_3", 1.)
+        _t = _affine("MatrixOffsetTransformBase_float_3_3")
     elif "Euler3DTransform_double_3_3" in mat:
         _t = _euler("Euler3DTransform_double_3_3")
     elif "Euler3DTransform_float_3_3" in mat:
@@ -161,23 +185,42 @@ def load_transform(
         print("Could not load rotation matrix from : {}".format(filename))
         _t = np.eye(4)
 
-    lps_ornt = nib.orientations.axcodes2ornt(("L", "P", "S"))
-    target_to_lps = nib.orientations.ornt_transform(target_ornt, lps_ornt)
-    ornt_trans = orientation_to_transform(target_to_lps)
-    _t[:3, :3] = ornt_trans @ _t[:3, :3] @ ornt_trans
-    _t[:3, 3] = ornt_trans @ _t[:3, 3]
+    ornt_trans = compute_reorientation(
+        target_ornt, nib.orientations.axcodes2ornt(("L", "P", "S"))
+    )
+
+    _t[:3, :3] = ornt_trans[:3, :3] @ _t[:3, :3] @ ornt_trans[:3, :3]
+    _t[:3, 3] = ornt_trans[:3, :3] @ _t[:3, 3]
 
     return np.linalg.inv(_t)
 
 
-def save_transform(matrix, out_type, out_name):
+def save_transform(
+    matrix, out_type, out_name,
+    center = np.array([0, 0, 0]),
+    target_ornt=nib.orientations.axcodes2ornt(('L', 'P', 'S'))
+):
     trans_ornt = nib.io_orientation(matrix)
-    lps_ornt = nib.orientations.axcodes2ornt(("L", "P", "S"))
-    trans_to_lps = nib.orientations.ornt_transform(trans_ornt, lps_ornt)
+    ornt_trans = compute_reorientation(trans_ornt, target_ornt)
 
+    _r = ornt_trans[:3, :3] @ matrix[:3, :3] @ ornt_trans[:3, :3]
+    _o = ornt_trans[:3, :3] @ matrix[:3, 3]
+    _t = _o - center + _r @ center
+
+    mat = {}
     if "AffineTransform" in out_type:
-        return 1
+        mat[out_type] = np.concatenate((_r.flatten(), _t))
+        mat["fixed"] = center
     elif "MatrixOffsetTransformBase" in out_type:
-        return 1
-    elif "Euler3DTransform_double_3_3" in out_type:
-        return 1
+        mat[out_type] = np.concatenate((np.eye(3).flatten(), _t))
+        mat["fixed"] = center
+    elif "Euler3DTransform" in out_type:
+        angles = Rotation.from_matrix(_r).as_euler('zyx')
+        mat[out_type] = np.concatenate((angles, _t))
+        mat["fixed"] = np.append(center, [1.])
+
+    mat[out_type] = mat[out_type].reshape((-1, 1))
+    mat["fixed"] = mat["fixed"].reshape((-1, 1))
+    with open(out_name, 'wb') as file_stream:
+        fw = MatFile4Writer(file_stream, oned_as='row')
+        fw.put_variables(mat)
