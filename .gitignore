@@ -154,3 +154,5 @@ venv*/
 *.simg
 
 .vscode/
+
+.ignore/
