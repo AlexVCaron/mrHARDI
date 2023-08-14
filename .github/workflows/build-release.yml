@@ -64,7 +64,6 @@ jobs:
           push: true
           set: |
             mrhardi.output=type=registry
-            mrhardi.tags=versa:local
             mrhardi_cloner.args.mrhardi_ver=${{ github.event.release.tag_name }}
   
   mrhardi-packaging:
