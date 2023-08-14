@@ -24,7 +24,7 @@ class InitialTransform(TraitType):
             return None
 
         if isinstance(value, str):
-            return value
+            return "--initial-{}-transform {}".format(self.transform_type, value)
 
         target_index, moving_index, strat = value
         return "--initial-{}-transform [$t{}%,$m{}%,{}]".format(
@@ -41,13 +41,15 @@ class InitialTransform(TraitType):
 
     def validate(self, obj, value):
         if isinstance(value, str):
-            return value
+            return "--initial-{}-transform {}".format(self.transform_type, value)
         if isinstance(value, (tuple, list)):
             if len(value) == 3:
                 t, m, strat = value
                 if isinstance(t, int) and isinstance(m, int):
                     if isinstance(strat, int) and (0 <= strat <= 2):
-                        return value
+                        return "--initial-{}-transform [$t{}%,$m{}%,{}]".format(
+                            self.transform_type, t, m, strat
+                        ).replace("$", "{").replace("%", "}")
 
         if value is not None:
             self.error(obj, value)
@@ -81,39 +83,111 @@ class AntsMetric(MagicDict):
         return repr(self)
 
 
+class MetricMattes(AntsMetric):
+    def __init__(
+        self, target_index, moving_index, weight=1.,
+        bins=32, sampling="Regular", sampling_p=0.25,
+        grad_filtering=False, args=None, **_
+    ):
+        if args and len(args) == 3:
+            bins, sampling, sampling_p = args
+            values = (bins, sampling, sampling_p)
+        elif args and len(args) == 4:
+            weight, bins, sampling, sampling_p = args
+            values = (weight, bins, sampling, sampling_p)
+        elif args and len(args) == 5:
+            weight, bins, sampling, sampling_p, grad_filtering = args
+            values = (weight, bins, sampling, sampling_p, int(grad_filtering))
+
+        super().__init__(
+            target_index, moving_index, values
+        )
+
+        self._name = "Mattes"
+
+    def for_ants_ai(self):
+        attrs = self.copy_attributes()
+        target, moving = attrs.pop("target_index"), attrs.pop("moving_index")
+        args = attrs.pop("args")
+
+        if len(args) == 3:
+            bins, sampling, sampling_p = args
+        elif len(args) == 4:
+            _, bins, sampling, sampling_p = args
+        elif len(args) == 5:
+            _, bins, sampling, sampling_p, _ = args
+
+        return MetricMI(
+            target, moving, args=(bins // 2, sampling, sampling_p / 2), **attrs)
+
+
 class MetricMI(AntsMetric):
     def __init__(
         self, target_index, moving_index, weight=1.,
         bins=32, sampling="Regular", sampling_p=0.25,
         grad_filtering=False, args=None, **_
     ):
-        if args and len(args) == 4:
+        if args and len(args) == 3:
+            bins, sampling, sampling_p = args
+            values = (bins, sampling, sampling_p)
+        elif args and len(args) == 4:
             weight, bins, sampling, sampling_p = args
+            values = (weight, bins, sampling, sampling_p)
         elif args and len(args) == 5:
             weight, bins, sampling, sampling_p, grad_filtering = args
+            values = (weight, bins, sampling, sampling_p, int(grad_filtering))
 
         super().__init__(
-            target_index, moving_index, 
-            (weight, bins, sampling, sampling_p, grad_filtering)
+            target_index, moving_index, values
         )
 
         self._name = "MI"
 
+    def for_ants_ai(self):
+        attrs = self.copy_attributes()
+        target, moving = attrs.pop("target_index"), attrs.pop("moving_index")
+        args = attrs.pop("args")
+
+        if len(args) == 3:
+            bins, sampling, sampling_p = args
+        elif len(args) == 4:
+            _, bins, sampling, sampling_p = args
+        elif len(args) == 5:
+            _, bins, sampling, sampling_p, _ = args
+
+        return MetricMI(
+            target, moving, args=(bins // 2, sampling, sampling_p / 2), **attrs)
 
 class MetricCC(AntsMetric):
     def __init__(
         self, target_index, moving_index, weight=1., radius=4, 
         sampling="Regular", sampling_p=0.25, args=None, **_
     ):
+        if args and len(args) == 3:
+            radius, sampling, sampling_p = args
+            values = (radius, sampling, sampling_p)
         if args and len(args) == 4:
             weight, radius, sampling, sampling_p = args
+            values = (weight, radius, sampling, sampling_p)
 
         super().__init__(
-            target_index, moving_index, (weight, radius, sampling, sampling_p)
+            target_index, moving_index, values
         )
 
         self._name = "CC"
 
+    def for_ants_ai(self):
+        attrs = self.copy_attributes()
+        target, moving = attrs.pop("target_index"), attrs.pop("moving_index")
+        args = attrs.pop("args")
+
+        if len(args) == 3:
+            radius, sampling, sampling_p = args
+        elif len(args) == 4:
+            _, radius, sampling, sampling_p = args
+
+        return MetricMI(
+            target, moving, args=(radius, sampling, sampling_p), **attrs)
 
 class AntsPass(mrHARDIConfigurable):
     def __init__(self, is_motion_correction=False, name_dict=None, **kwargs):
@@ -161,9 +235,12 @@ class AntsPass(mrHARDIConfigurable):
     def get_time_restriction(self, ndim):
         pass
 
-    def ants_registration_conv_formatter(self):
+    def ants_registration_conv_formatter(self, for_ants_ai=False):
+        max_iters = "x".join(str(i) for i in self.conv_max_iter)
+        if for_ants_ai:
+            max_iters = "{}".format(self.conv_max_iter[0]) 
         return "--convergence [{},{},{}]".format(
-            "x".join(str(i) for i in self.conv_max_iter),
+            max_iters,
             self.conv_eps,
             self.conv_win
         )
@@ -173,7 +250,16 @@ class AntsPass(mrHARDIConfigurable):
             "x".join(str(i) for i in self.conv_max_iter)
         )
 
-    def serialize(self, voxel_size, with_convergence=True):
+    def serialize(self, voxel_size, with_convergence=True, for_ants_ai=False):
+        if for_ants_ai:
+            return " ".join([
+                " ".join(
+                    "--metric {}".format(metric.for_ants_ai())
+                    for i, metric in enumerate(self.metrics)
+                ),
+                self._conv_fmt(for_ants_ai)
+            ]).replace("MI", "Mattes")
+
         return " ".join([
             " ".join(
                 "--metric {}".format(metric)
@@ -199,14 +285,16 @@ class AntsRigid(AntsPass):
             ["1" for _ in range(ndim - 1)] + ["0"]
         )
 
+    name = "Rigid"
+
     @default("metrics")
     def _metrics_default(self):
         return [MetricMI(0, 0)]
 
-    def serialize(self, voxel_size, with_convergence=True):
+    def serialize(self, voxel_size, with_convergence=True, for_ants_ai=False):
         return " ".join([
             "--transform Rigid[{}]".format(self.grad_step),
-            super().serialize(voxel_size)
+            super().serialize(voxel_size, with_convergence, for_ants_ai)
         ])
 
 
@@ -218,14 +306,16 @@ class AntsAffine(AntsPass):
         trans = list("1" for _ in range(ndim - 1)) + ["0"]
         return "x".join(list(mat.astype(str).flatten().tolist()) + trans)
 
+    name = "Affine"
+
     @default("metrics")
     def _metrics_default(self):
         return [MetricMI(0, 0)]
 
-    def serialize(self, voxel_size, with_convergence=True):
+    def serialize(self, voxel_size, with_convergence=True, for_ants_ai=False):
         return " ".join([
             "--transform Affine[{}]".format(self.grad_step),
-            super().serialize(voxel_size)
+            super().serialize(voxel_size, with_convergence, for_ants_ai)
         ])
 
 
@@ -236,15 +326,16 @@ class AntsSyN(AntsPass):
     type = Unicode(u'SyN').tag(config=True)
     var_penality = Integer(3).tag(config=True)
     var_total = Integer(0).tag(config=True)
+    name = "SyN"
 
     @default("metrics")
     def _metrics_default(self):
         return [MetricCC(0, 0)]
 
-    def serialize(self, voxel_size, with_convergence=True):
+    def serialize(self, voxel_size, with_convergence=True, for_ants_ai=False):
         return " ".join([
             "--transform {}[{},{},{}]".format(
                 self.type, self.grad_step, self.var_penality, self.var_total
             ),
-            super().serialize(voxel_size)
+            super().serialize(voxel_size, with_convergence, for_ants_ai)
         ])

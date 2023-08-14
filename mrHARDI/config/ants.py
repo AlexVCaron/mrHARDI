@@ -8,11 +8,15 @@ from mrHARDI.base.application import (DictInstantiatingInstance,
                                            convert_enum)
 from mrHARDI.traits.ants import AntsPass, InitialTransform
 
-_aliases = {
-    "seed": "AntsConfiguration.seed"
+_a_aliases = {
+    "seed": "AntsConfiguration.seed",
+    "ca-split": "AntsConfiguration.coarse_angular_split",
+    "cl-split": "AntsConfiguration.coarse_linear_split",
+    "fa-split": "AntsConfiguration.fine_angular_split",
+    "fl-split": "AntsConfiguration.fine_linear_split"
 }
 
-_flags = {
+_a_flags = {
     "no-HM": (
         {"AntsConfiguration": {"match_histogram": False}},
         "Disable histogram matching between input and output image"
@@ -77,16 +81,21 @@ class AntsConfiguration(mrHARDIConfigurable):
     register_last_dimension = Bool(True).tag(config=True)
     seed = Integer(None, allow_none=True).tag(config=True)
 
+    coarse_angular_split = Integer(4).tag(config=True)
+    fine_angular_split = Integer(9).tag(config=True)
+    coarse_linear_split = Integer(3).tag(config=True)
+    fine_linear_split = Integer(0).tag(config=True)
+
     def _config_section(self):
         return super()._config_section()
 
     @default('app_flags')
     def _app_flags_default(self):
-        return _flags
+        return _a_flags
 
     @default('app_aliases')
     def _app_aliases_default(self):
-        return _aliases
+        return _a_aliases
 
     def _validate(self):
         if not 2 <= self.dimension <= 4:
@@ -94,7 +103,24 @@ class AntsConfiguration(mrHARDIConfigurable):
                 "Dimension of input images must be between 2 and 4"
             )
 
-    def serialize(self, voxel_size, *args, **kwargs):
+    def set_initial_transform_from_ants_ai(self, transform_mat):
+        self.init_moving_transform = transform_mat
+
+    def is_initializable(self):
+        return any(p.name in ["AntsRigid", "AntsAffine"] for p in self.passes)
+
+    def get_ants_ai_parameters(self, voxel_size):
+        options = ["-d {}".format(self.dimension)]
+        transform = []
+        for ants_pass in self.passes:
+            if ants_pass.name == "AntsRigid" and len(transform) == 0:
+                transform.append(
+                    ants_pass.serialize(voxel_size, for_ants_ai=True)
+                )
+
+        return " ".join(options + transform)
+
+    def serialize(self, voxel_size, *args, masks=None, **kwargs):
         optionals, init_i = [''], 0
 
         if self.match_histogram:
@@ -102,13 +128,12 @@ class AntsConfiguration(mrHARDIConfigurable):
                 0 if self.accross_modalities else 1
             ))
 
+        if masks:
+            optionals.append(masks)
+
         if self.init_moving_transform and len(self.init_moving_transform) > 0:
             for transform in self.init_moving_transform:
-                optionals.append(
-                    "--initial-moving-transform [$t{}%,$m{}%,{}]".format(
-                        *transform
-                    ).replace("$", "{").replace("%", "}")
-                )
+                optionals.append(transform)
                 if not self.register_last_dimension:
                     optionals.append("--restrict-deformation {}x0".format(
                         "x".join(str(1) for _ in range(self.dimension - 1))
@@ -116,11 +141,7 @@ class AntsConfiguration(mrHARDIConfigurable):
 
         if self.init_fixed_transform and len(self.init_fixed_transform) > 0:
             for transform in self.init_fixed_transform:
-                optionals.append(
-                    "--initial-fixed-transform [$t{}%,$m{}%,{}]".format(
-                        *transform
-                    ).replace("$", "{").replace("%", "}")
-                )
+                optionals.append(transform)
                 if not self.register_last_dimension:
                     optionals.append("--restrict-deformation {}x0".format(
                         "x".join(str(1) for _ in range(self.dimension - 1))
@@ -146,7 +167,7 @@ class AntsConfiguration(mrHARDIConfigurable):
         ]) + " ".join(optionals)
 
 
-_aliases = {
+_at_aliases = {
     "dim": "AntsTransformConfiguration.dimensionality",
     "interp": "AntsTransformConfiguration.interpolation",
     "fill": "AntsTransformConfiguration.fill_value",
@@ -173,7 +194,7 @@ class AntsTransformConfiguration(mrHARDIConfigurable):
 
     @default('app_aliases')
     def _app_aliases_default(self):
-        return _aliases
+        return _at_aliases
 
     def _validate(self):
         pass

@@ -344,7 +344,7 @@ class AssertDwiDimensions(mrHARDIBaseApplication):
         img = nib.load(self.dwi)
         bvals, bvecs = np.loadtxt(self.bvals), np.loadtxt(self.bvecs).T
 
-        if self.strategy is "error":
+        if self.strategy == "error":
             if img.shape[-1] != len(bvals) != len(bvecs):
                 raise DwiMismatchError(img.shape[-1], len(bvals), len(bvecs))
         else:

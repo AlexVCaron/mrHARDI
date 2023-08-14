@@ -17,6 +17,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   create_singularity_dev:
     if: github.event.pull_request.merged == true
@@ -109,7 +113,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           from: avcaron/mrhardi:pr-${{ github.event.number }}
           tags: |
-            avcaron/mrhardi:dev
+            avcaron/versa:dev
       -
         name: Delete PR tag from dockerhub
         if: ${{ steps.git_diff.outputs.lines > 0 }}

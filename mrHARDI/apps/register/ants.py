@@ -1,10 +1,10 @@
-from os import getcwd
-from os.path import basename, join
-from tempfile import TemporaryDirectory, mkdtemp
+from os import getcwd, makedirs
+from os.path import basename, dirname, join
+from shutil import copyfile, copytree
+from tempfile import TemporaryDirectory
 
 import nibabel as nib
 import numpy as np
-from scipy.io import loadmat
 from traitlets import Dict, Instance, Unicode, Bool, Enum
 from traitlets.config.loader import ArgumentError
 
@@ -17,12 +17,18 @@ from mrHARDI.base.application import (mrHARDIBaseApplication,
                                       required_file)
 from mrHARDI.base.dwi import load_metadata, save_metadata
 from mrHARDI.base.shell import launch_shell_process
+from mrHARDI.base.utils import split_ext
+from mrHARDI.compute.image import (align_by_center_of_mass,
+                                   get_common_spacing,
+                                   transform_images,
+                                   merge_transforms)
+from mrHARDI.compute.utils import load_transform
 from mrHARDI.config.ants import (AntsConfiguration,
                                  AntsTransformConfiguration,
                                  AntsMotionCorrectionConfiguration,
                                  ImageType)
-
 from mrHARDI.traits.ants import AntsAffine, AntsRigid, AntsSyN
+
 
 _reg_aliases = {
     'target': 'AntsRegistration.target_images',
@@ -35,6 +41,10 @@ _reg_flags = dict(
     verbose=(
         {"AntsRegistration": {'verbose': True}},
         "Enables verbose output"
+    ),
+    init_ai=(
+        {"AntsRegistration": {'init_with_ants_ai': True}},
+        "Generates initial transformation using grid search"
     )
 )
 
@@ -78,6 +88,8 @@ class AntsRegistration(mrHARDIBaseApplication):
 
     output_prefix = output_prefix_argument()
 
+    init_with_ants_ai = Bool(False).tag(config=True)
+
     verbose = Bool(False).tag(config=True)
 
     aliases = Dict(default_value=_reg_aliases)
@@ -89,14 +101,209 @@ class AntsRegistration(mrHARDIBaseApplication):
         ]
         super()._generate_config_file(filename)
 
+    def _setup_ants_ai_input(
+        self, image_fname, log_file,
+        ref_fname=None, mask_fname=None,
+        spacing=None, additional_env=None,
+        base_dir=None
+    ):
+        if base_dir is None:
+            base_dir = getcwd()
+
+        name, ext = split_ext(image_fname)
+        image = nib.load(image_fname)
+
+        if spacing is None:
+            spacing = 3. * min(image.header.get_zooms()[:3])
+
+        if mask_fname:
+            image_fname = join(base_dir, "{}_masked.{}".format(name, ext))
+
+            mask = nib.load(mask_fname).get_fdata().astype(bool)
+            data = image.get_fdata()
+            data[~mask] = 0.
+
+            nib.save(
+                nib.Nifti1Image(data, image.affine, image.header),
+                image_fname
+            )
+
+        cmd = [
+            "scil_crop_volume.py {} {} --output_bbox {} -f".format(
+                image_fname,
+                join(base_dir, "{}_cropped.{}".format(name, ext)),
+                join(base_dir, "{}_bbox.pkl".format(name))
+            )
+        ]
+        image_fname = join(base_dir, "{}_cropped.{}".format(name, ext))
+
+        if mask_fname:
+            cmd.append("scil_crop_volume.py {} {} --input_bbox {} -f".format(
+                mask_fname,
+                join(base_dir, "{}_mask_cropped.{}".format(name, ext)),
+                join(base_dir, "{}_bbox.pkl".format(name))
+            ))
+            mask_fname = join(base_dir, "{}_mask_cropped.{}".format(name, ext))
+
+        if ref_fname and self.configuration.match_histogram:
+            cmd.append("ImageMath 3 {} HistogramMatch {} {}".format(
+                join(base_dir, "{}_hmatch.{}".format(name, ext)),
+                image_fname,
+                ref_fname
+            ))
+            image_fname = join(base_dir, "{}_hmatch.{}".format(name, ext))
+
+        cmd.append("ResampleImageBySpacing 3 {} {} {} {} {} 1".format(
+            image_fname,
+            join(base_dir, "{}_res.{}".format(name, ext)),
+            spacing, spacing, spacing
+        ))
+
+        for c in cmd:
+            launch_shell_process(
+                c, log_file, additional_env=additional_env
+            )
+
+        return join(base_dir, "{}_res.{}".format(name, ext))
+
+    def _call_ants_ai(
+        self, targets, movings, ants_config, transform_fname,
+        resampling_factor=3.,
+        angular_step=40, angular_range=60,
+        align_axes=False, align_center_of_mass=True,
+        translation_step=6, translation_range=[10, 10, 10],
+        target_mask=None, moving_mask=None,
+        initial_transform=None,
+        base_dir=None, log_file=None,
+        additional_env=None, keep_files=False
+    ):
+        ai_config_dict = {}
+        spacing = resampling_factor * get_common_spacing(
+            movings + targets
+        )
+
+        if base_dir is None:
+            base_dir = getcwd()
+
+        if log_file is None:
+            log_file = join(base_dir, "ants_ai.log")
+
+        with TemporaryDirectory(dir=base_dir) as prep_dir:
+
+            if initial_transform is not None:
+                movings = transform_images(
+                    movings, initial_transform,
+                    suffix="_init_transform",
+                    base_dir=prep_dir
+                )
+
+            for i, target in enumerate(targets):
+                _, ext = split_ext(target)
+                ai_config_dict["t{}".format(i)] = join(
+                    base_dir, "ants_ai_target{}.{}".format(i, ext)
+                )
+
+                targets[i] = self._setup_ants_ai_input(
+                    target, log_file,
+                    mask_fname=target_mask,
+                    spacing=spacing,
+                    additional_env=additional_env,
+                    base_dir=prep_dir
+                )
+
+            for i, moving in enumerate(movings):
+                _, ext = split_ext(moving)
+                ai_config_dict["m{}".format(i)] = join(
+                    base_dir, "ants_ai_moving{}.{}".format(i, ext)
+                )
+
+                movings[i] = self._setup_ants_ai_input(
+                    moving, log_file,
+                    ref_fname=targets[min(i, len(targets) - 1)],
+                    mask_fname=moving_mask,
+                    spacing=spacing,
+                    additional_env=additional_env,
+                    base_dir=prep_dir
+                )
+
+            if align_center_of_mass:
+                movings = align_by_center_of_mass(
+                    targets[0], movings, join(prep_dir, "center_of_mass.mat"),
+                    align_mask_fnames=[moving_mask] \
+                        if moving_mask is not None else None,
+                    suffix="cm", base_dir=prep_dir
+                )
+
+                if moving_mask is not None:
+                    movings, moving_mask = movings[:-1], movings[-1]
+
+            for i, target in enumerate(targets):
+                _, ext = split_ext(target)
+                copyfile(target, join(
+                    base_dir, "ants_ai_target{}.{}".format(i, ext)
+                ))
+
+            for i, moving in enumerate(movings):
+                _, ext = split_ext(moving)
+                copyfile(moving, join(
+                    base_dir, "ants_ai_moving{}.{}".format(i, ext)
+                ))
+
+            ai_init_params = ants_config.get_ants_ai_parameters(spacing)
+            ai_init_params = ai_init_params.format(**ai_config_dict)
+            ai_init_params += " -s [{},{}] -p {} -g [{},{}]".format(
+                angular_step, angular_range / 180., int(align_axes),
+                translation_step, "x".join(str(t) for t in translation_range)
+            )
+            ai_init_params += " --output {}".format(
+                join(base_dir, "ants_ai_transform.mat")
+            )
+            ai_init_params += " --verbose {}".format(int(self.verbose))
+
+            if target_mask:
+                if moving_mask is None:
+                    ai_init_params += "--masks {}".format(target_mask)
+                else:
+                    ai_init_params += " --masks [{},{}]".format(
+                        target_mask, moving_mask
+                    )
+
+            cmd = []
+            cmd.append("antsAI {}".format(ai_init_params))
+
+            if align_center_of_mass:
+                cmd.append("antsApplyTransforms -t {} -t {} -o {}".format(
+                    join(base_dir, "ants_ai_transform.mat"),
+                    join(prep_dir, "center_of_mass.mat"),
+                    "Linear[{},0]".format(transform_fname)
+                ))
+            else:
+                cmd.append("mv {} {}".format(
+                    join(base_dir, "ants_ai_transform.mat"),
+                    transform_fname
+                ))
+
+            for c in cmd:
+                launch_shell_process(
+                    c, log_file,
+                    additional_env=additional_env
+                )
+
+            if keep_files:
+                copytree(
+                    prep_dir, join(base_dir, "prepare"), dirs_exist_ok=True
+                )
+
     def execute(self):
         current_path = getcwd()
-
         max_spacing = np.max(
             nib.load(self.moving_images[0]).header.get_zooms()[:3]
         )
 
-        ants_config_fmt = self.configuration.serialize(max_spacing)
+        additional_env = {}
+        if self.configuration.seed is not None:
+            additional_env["ANTS_RANDOM_SEED"] = self.configuration.seed
+
         config_dict = {}
 
         for i, target in enumerate(self.target_images):
@@ -105,30 +312,77 @@ class AntsRegistration(mrHARDIBaseApplication):
         for i, moving in enumerate(self.moving_images):
             config_dict["m{}".format(i)] = moving
 
+        target_mask, moving_mask, masks_param = None, None, ""
+        if self.mask:
+            if len(self.mask) == 1:
+                target_mask = moving_mask = self.mask[0]
+            else:
+                target_mask, moving_mask = self.mask
+
+            masks_param = " --masks [{},{}]".format(target_mask, moving_mask)
+
+        if self.init_with_ants_ai and self.configuration.is_initializable():
+            coarse_subpath = join(current_path, "coarse_init")
+            makedirs(coarse_subpath, exist_ok=True)
+            fine_subpath = join(current_path, "fine_init")
+            makedirs(fine_subpath, exist_ok=True)
+
+            log_file = join(current_path, "{}_initialization.log".format(
+                basename(self.output_prefix)
+            ))
+
+            self._call_ants_ai(
+                self.target_images.copy(), self.moving_images.copy(),
+                self.configuration, "coarse_initializer.mat",
+                angular_step=160. / self.configuration.coarse_angular_split,
+                translation_step=16. / self.configuration.coarse_linear_split,
+                target_mask=target_mask,
+                moving_mask=moving_mask if moving_mask != target_mask else None,
+                base_dir=coarse_subpath,
+                log_file=log_file,
+                additional_env=additional_env,
+                keep_files=True
+            )
+
+            self._call_ants_ai(
+                self.target_images.copy(), self.moving_images.copy(),
+                self.configuration, "fine_initializer.mat",
+                angular_step=45. / self.configuration.fine_angular_split,
+                translation_range=3 * [self.configuration.fine_linear_split],
+                angular_range=20, translation_step=1,
+                align_center_of_mass=False,
+                initial_transform="coarse_initializer.mat",
+                target_mask=target_mask,
+                moving_mask=moving_mask if moving_mask != target_mask else None,
+                base_dir=fine_subpath,
+                log_file=log_file,
+                additional_env=additional_env,
+                keep_files=True
+            )
+
+            merge_transforms(
+                "init_transform.mat", log_file, 
+                "coarse_initializer.mat", "fine_initializer.mat",
+                additional_env=additional_env
+            )
+
+            self.configuration.set_initial_transform_from_ants_ai(
+                "init_transform.mat"
+            )
+
+        ants_config_fmt = self.configuration.serialize(max_spacing, masks_param)
         ants_config_fmt = ants_config_fmt.format(**config_dict)
+
+        if self.verbose:
+            ants_config_fmt += " --verbose"
 
         ants_config_fmt += " --output [{},{}]".format(
             self.output_prefix, "{}_warped.nii.gz".format(self.output_prefix)
         )
 
-        if self.mask:
-            mask = self.mask
-            if len(mask) == 1:
-                mask += self.mask
-            ants_config_fmt += " --masks [{}]".format(",".join(mask))
-
-        if self.verbose:
-            ants_config_fmt += " --verbose"
-
-        additional_env = {}
-        if self.configuration.seed is not None:
-            additional_env["ANTS_RANDOM_SEED"] = self.configuration.seed
-
         launch_shell_process(
             "antsRegistration {}".format(ants_config_fmt),
-            join(current_path, "{}.log".format(
-                basename(self.output_prefix)
-            )),
+            join(current_path, "{}.log".format(basename(self.output_prefix))),
             additional_env=additional_env
         )
 
@@ -190,17 +444,6 @@ class AntsTransform(mrHARDIBaseApplication):
 
     aliases = Dict(default_value=_tr_aliases)
 
-    def _get_mat_rotation(self, filename):
-        mat = loadmat(filename)
-        if "AffineTransform_double_3_3" in mat:
-            arr = mat["AffineTransform_double_3_3"]
-        elif "AffineTransform_float_3_3" in mat:
-            arr = mat["AffineTransform_float_3_3"]
-        else:
-            return None
-
-        return arr[:9].reshape((3, 3))
-
     def execute(self):
         current_path = getcwd()
 
@@ -242,6 +485,7 @@ class AntsTransform(mrHARDIBaseApplication):
 
             args += " -u {}".format(out_type)
 
+        invert = []
         if self.transformations and len(self.transformations) > 0:
             if not self.invert or len(self.invert) == 0:
                 invert = [False for _ in range(len(self.transformations))]
@@ -459,20 +703,24 @@ class AntsTransform(mrHARDIBaseApplication):
             save_metadata(self.output, metadata)
 
         if self.bvecs:
+            ref = nib.load(self.transformation_ref)
+            ref_ornt = nib.io_orientation(ref.affine)
             bvecs = np.loadtxt(self.bvecs)
-            bvecs = np.linalg.inv(image.affine[:3, :3]) @ bvecs
 
-            for trans in self.transformations[::-1]:
+            for trans, inv in zip(self.transformations[::-1], invert[::-1]):
                 if trans.split(".")[-1] == "mat":
                     self.log.debug(
-                        "Rotating bvecs with respect to transform {}".format(
-                            basename(trans)
+                        "Rotating bvecs with {} : {} (in {})".format(
+                            "inverse_transform" if inv else "transform",
+                            basename(trans),
+                            dirname(trans)
                         )
                     )
-                    bvecs = self._get_mat_rotation(trans) @ bvecs
+                    rot = load_transform(trans, ref_ornt)[:3, :3]
+                    if inv:
+                        rot = np.linalg.inv(rot)
 
-            ref = nib.load(self.transformation_ref)
-            bvecs = ref.affine[:3, :3] @ bvecs
+                    bvecs = rot @ bvecs
 
             np.savetxt("{}.bvec".format(self.output), bvecs)
 
