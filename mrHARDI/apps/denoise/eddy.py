@@ -216,7 +216,7 @@ class Eddy(mrHARDIBaseApplication):
 
                 eddy_exec += "_cuda"
             else:
-                eddy_exec += "_openmp"
+                eddy_exec += "_cpu"
 
             debug_args = ""
             if self.debug:

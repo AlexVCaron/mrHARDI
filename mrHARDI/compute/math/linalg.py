@@ -1,10 +1,12 @@
 from numpy import (allclose,
+                   append,
                    apply_along_axis,
                    isclose,
                    mean,
                    moveaxis,
                    sqrt,
                    std,
+                   vstack,
                    zeros, ones, absolute)
 
 
@@ -26,6 +28,14 @@ def _fa(evals, axis=0):
     fa[fa_mask] = sqrt(3. / (2. * denom[mask3]))
 
     return fa
+
+
+def homo_mat(_m, _d=4):
+    return vstack((vstack((_m, [0, 0, 0])).T, [0, 0, 0, 1])).T \
+        if len(_m) < _d else _m
+
+def homo_vec(_v, _d=4):
+    return append(_v, [1.]) if len(_v) < _d else _v
 
 
 def compute_fa(eigs, mask):
