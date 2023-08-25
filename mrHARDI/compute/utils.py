@@ -126,7 +126,7 @@ def resampling_affine(ref_affine, ref_shape, ref_zooms, new_zooms):
 
 
 def orientation_to_transform(ornt):
-    return np.diag(ornt[:, 1][ornt[:, 0].astype(int)])
+    return np.diag(ornt[:, 1])[ornt[:, 0].astype(int)]
 
 
 def compute_reorientation(_ornt1, _ornt2):
@@ -205,7 +205,7 @@ def save_transform(
 
     _r = ornt_trans[:3, :3] @ matrix[:3, :3] @ ornt_trans[:3, :3]
     _o = ornt_trans[:3, :3] @ matrix[:3, 3]
-    _t = _o - center + _r @ center
+    _t = -_o + center - _r @ center
 
     mat = {}
     if "AffineTransform" in out_type:
