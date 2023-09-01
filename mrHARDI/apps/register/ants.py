@@ -836,3 +836,80 @@ class AntsMotionCorrection(mrHARDIBaseApplication):
         metadata = load_metadata(self.moving_images[0])
         if metadata:
             save_metadata("{}_warped".format(self.output_prefix), metadata)
+
+
+class ComposeANTsTransformations(mrHARDIBaseApplication):
+    name = u"Compose ANTs Transformations"
+    description = "Compose a list of ANTs transformations into transforms " \
+                  "stacks to apply on images and/or on tractograms"
+
+    output = output_prefix_argument()
+
+    fwd_transforms = required_arg(
+        MultipleArguments, traits_args=(Unicode(),),
+        description="List of transformations to compose"
+    )
+
+    inv_transforms = required_arg(
+        MultipleArguments, traits_args=(Unicode(),),
+        description="List of inverse transformations to compose. "
+                    "Must be supplied in inverse order of fwd_transforms"
+    )
+
+    fwd_inverts = MultipleArguments(
+        Bool(), help="List of boolean indicating if a forward"
+                     "transformation needs to be inverted"
+    ).tag(config=True)
+
+    inv_inverts = MultipleArguments(
+        Bool(), help="List of boolean indicating if an inverse"
+                     "transformation needs to be inverted"
+    ).tag(config=True)
+
+    source_ref = required_file(
+        description="Reference image for the source image"
+    )
+
+    target_ref = required_file(
+        description="Reference image for the target image"
+    )
+
+    fwd_suffix = Unicode(
+        "fwd", help="Suffix to append to the forward transformation"
+    ).tag(config=True)
+    inv_suffix = Unicode(
+        "inv", help="Suffix to append to the inverse transformation"
+    ).tag(config=True)
+
+    produce_img_transforms = Bool(
+        False, help="Produce forward and inverse transforms for images"
+    ).tag(config=True)
+    produce_tract_transforms = Bool(
+        False, help="Produce forward and inverse transforms for tractograms"
+    ).tag(config=True)
+
+    def execute(self):
+        current_dir = getcwd()
+        commands = []
+
+        def _transforms_fmt(_t, _i):
+            return " ".join(["{}{}".format(
+                "-i " if _inv else "",
+                _tr
+            ) for _inv, _tr in zip(_i, _t)])
+
+        composer_fmt = "ComposeMultiTransform 3 {out} -R {ref} {transforms}"
+
+        fwd_trans, inv_trans = self.fwd_transforms, self.inv_transforms[::-1]
+        fwd_inv, inv_inv = self.fwd_inverts, self.inv_inverts[::-1]
+
+        if self.produce_img_transforms:
+            commands.append(
+                composer_fmt.format(
+                    out="{}_image_transform_{}.nii.gz".format(
+                        self.output, self.fwd_suffix
+                    ),
+                    ref=self.target_ref,
+                    transforms=_transforms_fmt(fwd_trans, fwd_inv)
+                )
+            )
