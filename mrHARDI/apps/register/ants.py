@@ -848,7 +848,8 @@ _compose_aliases = {
     'src': 'ComposeANTsTransformations.source_ref',
     'fwd_suffix': 'ComposeANTsTransformations.fwd_suffix',
     'inv_suffix': 'ComposeANTsTransformations.inv_suffix',
-    'out': 'ComposeANTsTransformations.output'
+    'out': 'ComposeANTsTransformations.output',
+    'save_script_transforms': 'ComposeANTsTransformations.script_trans_dir'
 }
 
 _compose_flags = dict(
@@ -910,6 +911,12 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
         "inv", help="Suffix to append to the inverse transformation"
     ).tag(config=True)
 
+    script_trans_dir = Unicode(
+        None, allow_none=True,
+        help="Directory where to store the non-composed transforms "
+             "used by the automatically generated scripts"
+    ).tag(config=True)
+
     produce_img_transforms = Bool(
         False, help="Produce forward and inverse transforms for images"
     ).tag(config=True)
@@ -961,6 +968,18 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
 
         fwd_trans, inv_trans = self.fwd_transforms, self.inv_transforms[::-1]
         fwd_inv, inv_inv = self.fwd_inverts, self.inv_inverts[::-1]
+
+        if self.script_trans_dir is not None:
+            makedirs(self.script_trans_dir, exist_ok=True)
+            _t, _it = [], []
+            for t in fwd_trans:
+                _t.append(join(self.script_trans_dir, basename(t)))
+                copyfile(t, _t[-1])
+            for t in inv_trans:
+                _it.append(join(self.script_trans_dir, basename(t)))
+                copyfile(t, _it[-1])
+
+            fwd_trans, inv_trans = _t, _it
 
         if self.produce_img_transforms:
             commands.append(
