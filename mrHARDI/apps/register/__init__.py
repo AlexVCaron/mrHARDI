@@ -1,1 +1,6 @@
-from .ants import AntsRegistration, AntsTransform, AntsMotionCorrection
+from .ants import (
+    AntsMotionCorrection,
+    AntsRegistration,
+    AntsTransform,
+    ComposeANTsTransformations
+)

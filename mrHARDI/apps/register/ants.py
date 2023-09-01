@@ -10,6 +10,7 @@ from traitlets.config.loader import ArgumentError
 
 import nibabel as nib
 
+from mrHARDI.base.ants import create_ants_transform_script
 from mrHARDI.base.application import (mrHARDIBaseApplication,
                                       MultipleArguments,
                                       output_prefix_argument,
@@ -838,6 +839,34 @@ class AntsMotionCorrection(mrHARDIBaseApplication):
             save_metadata("{}_warped".format(self.output_prefix), metadata)
 
 
+_compose_aliases = {
+    'in': 'ComposeANTsTransformations.fwd_transforms',
+    'inv': 'ComposeANTsTransformations.inv_transforms',
+    'fwd-inv': 'ComposeANTsTransformations.fwd_inverts',
+    'inv-inv': 'ComposeANTsTransformations.inv_inverts',
+    'ref': 'ComposeANTsTransformations.target_ref',
+    'src': 'ComposeANTsTransformations.source_ref',
+    'fwd_suffix': 'ComposeANTsTransformations.fwd_suffix',
+    'inv_suffix': 'ComposeANTsTransformations.inv_suffix',
+    'out': 'ComposeANTsTransformations.output'
+}
+
+_compose_flags = dict(
+    image_transformations=(
+        {"ComposeANTsTransformations": {'produce_img_transforms': True}},
+        "Produce forward and inverse transforms for images"
+    ),
+    tractogram_transformations=(
+        {"ComposeANTsTransformations": {'produce_tract_transforms': True}},
+        "Produce forward and inverse transforms for tractograms"
+    ),
+    generate_scripts=(
+        {"ComposeANTsTransformations": {'produce_transform_scripts': True}},
+        "Produce scripts to help apply the non-composed transforms"
+    )
+)
+
+
 class ComposeANTsTransformations(mrHARDIBaseApplication):
     name = u"Compose ANTs Transformations"
     description = "Compose a list of ANTs transformations into transforms " \
@@ -887,16 +916,46 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
     produce_tract_transforms = Bool(
         False, help="Produce forward and inverse transforms for tractograms"
     ).tag(config=True)
+    produce_transform_scripts = Bool(
+        False, help="Produce scripts to help apply the non-composed transforms"
+    ).tag(config=True)
+
+    aliases = Dict(default_value=_compose_aliases)
+    flags = Dict(default_value=_compose_flags)
+
+    def _create_transformation_script(
+        self, ref, trans, inv_trans, inverts, out_name, tractogram_transform=False
+    ):
+        def _is_affine(_f):
+                return _f.split(".")[-1] in ["mat", "txt"]
+
+        _trans, _inv = [], []
+        if tractogram_transform:
+            inverts = [not i for i in inverts]
+
+        for _t, _i, _it in zip(trans, inverts, inv_trans):
+            if not _is_affine(_t) and _i:
+                _trans.append(_it)
+                _inv.append(False)
+            else:
+                _trans.append(_t)
+                _inv.append(_i)
+
+        script = create_ants_transform_script(ref, _trans, _inv)
+        with open(out_name, "w") as f:
+            f.write(script)
 
     def execute(self):
         current_dir = getcwd()
         commands = []
 
-        def _transforms_fmt(_t, _i):
+        def _transforms_fmt(_t, _it, _i):
+            def _is_affine(_f):
+                return _f.split(".")[-1] in ["mat", "txt"]
             return " ".join(["{}{}".format(
-                "-i " if _inv else "",
-                _tr
-            ) for _inv, _tr in zip(_i, _t)])
+                "-i " if _inv and _is_affine(_tr) else "",
+                _itr if _inv and not _is_affine(_tr) else _tr
+            ) for _inv, _tr, _itr in zip(_i, _t, _it)])
 
         composer_fmt = "ComposeMultiTransform 3 {out} -R {ref} {transforms}"
 
@@ -910,6 +969,67 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
                         self.output, self.fwd_suffix
                     ),
                     ref=self.target_ref,
-                    transforms=_transforms_fmt(fwd_trans, fwd_inv)
+                    transforms=_transforms_fmt(fwd_trans, inv_trans, fwd_inv)
                 )
+            )
+            commands.append(
+                composer_fmt.format(
+                    out="{}_image_transform_{}.nii.gz".format(
+                        self.output, self.inv_suffix
+                    ),
+                    ref=self.source_ref,
+                    transforms=_transforms_fmt(inv_trans, fwd_trans, inv_inv)
+                )
+            )
+
+        if self.produce_tract_transforms:
+            commands.append(
+                composer_fmt.format(
+                    out="{}_tractogram_transform_{}.nii.gz".format(
+                        self.output, self.fwd_suffix
+                    ),
+                    ref=self.target_ref,
+                    transforms=_transforms_fmt(
+                        inv_trans, fwd_trans, [not i for i in inv_inv]
+                    )
+                )
+            )
+            commands.append(
+                composer_fmt.format(
+                    out="{}_tractogram_transform_{}.nii.gz".format(
+                        self.output, self.inv_suffix
+                    ),
+                    ref=self.source_ref,
+                    transforms=_transforms_fmt(
+                        fwd_trans, inv_trans, [not i for i in fwd_inv]
+                    )
+                )
+            )
+
+        if self.produce_transform_scripts:
+            self._create_transformation_script(
+                fwd_trans, inv_trans, fwd_inv,
+                "{}_fwd_image_transform.sh".format(self.output)
+            )
+            self._create_transformation_script(
+                inv_trans, fwd_trans, inv_inv,
+                "{}_inv_image_transform.sh".format(self.output)
+            )
+            self._create_transformation_script(
+                inv_trans, fwd_trans, inv_inv,
+                "{}_inv_image_transform.sh".format(self.output),
+                tractogram_transform=True
+            )
+            self._create_transformation_script(
+                fwd_trans, inv_trans, fwd_inv,
+                "{}_fwd_image_transform.sh".format(self.output),
+                tractogram_transform=True
+            )
+
+        for c in commands:
+            launch_shell_process(
+                c,
+                join(current_dir, "{}.log".format(
+                    basename(self.output)
+                ))
             )
