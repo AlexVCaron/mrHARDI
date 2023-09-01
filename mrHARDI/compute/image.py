@@ -74,7 +74,9 @@ def align_by_center_of_mass(
     ref_data[~ref_mask] = 0
     main_data[~mov_mask] = 0
 
-    trans = center_of_mass_difference(ref_data, main_data, main_to_ref)
+    trans = center_of_mass_difference(
+        ref_data, main_data, main_to_ref, ref_img.header.get_zooms()[:3]
+    )
 
     out_files = []
     for fname in moving_fnames:
@@ -112,7 +114,7 @@ def align_by_center_of_mass(
                 out_files[-1]
             )
 
-    _m = compute_reorientation_to_frame(ref_img, ('L', 'P', 'S'))
+    _m = np.eye(4)
     _m[:3, 3] = trans
     save_transform(
         _m, "MatrixOffsetTransformBase_double_3_3", out_mat_fname

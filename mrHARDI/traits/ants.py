@@ -238,7 +238,9 @@ class AntsPass(mrHARDIConfigurable):
     def ants_registration_conv_formatter(self, for_ants_ai=False):
         max_iters = "x".join(str(i) for i in self.conv_max_iter)
         if for_ants_ai:
-            max_iters = "{}".format(self.conv_max_iter[0]) 
+            max_iters = "{}".format(
+                max(self.conv_max_iter[0] // 4, self.conv_win)
+            ) 
         return "--convergence [{},{},{}]".format(
             max_iters,
             self.conv_eps,
