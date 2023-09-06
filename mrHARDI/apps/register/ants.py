@@ -1027,21 +1027,21 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
 
         if self.produce_transform_scripts:
             self._create_transformation_script(
-                fwd_trans, inv_trans, fwd_inv,
+                self.target_ref, fwd_trans, inv_trans, fwd_inv,
                 "{}_fwd_image_transform.sh".format(self.output)
             )
             self._create_transformation_script(
-                inv_trans, fwd_trans, inv_inv,
+                self.source_ref, inv_trans, fwd_trans, inv_inv,
                 "{}_inv_image_transform.sh".format(self.output)
             )
             self._create_transformation_script(
-                inv_trans, fwd_trans, inv_inv,
-                "{}_inv_image_transform.sh".format(self.output),
+                self.target_ref, inv_trans, fwd_trans, inv_inv,
+                "{}_inv_tractogram_transform.sh".format(self.output),
                 tractogram_transform=True
             )
             self._create_transformation_script(
-                fwd_trans, inv_trans, fwd_inv,
-                "{}_fwd_image_transform.sh".format(self.output),
+                self.source_ref, fwd_trans, inv_trans, fwd_inv,
+                "{}_fwd_tractogram_transform.sh".format(self.output),
                 tractogram_transform=True
             )
 
