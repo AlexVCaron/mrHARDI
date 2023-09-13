@@ -9,8 +9,8 @@ WORKDIR /
 RUN mkdir -p /scilpy
 ADD https://github.com/AlexVCaron/scilpy.git#${scilpy_ver} /scilpy
 
-RUN mkdir -p /scilpy
-ADD https://github.com/AlexVCaron/dmriqcpy.git#${scilpy_ver} /dmriqcpy
+RUN mkdir -p /dmriqcpy
+ADD https://github.com/AlexVCaron/dmriqcpy.git#${dmriqcpy_ver} /dmriqcpy
 
 WORKDIR /
 
@@ -19,7 +19,7 @@ FROM dependencies as scilpy_installed
 ENV MATPLOTLIBRC="/usr/local/lib/python3.7/dist-packages/matplotlib/mpl-data/"
 
 RUN apt-get update && apt-get -y install \
-    git \
+        git \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /
@@ -29,5 +29,4 @@ RUN SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True python3.10 -m pip inst
     python3 -m pip cache purge
 WORKDIR /dmriqcpy
 RUN python3.10 -m pip install -e . && \
-     && \
     python3.10 -m pip cache purge
