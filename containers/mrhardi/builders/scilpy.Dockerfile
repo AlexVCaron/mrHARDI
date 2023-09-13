@@ -24,6 +24,7 @@ RUN apt-get update && apt-get -y install \
 
 WORKDIR /
 COPY --from=scilpy_cloner /scilpy /scilpy
+COPY --from=scilpy_cloner /dmriqcpy /dmriqcpy
 WORKDIR /scilpy
 RUN SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True python3.10 -m pip install -e . && \
     python3 -m pip cache purge
