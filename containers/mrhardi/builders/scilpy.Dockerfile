@@ -3,11 +3,16 @@
 FROM web_fetcher as scilpy_cloner
 
 ARG scilpy_ver=feat/subdivide_tracking_sphere
+ARG dmriqcpy_ver=feat/overlay_tissue_masks
 
 WORKDIR /
 RUN mkdir -p /scilpy
-ADD https://github.com/boiteaclou/scilpy.git#${scilpy_ver} /scilpy
-WORKDIR /scilpy
+ADD https://github.com/AlexVCaron/scilpy.git#${scilpy_ver} /scilpy
+
+RUN mkdir -p /scilpy
+ADD https://github.com/AlexVCaron/dmriqcpy.git#${scilpy_ver} /dmriqcpy
+
+WORKDIR /
 
 FROM dependencies as scilpy_installed
 
@@ -22,3 +27,7 @@ COPY --from=scilpy_cloner /scilpy /scilpy
 WORKDIR /scilpy
 RUN SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True python3.10 -m pip install -e . && \
     python3 -m pip cache purge
+WORKDIR /dmriqcpy
+RUN python3.10 -m pip install -e . && \
+     && \
+    python3.10 -m pip cache purge
