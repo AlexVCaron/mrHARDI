@@ -972,8 +972,8 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
 
         composer_fmt = "ComposeMultiTransform 3 {out} -R {ref} {transforms}"
 
-        fwd_trans, inv_trans = self.fwd_transforms, self.inv_transforms[::-1]
-        fwd_inv, inv_inv = self.fwd_inverts, self.inv_inverts[::-1]
+        fwd_trans, inv_trans = self.fwd_transforms, self.inv_transforms
+        fwd_inv, inv_inv = self.fwd_inverts, self.inv_inverts
 
         if self.script_trans_dir is not None:
             makedirs(self.script_trans_dir, exist_ok=True)
@@ -994,7 +994,9 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
                         self.output, self.fwd_suffix, self.extension
                     ),
                     ref=self.target_ref,
-                    transforms=_transforms_fmt(fwd_trans, inv_trans, fwd_inv)
+                    transforms=_transforms_fmt(
+                        fwd_trans, inv_trans[::-1], fwd_inv
+                    )
                 )
             )
             commands.append(
@@ -1003,7 +1005,9 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
                         self.output, self.inv_suffix, self.extension
                     ),
                     ref=self.source_ref,
-                    transforms=_transforms_fmt(inv_trans, fwd_trans, inv_inv)
+                    transforms=_transforms_fmt(
+                        inv_trans, fwd_trans[::-1], inv_inv
+                    )
                 )
             )
 
@@ -1015,7 +1019,7 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
                     ),
                     ref=self.target_ref,
                     transforms=_transforms_fmt(
-                        inv_trans, fwd_trans, [not i for i in inv_inv]
+                        inv_trans, fwd_trans[::-1], [not i for i in inv_inv]
                     )
                 )
             )
@@ -1026,7 +1030,7 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
                     ),
                     ref=self.source_ref,
                     transforms=_transforms_fmt(
-                        fwd_trans, inv_trans, [not i for i in fwd_inv]
+                        fwd_trans, inv_trans[::-1], [not i for i in fwd_inv]
                     )
                 )
             )
