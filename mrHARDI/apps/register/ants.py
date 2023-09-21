@@ -849,6 +849,7 @@ _compose_aliases = {
     'fwd_suffix': 'ComposeANTsTransformations.fwd_suffix',
     'inv_suffix': 'ComposeANTsTransformations.inv_suffix',
     'out': 'ComposeANTsTransformations.output',
+    'ext': 'ComposeANTsTransformations.extension',
     'save_script_transforms': 'ComposeANTsTransformations.script_trans_dir'
 }
 
@@ -909,6 +910,11 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
     ).tag(config=True)
     inv_suffix = Unicode(
         "inv", help="Suffix to append to the inverse transformation"
+    ).tag(config=True)
+
+    extension = Enum(
+        [".nii.gz", ".h5"], "h5",
+        help="File type for the composite transformations"
     ).tag(config=True)
 
     script_trans_dir = Unicode(
@@ -984,8 +990,8 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
         if self.produce_img_transforms:
             commands.append(
                 composer_fmt.format(
-                    out="{}_image_transform_{}.nii.gz".format(
-                        self.output, self.fwd_suffix
+                    out="{}_image_transform_{}{}".format(
+                        self.output, self.fwd_suffix, self.extension
                     ),
                     ref=self.target_ref,
                     transforms=_transforms_fmt(fwd_trans, inv_trans, fwd_inv)
@@ -993,8 +999,8 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
             )
             commands.append(
                 composer_fmt.format(
-                    out="{}_image_transform_{}.nii.gz".format(
-                        self.output, self.inv_suffix
+                    out="{}_image_transform_{}{}".format(
+                        self.output, self.inv_suffix, self.extension
                     ),
                     ref=self.source_ref,
                     transforms=_transforms_fmt(inv_trans, fwd_trans, inv_inv)
@@ -1004,8 +1010,8 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
         if self.produce_tract_transforms:
             commands.append(
                 composer_fmt.format(
-                    out="{}_tractogram_transform_{}.nii.gz".format(
-                        self.output, self.fwd_suffix
+                    out="{}_tractogram_transform_{}{}".format(
+                        self.output, self.fwd_suffix, self.extension
                     ),
                     ref=self.target_ref,
                     transforms=_transforms_fmt(
@@ -1015,8 +1021,8 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
             )
             commands.append(
                 composer_fmt.format(
-                    out="{}_tractogram_transform_{}.nii.gz".format(
-                        self.output, self.inv_suffix
+                    out="{}_tractogram_transform_{}{}".format(
+                        self.output, self.inv_suffix, self.extension
                     ),
                     ref=self.source_ref,
                     transforms=_transforms_fmt(
