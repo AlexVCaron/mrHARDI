@@ -913,7 +913,7 @@ class ComposeANTsTransformations(mrHARDIBaseApplication):
     ).tag(config=True)
 
     extension = Enum(
-        [".nii.gz", ".h5"], "h5",
+        [".nii.gz", ".h5"], ".nii.gz",
         help="File type for the composite transformations"
     ).tag(config=True)
 
