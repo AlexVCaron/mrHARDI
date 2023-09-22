@@ -24,8 +24,9 @@ wrapped inside a singularity, to ease out and shorten the installation process.
 
 #### Requirements
 
-- [Singularity](https://docs.sylabs.io/guides/3.0/user-guide/installation.html) 3.7.1 or higher, or [Docker](https://docs.docker.com/engine/install/)
-- Python 3.7
+- [Docker](https://docs.docker.com/engine/install/)
+- [Singularity](https://docs.sylabs.io/guides/3.0/user-guide/installation.html) 3.7.1 or higher
+- Python 3.10
 
 #### Installation
 

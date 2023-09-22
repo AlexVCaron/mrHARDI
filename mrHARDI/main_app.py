@@ -58,6 +58,10 @@ class mrHARDIApplication(mrHARDIBaseApplication):
             "mrHARDI.apps.utils.AssertDwiDimensions",
             'Basic checks on b-values/b-vectors conformity to an dwi 4D image'
         ),
+        compose_transformations=(
+            "mrHARDI.apps.register.ComposeANTsTransformations",
+            'Compose series of ANTs transformations'
+        ),
         concatenate=(
             "mrHARDI.apps.utils.Concatenate",
             'Concatenates images together'
