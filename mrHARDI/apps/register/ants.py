@@ -10,6 +10,7 @@ from traitlets.config.loader import ArgumentError
 
 import nibabel as nib
 
+from mrHARDI.base.ants import create_ants_transform_script
 from mrHARDI.base.application import (mrHARDIBaseApplication,
                                       MultipleArguments,
                                       output_prefix_argument,
@@ -836,3 +837,228 @@ class AntsMotionCorrection(mrHARDIBaseApplication):
         metadata = load_metadata(self.moving_images[0])
         if metadata:
             save_metadata("{}_warped".format(self.output_prefix), metadata)
+
+
+_compose_aliases = {
+    'in': 'ComposeANTsTransformations.fwd_transforms',
+    'inv': 'ComposeANTsTransformations.inv_transforms',
+    'fwd-inv': 'ComposeANTsTransformations.fwd_inverts',
+    'inv-inv': 'ComposeANTsTransformations.inv_inverts',
+    'ref': 'ComposeANTsTransformations.target_ref',
+    'src': 'ComposeANTsTransformations.source_ref',
+    'fwd_suffix': 'ComposeANTsTransformations.fwd_suffix',
+    'inv_suffix': 'ComposeANTsTransformations.inv_suffix',
+    'out': 'ComposeANTsTransformations.output',
+    'ext': 'ComposeANTsTransformations.extension',
+    'save_script_transforms': 'ComposeANTsTransformations.script_trans_dir'
+}
+
+_compose_flags = dict(
+    image_transformations=(
+        {"ComposeANTsTransformations": {'produce_img_transforms': True}},
+        "Produce forward and inverse transforms for images"
+    ),
+    tractogram_transformations=(
+        {"ComposeANTsTransformations": {'produce_tract_transforms': True}},
+        "Produce forward and inverse transforms for tractograms"
+    ),
+    generate_scripts=(
+        {"ComposeANTsTransformations": {'produce_transform_scripts': True}},
+        "Produce scripts to help apply the non-composed transforms"
+    )
+)
+
+
+class ComposeANTsTransformations(mrHARDIBaseApplication):
+    name = u"Compose ANTs Transformations"
+    description = "Compose a list of ANTs transformations into transforms " \
+                  "stacks to apply on images and/or on tractograms"
+
+    output = output_prefix_argument()
+
+    fwd_transforms = required_arg(
+        MultipleArguments, traits_args=(Unicode(),),
+        description="List of transformations to compose"
+    )
+
+    inv_transforms = required_arg(
+        MultipleArguments, traits_args=(Unicode(),),
+        description="List of inverse transformations to compose. "
+                    "Must be supplied in inverse order of fwd_transforms"
+    )
+
+    fwd_inverts = MultipleArguments(
+        Bool(), help="List of boolean indicating if a forward"
+                     "transformation needs to be inverted"
+    ).tag(config=True)
+
+    inv_inverts = MultipleArguments(
+        Bool(), help="List of boolean indicating if an inverse"
+                     "transformation needs to be inverted"
+    ).tag(config=True)
+
+    source_ref = required_file(
+        description="Reference image for the source image"
+    )
+
+    target_ref = required_file(
+        description="Reference image for the target image"
+    )
+
+    fwd_suffix = Unicode(
+        "fwd", help="Suffix to append to the forward transformation"
+    ).tag(config=True)
+    inv_suffix = Unicode(
+        "inv", help="Suffix to append to the inverse transformation"
+    ).tag(config=True)
+
+    extension = Enum(
+        [".nii.gz", ".h5"], ".nii.gz",
+        help="File type for the composite transformations"
+    ).tag(config=True)
+
+    script_trans_dir = Unicode(
+        None, allow_none=True,
+        help="Directory where to store the non-composed transforms "
+             "used by the automatically generated scripts"
+    ).tag(config=True)
+
+    produce_img_transforms = Bool(
+        False, help="Produce forward and inverse transforms for images"
+    ).tag(config=True)
+    produce_tract_transforms = Bool(
+        False, help="Produce forward and inverse transforms for tractograms"
+    ).tag(config=True)
+    produce_transform_scripts = Bool(
+        False, help="Produce scripts to help apply the non-composed transforms"
+    ).tag(config=True)
+
+    aliases = Dict(default_value=_compose_aliases)
+    flags = Dict(default_value=_compose_flags)
+
+    def _create_transformation_script(
+        self, ref, trans, inv_trans, inverts, out_name, tractogram_transform=False
+    ):
+        def _is_affine(_f):
+                return _f.split(".")[-1] in ["mat", "txt"]
+
+        _trans, _inv = [], []
+        if tractogram_transform:
+            inverts = [not i for i in inverts]
+
+        for _t, _i, _it in zip(trans, inverts, inv_trans):
+            if not _is_affine(_t) and _i:
+                _trans.append(_it)
+                _inv.append(False)
+            else:
+                _trans.append(_t)
+                _inv.append(_i)
+
+        script = create_ants_transform_script(ref, _trans, _inv)
+        with open(out_name, "w") as f:
+            f.write(script)
+
+    def execute(self):
+        current_dir = getcwd()
+        commands = []
+
+        def _transforms_fmt(_t, _it, _i):
+            def _is_affine(_f):
+                return _f.split(".")[-1] in ["mat", "txt"]
+            return " ".join(["{}{}".format(
+                "-i " if _inv and _is_affine(_tr) else "",
+                _itr if _inv and not _is_affine(_tr) else _tr
+            ) for _inv, _tr, _itr in zip(_i, _t, _it)])
+
+        composer_fmt = "ComposeMultiTransform 3 {out} -R {ref} {transforms}"
+
+        fwd_trans, inv_trans = self.fwd_transforms, self.inv_transforms
+        fwd_inv, inv_inv = self.fwd_inverts, self.inv_inverts
+
+        if self.script_trans_dir is not None:
+            makedirs(self.script_trans_dir, exist_ok=True)
+            _t, _it = [], []
+            for t in fwd_trans:
+                _t.append(join(self.script_trans_dir, basename(t)))
+                copyfile(t, _t[-1])
+            for t in inv_trans:
+                _it.append(join(self.script_trans_dir, basename(t)))
+                copyfile(t, _it[-1])
+
+            fwd_trans, inv_trans = _t, _it
+
+        if self.produce_img_transforms:
+            commands.append(
+                composer_fmt.format(
+                    out="{}_image_transform_{}{}".format(
+                        self.output, self.fwd_suffix, self.extension
+                    ),
+                    ref=self.target_ref,
+                    transforms=_transforms_fmt(
+                        fwd_trans, inv_trans[::-1], fwd_inv
+                    )
+                )
+            )
+            commands.append(
+                composer_fmt.format(
+                    out="{}_image_transform_{}{}".format(
+                        self.output, self.inv_suffix, self.extension
+                    ),
+                    ref=self.source_ref,
+                    transforms=_transforms_fmt(
+                        inv_trans, fwd_trans[::-1], inv_inv
+                    )
+                )
+            )
+
+        if self.produce_tract_transforms:
+            commands.append(
+                composer_fmt.format(
+                    out="{}_tractogram_transform_{}{}".format(
+                        self.output, self.fwd_suffix, self.extension
+                    ),
+                    ref=self.target_ref,
+                    transforms=_transforms_fmt(
+                        inv_trans, fwd_trans[::-1], [not i for i in inv_inv]
+                    )
+                )
+            )
+            commands.append(
+                composer_fmt.format(
+                    out="{}_tractogram_transform_{}{}".format(
+                        self.output, self.inv_suffix, self.extension
+                    ),
+                    ref=self.source_ref,
+                    transforms=_transforms_fmt(
+                        fwd_trans, inv_trans[::-1], [not i for i in fwd_inv]
+                    )
+                )
+            )
+
+        if self.produce_transform_scripts:
+            self._create_transformation_script(
+                self.target_ref, fwd_trans, inv_trans, fwd_inv,
+                "{}_fwd_image_transform.sh".format(self.output)
+            )
+            self._create_transformation_script(
+                self.source_ref, inv_trans, fwd_trans, inv_inv,
+                "{}_inv_image_transform.sh".format(self.output)
+            )
+            self._create_transformation_script(
+                self.target_ref, inv_trans, fwd_trans, inv_inv,
+                "{}_inv_tractogram_transform.sh".format(self.output),
+                tractogram_transform=True
+            )
+            self._create_transformation_script(
+                self.source_ref, fwd_trans, inv_trans, fwd_inv,
+                "{}_fwd_tractogram_transform.sh".format(self.output),
+                tractogram_transform=True
+            )
+
+        for c in commands:
+            launch_shell_process(
+                c,
+                join(current_dir, "{}.log".format(
+                    basename(self.output)
+                ))
+            )
