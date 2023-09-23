@@ -111,7 +111,7 @@ class AntsRegistration(mrHARDIBaseApplication):
         if base_dir is None:
             base_dir = getcwd()
 
-        name, ext = split_ext(image_fname)
+        name, ext = split_ext(basename(image_fname))
         image = nib.load(image_fname)
 
         if spacing is None:
