@@ -111,7 +111,7 @@ class AntsRegistration(mrHARDIBaseApplication):
         if base_dir is None:
             base_dir = getcwd()
 
-        name, ext = split_ext(basename(image_fname))
+        name, ext = split_ext(basename(image_fname), r"^(/?.*)\.(nii\.gz|nii)$")
         image = nib.load(image_fname)
 
         if spacing is None:
@@ -199,7 +199,7 @@ class AntsRegistration(mrHARDIBaseApplication):
                 )
 
             for i, target in enumerate(targets):
-                _, ext = split_ext(target)
+                _, ext = split_ext(target, r"^(/?.*)\.(nii\.gz|nii)$")
                 ai_config_dict["t{}".format(i)] = join(
                     base_dir, "ants_ai_target{}.{}".format(i, ext)
                 )
@@ -213,7 +213,7 @@ class AntsRegistration(mrHARDIBaseApplication):
                 )
 
             for i, moving in enumerate(movings):
-                _, ext = split_ext(moving)
+                _, ext = split_ext(moving, r"^(/?.*)\.(nii\.gz|nii)$")
                 ai_config_dict["m{}".format(i)] = join(
                     base_dir, "ants_ai_moving{}.{}".format(i, ext)
                 )
@@ -239,13 +239,13 @@ class AntsRegistration(mrHARDIBaseApplication):
                     movings, moving_mask = movings[:-1], movings[-1]
 
             for i, target in enumerate(targets):
-                _, ext = split_ext(target)
+                _, ext = split_ext(target, r"^(/?.*)\.(nii\.gz|nii)$")
                 copyfile(target, join(
                     base_dir, "ants_ai_target{}.{}".format(i, ext)
                 ))
 
             for i, moving in enumerate(movings):
-                _, ext = split_ext(moving)
+                _, ext = split_ext(moving, r"^(/?.*)\.(nii\.gz|nii)$")
                 copyfile(moving, join(
                     base_dir, "ants_ai_moving{}.{}".format(i, ext)
                 ))

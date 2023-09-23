@@ -29,7 +29,7 @@ def transform_images(
 
     names = []
     for image in images:
-        name, ext = split_ext(image)
+        name, ext = split_ext(image, r"^(/?.*)\.(nii\.gz|nii)$")
         names.append(join(base_dir, "{}.{}".format(
             if_join_str([basename(name), suffix], "_"), ext
         )))
@@ -86,7 +86,8 @@ def align_by_center_of_mass(
         affine = img.affine
         affine[:3, 3] += _t[:3, :3] @ trans
 
-        name, ext = split_ext(fname)
+        # Get extension, which can either be .nii or .nii.gz
+        name, ext = split_ext(fname, r"^(/?.*)\.(nii\.gz|nii)$")
         out_files.append(join(base_dir, "{}.{}".format(
             if_join_str([basename(name), suffix], "_"), ext
         )))
@@ -104,7 +105,7 @@ def align_by_center_of_mass(
             affine = img.affine
             affine[:-1, 3] += _t[:3, :3] @ trans
 
-            name, ext = split_ext(fname)
+            name, ext = split_ext(fname, r"^(/?.*)\.(nii\.gz|nii)$")
             out_files.append(join(base_dir, "{}.{}".format(
                 if_join_str([basename(name), suffix], "_"), ext
             )))
