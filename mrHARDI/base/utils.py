@@ -7,7 +7,7 @@ def if_join_str(lst, char):
 
 def split_ext(fname, re_name_splitter=None):
     if re_name_splitter:
-        _matches = re.findall(re_name_splitter, fname)
+        _matches = re.findall(re_name_splitter, fname)[0]
         if _matches:
             return _matches[1], _matches[0]
         else:
