@@ -25,7 +25,7 @@ wrapped inside a singularity, to ease out and shorten the installation process.
 #### Requirements
 
 - [Docker](https://docs.docker.com/engine/install/)
-- [Singularity](https://docs.sylabs.io/guides/3.0/user-guide/installation.html) 3.7.1 or higher
+- [Apptainer](https://apptainer.org/docs/user/latest/quick_start.html#quick-installation) 1.1.* or higher
 - Python 3.10
 
 #### Installation
@@ -40,7 +40,7 @@ and then initiating the setup script using python 3.7
 
 ### Other platforms
 
-Singularity and Nextflow aren't available on Windows. We refer those users to 
+Apptainer and Nextflow aren't available on Windows. We refer those users to 
 the **Vagrant Installation** section of the readme for an alternative. For 
 similar reasons, if there is any problems installing the library and running 
 the tests on a Mac OSX operating system, the user should try using Vagrant.
@@ -71,7 +71,7 @@ when it isn't required to test the actual pipeline structure.
 ## Vagrant Installation
 
 The Vagrant VM allows for an easy installation of the whole stack of the 
-project. It includes *singularity*, *nextflow* and a standalone version of 
+project. It includes *apptainer*, *nextflow* and a standalone version of 
 *python 3* preloaded with the *mrHARDI* project.
 
 #### Requirements
@@ -82,7 +82,7 @@ project. It includes *singularity*, *nextflow* and a standalone version of
 
 To automate the deployment of the library across different systems and on 
 multiple instances, a Vagrant definition has been implemented. This also 
-allows singularity to run on instead unsupported platforms like Windows.
+allows apptainer to run on instead unsupported platforms like Windows.
 
 #### Vagrant configuration
 
