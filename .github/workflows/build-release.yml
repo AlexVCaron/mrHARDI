@@ -84,9 +84,9 @@ jobs:
           remove-docker-images: 'true'
       - 
         name: Setup singularity
-        uses: eWaterCycle/setup-singularity@v7
+        uses: eWaterCycle/setup-apptainer@v2
         with:
-          singularity-version: 3.7.1
+          apptainer-version: 1.1.8
       - 
         name: Azure Container Registry Login
         uses: Azure/docker-login@v1
@@ -97,12 +97,12 @@ jobs:
       -
         name: Build and push singularity
         run: |
-          mkdir -p mrhardi/singularity
+          mkdir -p mrhardi/apptainer
           mkdir sif_tmp sif_cache
-          export SINGULARITY_TMPDIR="$(pwd)/sif_tmp"
-          export SINGULARITY_CACHEDIR="$(pwd)/sif_cache"
-          echo "Caching and temping singularity at : $SINGULARITY_CACHEDIR and $SINGULARITY_TMPDIR"
-          singularity build --disable-cache mrhardi.sif docker://avcaron/versa:latest
-          echo "${{ secrets.ACR_TOKEN }}" | singularity remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
-          singularity push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:latest
-          singularity push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:${{ github.event.release.tag_name }}
+          export APPTAINER_TMPDIR="$(pwd)/sif_tmp"
+          export APPTAINER_CACHEDIR="$(pwd)/sif_cache"
+          echo "Caching and temping apptainer at : $APPTAINER_CACHEDIR and $APPTAINER_TMPDIR"
+          apptainer build --disable-cache mrhardi.sif docker://avcaron/versa:latest
+          echo "${{ secrets.ACR_TOKEN }}" | apptainer remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
+          apptainer push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:latest
+          apptainer push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:${{ github.event.release.tag_name }}
