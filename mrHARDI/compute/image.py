@@ -22,7 +22,7 @@ def get_common_spacing(img_list, vote=min):
 
 
 def transform_images(
-    images, transform_fname, suffix=None, base_dir=None
+    images, transform_fname, suffix=None, base_dir=None, mask=None
 ):
     if base_dir is None:
         base_dir = getcwd()
@@ -44,7 +44,24 @@ def transform_images(
 
         nib.save(img, names[-1])
 
-    return names
+    out_mask = None
+    if mask is not None:
+        name, ext = split_ext(mask, r"^(/?.*)\.(nii\.gz|nii)$")
+        out_mask = join(base_dir, "{}.{}".format(
+            if_join_str([basename(name), suffix], "_"), ext
+        ))
+
+        img = nib.load(mask)
+        img_ornt = nib.io_orientation(img.affine)
+        transform = load_transform(transform_fname, img_ornt)
+
+        img = nib.Nifti1Image(
+            img.get_fdata(), transform @ img.affine, img.header
+        )
+
+        nib.save(img, out_mask)
+
+    return names, out_mask
 
 
 def align_by_center_of_mass(

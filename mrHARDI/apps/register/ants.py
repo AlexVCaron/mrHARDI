@@ -192,8 +192,9 @@ class AntsRegistration(mrHARDIBaseApplication):
         with TemporaryDirectory(dir=base_dir) as prep_dir:
 
             if initial_transform is not None:
-                movings = transform_images(
+                movings, moving_mask = transform_images(
                     movings, initial_transform,
+                    mask=moving_mask,
                     suffix="_init_transform",
                     base_dir=prep_dir
                 )
