@@ -23,7 +23,7 @@ class N4BiasCorrectionConfiguration(mrHARDIConfigurable):
     ).tag(config=True)
     threshold = Float(0.01).tag(config=True)
     spline_order = BoundedInt(None, 2, 3, allow_none=True).tag(config=True)
-    knot_distance = Float(4.).tag(config=True, required=True)
+    nvox_between_knots = Float(2.).tag(config=True, required=True)
     filter_width = Float(0.15).tag(config=True)
     noise = Float(0.01).tag(config=True)
     bins = Integer(200).tag(config=True)
@@ -49,7 +49,7 @@ class N4BiasCorrectionConfiguration(mrHARDIConfigurable):
             n_stages = len(self.iterations)
             optionals.append(
                 "--bspline-fitting [{},{}]".format(
-                    self.knot_distance * voxel_size * n_stages,
+                    self.nvox_between_knots * voxel_size * 2. * n_stages,
                     self.spline_order
                 )
             )
