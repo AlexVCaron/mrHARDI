@@ -47,9 +47,10 @@ class N4BiasCorrectionConfiguration(mrHARDIConfigurable):
 
         if self.spline_order:
             n_stages = len(self.iterations)
+            base_multiplier = 2. * n_stages * self.nvox_between_knots
             optionals.append(
                 "--bspline-fitting [{},{}]".format(
-                    self.nvox_between_knots * voxel_size * 2. * n_stages,
+                    base_multiplier * self.shrink * voxel_size,
                     self.spline_order
                 )
             )
