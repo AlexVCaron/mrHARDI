@@ -249,10 +249,6 @@ class AntsMotionCorrectionConfiguration(mrHARDIConfigurable):
                     "field over the timeseries"
     ).tag(config=True)
 
-    @default('app_flags')
-    def _app_flags_default(self):
-        return _flags
-
     def _validate(self):
         if not 2 <= self.dimension <= 3:
             raise ConfigError(
