@@ -1,6 +1,6 @@
 from os import getcwd, makedirs
-from os.path import basename, dirname, join
-from shutil import copyfile, copytree
+from os.path import basename, dirname, join, exists
+from shutil import copyfile, copytree, rmtree
 from tempfile import TemporaryDirectory
 
 import nibabel as nib
@@ -160,7 +160,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             spacing, spacing, spacing
         ))
 
-        for c in cmd:
+        for c in cmd: 
             launch_shell_process(
                 c, log_file, additional_env=additional_env
             )
@@ -192,12 +192,43 @@ class AntsRegistration(mrHARDIBaseApplication):
         with TemporaryDirectory(dir=base_dir) as prep_dir:
 
             if initial_transform is not None:
-                movings, moving_mask = transform_images(
-                    movings, initial_transform,
-                    mask=moving_mask,
-                    suffix="_init_transform",
-                    base_dir=prep_dir
-                )
+                c = "antsApplyTransforms -e 0 -d 3"
+                _m = []
+                for m in movings:
+                    _n = basename(m)
+                    launch_shell_process(
+                        "{} -t {} -r {} -i {} -o {}".format(
+                            c, initial_transform,
+                            targets[0], m, 
+                            join(prep_dir, "{}_init_transform.{}".format(
+                                _n.split(".")[0],
+                                ".".join(_n.split(".")[1:])
+                            ))
+                        ), log_file,
+                        additional_env=additional_env
+                    )
+                    _m.append(join(prep_dir, "{}_init_transform.{}".format(
+                        _n.split(".")[0],
+                        ".".join(_n.split(".")[1:])
+                    )))
+                    movings = _m
+                if moving_mask is not None:
+                    _n = basename(moving_mask)
+                    launch_shell_process(
+                        "{} -t {} -r {} -i {} -o {}".format(
+                            c, initial_transform,
+                            targets[0], moving_mask,
+                            join(prep_dir, "{}_init_transform.{}".format(
+                                _n.split(".")[0],
+                                ".".join(_n.split(".")[1:])
+                            ))
+                        ), log_file,
+                        additional_env=additional_env
+                    )
+                    moving_mask = join(prep_dir, "{}_init_transform.{}".format(
+                        _n.split(".")[0],
+                        ".".join(_n.split(".")[1:])
+                    ))
 
             for i, target in enumerate(targets):
                 _, ext = split_ext(target, r"^(/?.*)\.(nii\.gz|nii)$")
