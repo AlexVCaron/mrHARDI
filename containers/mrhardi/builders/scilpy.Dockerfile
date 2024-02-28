@@ -6,7 +6,7 @@ ARG scilpy_ver=feat/subdivide_tracking_sphere
 ARG dmriqcpy_ver=feat/overlay_tissue_masks
 
 WORKDIR /
-RUN mkdir -p /scilpy
+RUN rm -rf /scilpy && mkdir -p /scilpy
 ADD https://github.com/AlexVCaron/scilpy.git#${scilpy_ver} /scilpy
 
 RUN mkdir -p /dmriqcpy
