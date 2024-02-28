@@ -107,14 +107,14 @@ class AntsConfiguration(mrHARDIConfigurable):
         self.init_moving_transform = transform_mat
 
     def is_initializable(self):
-        return any(p.name in ["Rigid", "Affine"] for p in self.passes)
+        return any(p.name in ["AntsRigid", "AntsAffine"] for p in self.passes)
 
     def get_ants_ai_parameters(self, voxel_size):
         options = ["-d {}".format(self.dimension)]
         transform = []
         for ants_pass in self.passes:
             if (
-                ants_pass.name in ["Rigid", "Affine"] and
+                ants_pass.name in ["AntsRigid", "AntsAffine"] and
                 len(transform) == 0
             ):
                 transform.append(

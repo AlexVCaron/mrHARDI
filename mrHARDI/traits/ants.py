@@ -41,6 +41,9 @@ class InitialTransform(TraitType):
 
     def validate(self, obj, value):
         if isinstance(value, str):
+            if "--initial-{}-transform".format(self.transform_type) in value:
+                return value
+
             return "--initial-{}-transform {}".format(self.transform_type, value)
         if isinstance(value, (tuple, list)):
             if len(value) == 3:
