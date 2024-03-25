@@ -22,14 +22,14 @@ def get_common_spacing(img_list, vote=min):
 
 
 def transform_images(
-    images, transform_fname, suffix=None, base_dir=None
+    images, transform_fname, suffix=None, base_dir=None, mask=None
 ):
     if base_dir is None:
         base_dir = getcwd()
 
     names = []
     for image in images:
-        name, ext = split_ext(image)
+        name, ext = split_ext(image, r"^(/?.*)\.(nii\.gz|nii)$")
         names.append(join(base_dir, "{}.{}".format(
             if_join_str([basename(name), suffix], "_"), ext
         )))
@@ -44,7 +44,24 @@ def transform_images(
 
         nib.save(img, names[-1])
 
-    return names
+    out_mask = None
+    if mask is not None:
+        name, ext = split_ext(mask, r"^(/?.*)\.(nii\.gz|nii)$")
+        out_mask = join(base_dir, "{}.{}".format(
+            if_join_str([basename(name), suffix], "_"), ext
+        ))
+
+        img = nib.load(mask)
+        img_ornt = nib.io_orientation(img.affine)
+        transform = load_transform(transform_fname, img_ornt)
+
+        img = nib.Nifti1Image(
+            img.get_fdata(), transform @ img.affine, img.header
+        )
+
+        nib.save(img, out_mask)
+
+    return names, out_mask
 
 
 def align_by_center_of_mass(
@@ -86,7 +103,8 @@ def align_by_center_of_mass(
         affine = img.affine
         affine[:3, 3] += _t[:3, :3] @ trans
 
-        name, ext = split_ext(fname)
+        # Get extension, which can either be .nii or .nii.gz
+        name, ext = split_ext(fname, r"^(/?.*)\.(nii\.gz|nii)$")
         out_files.append(join(base_dir, "{}.{}".format(
             if_join_str([basename(name), suffix], "_"), ext
         )))
@@ -104,7 +122,7 @@ def align_by_center_of_mass(
             affine = img.affine
             affine[:-1, 3] += _t[:3, :3] @ trans
 
-            name, ext = split_ext(fname)
+            name, ext = split_ext(fname, r"^(/?.*)\.(nii\.gz|nii)$")
             out_files.append(join(base_dir, "{}.{}".format(
                 if_join_str([basename(name), suffix], "_"), ext
             )))

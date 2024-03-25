@@ -113,7 +113,10 @@ class AntsConfiguration(mrHARDIConfigurable):
         options = ["-d {}".format(self.dimension)]
         transform = []
         for ants_pass in self.passes:
-            if ants_pass.name == "AntsRigid" and len(transform) == 0:
+            if (
+                ants_pass.name in ["AntsRigid", "AntsAffine"] and
+                len(transform) == 0
+            ):
                 transform.append(
                     ants_pass.serialize(voxel_size, for_ants_ai=True)
                 )
@@ -248,10 +251,6 @@ class AntsMotionCorrectionConfiguration(mrHARDIConfigurable):
         False, help="If True, writes the transform as a displacement "
                     "field over the timeseries"
     ).tag(config=True)
-
-    @default('app_flags')
-    def _app_flags_default(self):
-        return _flags
 
     def _validate(self):
         if not 2 <= self.dimension <= 3:

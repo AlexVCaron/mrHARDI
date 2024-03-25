@@ -1,6 +1,6 @@
 from os import getcwd, makedirs
-from os.path import basename, dirname, join
-from shutil import copyfile, copytree
+from os.path import basename, dirname, join, exists
+from shutil import copyfile, copytree, rmtree
 from tempfile import TemporaryDirectory
 
 import nibabel as nib
@@ -111,7 +111,7 @@ class AntsRegistration(mrHARDIBaseApplication):
         if base_dir is None:
             base_dir = getcwd()
 
-        name, ext = split_ext(image_fname)
+        name, ext = split_ext(basename(image_fname), r"^(/?.*)\.(nii\.gz|nii)$")
         image = nib.load(image_fname)
 
         if spacing is None:
@@ -160,7 +160,7 @@ class AntsRegistration(mrHARDIBaseApplication):
             spacing, spacing, spacing
         ))
 
-        for c in cmd:
+        for c in cmd: 
             launch_shell_process(
                 c, log_file, additional_env=additional_env
             )
@@ -192,14 +192,46 @@ class AntsRegistration(mrHARDIBaseApplication):
         with TemporaryDirectory(dir=base_dir) as prep_dir:
 
             if initial_transform is not None:
-                movings = transform_images(
-                    movings, initial_transform,
-                    suffix="_init_transform",
-                    base_dir=prep_dir
-                )
+                c = "antsApplyTransforms -e 0 -d 3"
+                _m = []
+                for m in movings:
+                    _n = basename(m)
+                    launch_shell_process(
+                        "{} -t {} -r {} -i {} -o {}".format(
+                            c, initial_transform,
+                            targets[0], m, 
+                            join(prep_dir, "{}_init_transform.{}".format(
+                                _n.split(".")[0],
+                                ".".join(_n.split(".")[1:])
+                            ))
+                        ), log_file,
+                        additional_env=additional_env
+                    )
+                    _m.append(join(prep_dir, "{}_init_transform.{}".format(
+                        _n.split(".")[0],
+                        ".".join(_n.split(".")[1:])
+                    )))
+                    movings = _m
+                if moving_mask is not None:
+                    _n = basename(moving_mask)
+                    launch_shell_process(
+                        "{} -t {} -r {} -i {} -o {}".format(
+                            c, initial_transform,
+                            targets[0], moving_mask,
+                            join(prep_dir, "{}_init_transform.{}".format(
+                                _n.split(".")[0],
+                                ".".join(_n.split(".")[1:])
+                            ))
+                        ), log_file,
+                        additional_env=additional_env
+                    )
+                    moving_mask = join(prep_dir, "{}_init_transform.{}".format(
+                        _n.split(".")[0],
+                        ".".join(_n.split(".")[1:])
+                    ))
 
             for i, target in enumerate(targets):
-                _, ext = split_ext(target)
+                _, ext = split_ext(target, r"^(/?.*)\.(nii\.gz|nii)$")
                 ai_config_dict["t{}".format(i)] = join(
                     base_dir, "ants_ai_target{}.{}".format(i, ext)
                 )
@@ -213,7 +245,7 @@ class AntsRegistration(mrHARDIBaseApplication):
                 )
 
             for i, moving in enumerate(movings):
-                _, ext = split_ext(moving)
+                _, ext = split_ext(moving, r"^(/?.*)\.(nii\.gz|nii)$")
                 ai_config_dict["m{}".format(i)] = join(
                     base_dir, "ants_ai_moving{}.{}".format(i, ext)
                 )
@@ -239,13 +271,13 @@ class AntsRegistration(mrHARDIBaseApplication):
                     movings, moving_mask = movings[:-1], movings[-1]
 
             for i, target in enumerate(targets):
-                _, ext = split_ext(target)
+                _, ext = split_ext(target, r"^(/?.*)\.(nii\.gz|nii)$")
                 copyfile(target, join(
                     base_dir, "ants_ai_target{}.{}".format(i, ext)
                 ))
 
             for i, moving in enumerate(movings):
-                _, ext = split_ext(moving)
+                _, ext = split_ext(moving, r"^(/?.*)\.(nii\.gz|nii)$")
                 copyfile(moving, join(
                     base_dir, "ants_ai_moving{}.{}".format(i, ext)
                 ))

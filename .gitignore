@@ -149,7 +149,7 @@ venv*/
 # No archives
 *.tar.gz
 
-# Singularity
+# Apptainer
 *.sif
 *.simg
 
