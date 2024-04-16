@@ -86,6 +86,11 @@ class AntsConfiguration(mrHARDIConfigurable):
     coarse_linear_split = Integer(3).tag(config=True)
     fine_linear_split = Integer(0).tag(config=True)
 
+    coarse_angular_range = Float(160.0).tag(config=True)
+    fine_angular_range = Float(45.0).tag(config=True)
+    coarse_linear_range = Float(16.0).tag(config=True)
+    fine_linear_range = Float(4.0).tag(config=True)
+
     def _config_section(self):
         return super()._config_section()
 
