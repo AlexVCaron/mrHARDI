@@ -366,14 +366,14 @@ class AntsRegistration(mrHARDIBaseApplication):
 
             coarse_angular_range = self.configuration.coarse_angular_range
             coarse_angular_step = coarse_angular_range / (
-                self.configuration.coarse_angular_split - 1
+                max(self.configuration.coarse_angular_split, 1)
             )
             coarse_translation_range = [
-                self.configuration.coarse_linear_range
+                self.configuration.coarse_linear_split
             ] * 3
             coarse_translation_step = (
                 self.configuration.coarse_linear_range /
-                self.configuration.coarse_linear_split
+                max(self.configuration.coarse_linear_split, 1)
             )
 
             self._call_ants_ai(
@@ -393,12 +393,12 @@ class AntsRegistration(mrHARDIBaseApplication):
 
             fine_angular_range = self.configuration.fine_angular_range
             fine_angular_step = fine_angular_range / (
-                self.configuration.fine_angular_split - 1
+                max(self.configuration.fine_angular_split, 1)
             )
-            fine_translation_range = [self.configuration.fine_linear_range] * 3
+            fine_translation_range = [self.configuration.fine_linear_split] * 3
             fine_translation_step = (
                 self.configuration.fine_linear_range /
-                self.configuration.fine_linear_split
+                max(self.configuration.fine_linear_split, 1)
             )
 
             self._call_ants_ai(

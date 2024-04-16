@@ -84,7 +84,7 @@ class AntsConfiguration(mrHARDIConfigurable):
     coarse_angular_split = Integer(4).tag(config=True)
     fine_angular_split = Integer(9).tag(config=True)
     coarse_linear_split = Integer(3).tag(config=True)
-    fine_linear_split = Integer(0).tag(config=True)
+    fine_linear_split = Integer(1).tag(config=True)
 
     coarse_angular_range = Float(160.0).tag(config=True)
     fine_angular_range = Float(45.0).tag(config=True)
