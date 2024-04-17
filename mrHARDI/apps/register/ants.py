@@ -364,16 +364,16 @@ class AntsRegistration(mrHARDIBaseApplication):
                 basename(self.output_prefix)
             ))
 
-            coarse_angular_range = self.configuration.coarse_angular_range
-            coarse_angular_step = coarse_angular_range / (
-                max(self.configuration.coarse_angular_split, 1)
+            coarse_angular_range = self.configuration.coarse_angular_range / 2.
+            coarse_angular_step = self.configuration.coarse_angular_range / (
+                max(self.configuration.coarse_angular_split - 1, 1)
             )
             coarse_translation_range = [
-                self.configuration.coarse_linear_split
+                self.configuration.coarse_linear_range / 2.
             ] * 3
             coarse_translation_step = (
                 self.configuration.coarse_linear_range /
-                max(self.configuration.coarse_linear_split, 1)
+                max(self.configuration.coarse_linear_split - 1, 1)
             )
 
             self._call_ants_ai(
@@ -391,14 +391,16 @@ class AntsRegistration(mrHARDIBaseApplication):
                 keep_files=True
             )
 
-            fine_angular_range = self.configuration.fine_angular_range
-            fine_angular_step = fine_angular_range / (
-                max(self.configuration.fine_angular_split, 1)
+            fine_angular_range = self.configuration.fine_angular_range / 2.
+            fine_angular_step = self.configuration.fine_angular_range / (
+                max(self.configuration.fine_angular_split - 1, 1)
             )
-            fine_translation_range = [self.configuration.fine_linear_split] * 3
+            fine_translation_range = [
+                self.configuration.fine_linear_range / 2.
+            ] * 3
             fine_translation_step = (
                 self.configuration.fine_linear_range /
-                max(self.configuration.fine_linear_split, 1)
+                max(self.configuration.fine_linear_split - 1, 1)
             )
 
             self._call_ants_ai(
