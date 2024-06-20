@@ -49,7 +49,7 @@ target "diamond" {
 target "dependencies" {
     context = "dependencies/."
     contexts = {
-        base_image = "docker-image://scilus/scilus:1.6.0"
+        base_image = "docker-image://scilus/scilus:2.0.2"
         web_fetcher = "target:web_fetcher"
         diamond_builder = "target:diamond"
     }
