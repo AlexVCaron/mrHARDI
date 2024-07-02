@@ -1,9 +1,9 @@
-dipy==1.7.0
-fury==0.8.*
+dipy==1.9.*
+fury==0.10.*
 GPUtil==1.4.0
 imageio==2.27.0
 ipython_genutils==0.2.0
-nibabel==4.0.*
+nibabel==5.2.*
 numpy==1.23.*
 plotly==5.14.1
 pygifsicle==1.0.7
