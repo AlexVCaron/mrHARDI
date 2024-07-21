@@ -430,8 +430,9 @@ class AntsRegistration(mrHARDIBaseApplication):
                 "init_transform.mat"
             )
 
-        ants_config_fmt = self.configuration.serialize(max_spacing, masks_param)
-        ants_config_fmt = ants_config_fmt.format(**config_dict)
+        ants_config_fmt = self.configuration.serialize(
+            max_spacing, masks=masks_param
+        ).format(**config_dict)
 
         if self.verbose:
             ants_config_fmt += " --verbose"
