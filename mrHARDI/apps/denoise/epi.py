@@ -220,7 +220,8 @@ class BMEpiCorrection(BaseEpiCorrectionApplication):
             f.write("0 0 0 0 0 0\n")
             f.write("0 0 0 0 0 0")
 
-        phase_encode_direction = np.argmax(phase_encode_directions[0])
+        phase_encode_direction = np.argmax(np.absolute(
+            phase_encode_directions[0]))
         phase_encode_sign = np.sign(phase_encode_directions[0, phase_encode_direction])
         phase_encode_sign = "-" if phase_encode_sign < 0 else ""
         readout = metadata.readout

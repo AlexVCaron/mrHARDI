@@ -364,11 +364,25 @@ class AntsRegistration(mrHARDIBaseApplication):
                 basename(self.output_prefix)
             ))
 
+            coarse_angular_range = self.configuration.coarse_angular_range / 2.
+            coarse_angular_step = self.configuration.coarse_angular_range / (
+                max(self.configuration.coarse_angular_split - 1, 1)
+            )
+            coarse_translation_range = [
+                self.configuration.coarse_linear_range / 2.
+            ] * 3
+            coarse_translation_step = (
+                self.configuration.coarse_linear_range /
+                max(self.configuration.coarse_linear_split - 1, 1)
+            )
+
             self._call_ants_ai(
                 self.target_images.copy(), self.moving_images.copy(),
                 self.configuration, "coarse_initializer.mat",
-                angular_step=160. / self.configuration.coarse_angular_split,
-                translation_step=16. / self.configuration.coarse_linear_split,
+                angular_range=coarse_angular_range,
+                angular_step=coarse_angular_step,
+                translation_range=coarse_translation_range,
+                translation_step=coarse_translation_step,
                 target_mask=target_mask,
                 moving_mask=moving_mask if moving_mask != target_mask else None,
                 base_dir=coarse_subpath,
@@ -377,12 +391,25 @@ class AntsRegistration(mrHARDIBaseApplication):
                 keep_files=True
             )
 
+            fine_angular_range = self.configuration.fine_angular_range / 2.
+            fine_angular_step = self.configuration.fine_angular_range / (
+                max(self.configuration.fine_angular_split - 1, 1)
+            )
+            fine_translation_range = [
+                self.configuration.fine_linear_range / 2.
+            ] * 3
+            fine_translation_step = (
+                self.configuration.fine_linear_range /
+                max(self.configuration.fine_linear_split - 1, 1)
+            )
+
             self._call_ants_ai(
                 self.target_images.copy(), self.moving_images.copy(),
                 self.configuration, "fine_initializer.mat",
-                angular_step=45. / self.configuration.fine_angular_split,
-                translation_range=3 * [self.configuration.fine_linear_split],
-                angular_range=20, translation_step=1,
+                angular_range=fine_angular_range,
+                angular_step=fine_angular_step,
+                translation_range=fine_translation_range,
+                translation_step=fine_translation_step,
                 align_center_of_mass=False,
                 initial_transform="coarse_initializer.mat",
                 target_mask=target_mask,
@@ -403,8 +430,9 @@ class AntsRegistration(mrHARDIBaseApplication):
                 "init_transform.mat"
             )
 
-        ants_config_fmt = self.configuration.serialize(max_spacing, masks_param)
-        ants_config_fmt = ants_config_fmt.format(**config_dict)
+        ants_config_fmt = self.configuration.serialize(
+            max_spacing, masks=masks_param
+        ).format(**config_dict)
 
         if self.verbose:
             ants_config_fmt += " --verbose"
