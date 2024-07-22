@@ -21,14 +21,12 @@ from traitlets.config import (Application,
                               TraitError,
                               Unicode,
                               catch_config_error,
-                              dedent,
                               deepcopy,
                               default,
-                              indent,
                               logging,
                               observe,
-                              observe_compat,
-                              wrap_paragraphs)
+                              observe_compat)
+from traitlets.utils.text import indent, dedent, wrap_paragraphs
 
 from mrHARDI.base.ListValuedDict import ListValuedDict
 from mrHARDI.base.config import ConfigurationWriter
@@ -253,7 +251,7 @@ class mrHARDIBaseApplication(Application):
             msg += "{} got invalid exclusive groups :\n{}".format(
                 self.__class__.__name__,
                 "\n".join(indent(
-                    "- {} : {}".format(g, list(tt[0] for tt in t)), 4
+                    "- {} : {}".format(g, list(tt[0] for tt in t))
                 ) for g, t in invalid_exclusives)
             ) + "\n"
         # if len(incomplete_exclusives):
@@ -460,7 +458,7 @@ class mrHARDIBaseApplication(Application):
             lines = self._trait_help(*trait_args, lines)
 
         for line in [
-            indent(ln, indentation) for ln in linesep.join(sorted(
+            indent(ln) for ln in linesep.join(sorted(
                 lines, key=lambda k: "REQUIRED" in k, reverse=True
             )).splitlines()
         ]:
@@ -525,7 +523,7 @@ class mrHARDIBaseApplication(Application):
                     yield ln
             else:
                 for idx, opt_aliases in aliases_by_index.items():
-                    yield indent("> Option {} : ".format(idx), 2)
+                    yield indent("> Option {} : ".format(idx))
                     yield ''
 
                     for ln in self._emit_alias_category(dict(opt_aliases), 4):
@@ -573,7 +571,7 @@ class mrHARDIBaseApplication(Application):
         lines.append(header)
 
         if inst is not None:
-            lines.append(indent('Current: %r' % getattr(inst, trait.name), 4))
+            lines.append(indent('Current: %r' % getattr(inst, trait.name)))
         else:
             try:
                 dvr = trait.default_value_repr()
@@ -589,20 +587,20 @@ class mrHARDIBaseApplication(Application):
             if not required and dvr is not None:
                 if len(dvr) > 64:
                     dvr = dvr[:61] + '...'
-                lines.append(indent('Default: %s' % dvr, 4))
+                lines.append(indent('Default: %s' % dvr))
 
             if opt is not None:
                 opts_lines = split(opt, arange(5, len(opt), 5))
                 if len(opts_lines) > 1:
-                    lines.append(indent('Options: [', 4))
+                    lines.append(indent('Options: ['))
                     for opt_line in opts_lines:
-                        lines.append(indent(",".join(
+                        lines.append(indent(indent(",".join(
                             "'{}'".format(op) for op in opt_line
-                        ) + ",", 8))
+                        ) + ",")))
                     lines[-1] = lines[-1].rstrip(",")
-                    lines.append(indent(']', 4))
+                    lines.append(indent(']'))
                 else:
-                    lines.append(indent('Options: {}'.format(opt), 4))
+                    lines.append(indent('Options: {}'.format(opt)))
 
         if 'Enum' in trait.__class__.__name__:
             # include Enum choices
@@ -611,7 +609,7 @@ class mrHARDIBaseApplication(Application):
         hlp = trait.help
         if hlp != '':
             hlp = '\n'.join(wrap_paragraphs(hlp, 76))
-            lines.append(indent(hlp, 4))
+            lines.append(indent(hlp))
 
         return '\n'.join(lines)
 
