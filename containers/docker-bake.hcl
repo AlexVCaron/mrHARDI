@@ -56,7 +56,6 @@ target "dependencies" {
     dockerfile = "Dockerfile"
     target = "dependencies"
     tags = ["docker.io/avcaron/mrhardi:dependencies"]
-    pull = true
     output = ["type=image"]
     cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-dependencies"]
 }
