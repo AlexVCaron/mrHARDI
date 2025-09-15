@@ -189,14 +189,15 @@ class Eddy(mrHARDIBaseApplication):
         ) as f:
             f.write(" ".join([str(i) for i in indexes]) + "\n")
 
-        if self.configuration.enable_cuda:
-            lines = [
-                " ".join(["{:d}".format(mm) for mm in m]) + "\n"
-                for m in metadata.slice_order
-            ]
+        # New version of Eddy supports CPU for all features
+        # if self.configuration.enable_cuda:
+        lines = [
+            " ".join(["{:d}".format(mm) for mm in m]) + "\n"
+            for m in metadata.slice_order
+        ]
 
-            with open("{}_slspec.txt".format(self.output_prefix), "w+") as f:
-                f.writelines(lines)
+        with open("{}_slspec.txt".format(self.output_prefix), "w+") as f:
+            f.writelines(lines)
 
         with open(
             "{}_script.sh".format(self.output_prefix), "w+"
@@ -232,10 +233,7 @@ class Eddy(mrHARDIBaseApplication):
                 ):
                     dargs.extend(["write_scatter_brain_predictions"])
 
-                if (
-                    self.configuration.enable_cuda and
-                    self.configuration.outlier_model is not None
-                ):
+                if self.configuration.outlier_model is not None:
                     dargs.extend(["with_outliers"])
 
                 debug_args += " ".join("--{}=True".format(d) for d in dargs)
@@ -285,9 +283,8 @@ class Eddy(mrHARDIBaseApplication):
                 ["topup", "slspec", "scsfield", "scsmat"],
                 header="\n".join([
                     "# Preparing environment",
-                    "CUDA_HOME=/usr/local/cuda-9.1",
+                    "CUDA_HOME=/usr/local/cuda",
                     "export LD_LIBRARY_PATH=" + ":".join([
-                        "$CUDA_HOME/extras/CUPTI/lib64",
                         "$CUDA_HOME/lib64",
                         "$LD_LIBRARY_PATH"
                     ]),
