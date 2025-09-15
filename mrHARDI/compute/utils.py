@@ -85,7 +85,7 @@ def validate_affine(aff_a, aff_b, shape):
             _a[_ix[1], 1] = 0
             _ix[1] = np.argmax(_a[:, 1])
         if np.any(_ix[:2] == _ix[2]):
-            _ix[3] = np.setdiff1d(np.arange(0, 3, dtype=int), _ix[:3])
+            _ix[2] = np.setdiff1d(np.arange(0, 3, dtype=int), _ix[:2])
         _perm = np.argsort(_ix)
         _r[:, :3] = _r[:, _perm]
         _flp = np.diag(_r[:3, :3]) < 0
