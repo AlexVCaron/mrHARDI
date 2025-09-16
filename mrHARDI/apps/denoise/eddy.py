@@ -4,7 +4,7 @@ from os.path import exists
 import nibabel as nib
 import numpy as np
 from GPUtil import GPUtil
-from traitlets import Dict, Instance, Unicode, Bool, Enum
+from traitlets import Dict, Instance, Unicode, Bool, Enum, Integer
 from traitlets.config.loader import ArgumentError, ConfigError
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
@@ -20,7 +20,8 @@ _aliases = {
     "in": 'Eddy.image',
     "acqp": 'Eddy.acquisition_file',
     "rev": 'Eddy.rev_image',
-    "out": 'Eddy.output_prefix'
+    "out": 'Eddy.output_prefix',
+    "processes": 'Eddy.processes'
 }
 
 _flags = dict(
@@ -115,6 +116,7 @@ class Eddy(mrHARDIBaseApplication):
 
     debug = Bool(False).tag(config=True)
     select_gpu = Bool(True).tag(config=True)
+    processes = Integer(1).tag(config=True)
 
     aliases = Dict(default_value=_aliases)
     flags = Dict(default_value=_flags)
@@ -273,7 +275,7 @@ class Eddy(mrHARDIBaseApplication):
             script = build_script(
                 _eddy_script.format(
                     executable=eddy_exec,
-                    more_args=self.configuration.serialize(max_spacing),
+                    more_args=self.configuration.serialize(max_spacing) + " --nthr={}".format(self.processes),
                     debug_args=debug_args
                 ),
                 [

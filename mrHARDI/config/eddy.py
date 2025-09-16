@@ -90,13 +90,13 @@ class EddyConfiguration(mrHARDIConfigurable):
     enable_cuda = Bool(False).tag(config=True)
     outlier_model = DictInstantiatingInstance(
         OutlierReplacement, allow_none=True
-    ).tag(config=True, none_to_default=True, cuda_required=True)
+    ).tag(config=True, none_to_default=True)
     slice_to_vol = DictInstantiatingInstance(
         IntraVolMotionCorrection, allow_none=True
-    ).tag(config=True, none_to_default=True, cuda_required=True)
+    ).tag(config=True, none_to_default=True)
     susceptibility = DictInstantiatingInstance(
         SusceptibilityCorrection, allow_none=True
-    ).tag(config=True, none_to_default=True, cuda_required=True)
+    ).tag(config=True, none_to_default=True)
 
     ceil_value = Float(
         0.9, help="Higher bound determining a valid b-value for a b0 volume"

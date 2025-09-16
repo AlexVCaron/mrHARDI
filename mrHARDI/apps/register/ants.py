@@ -130,19 +130,19 @@ class AntsRegistration(mrHARDIBaseApplication):
             )
 
         cmd = [
-            "scil_crop_volume.py {} {} --output_bbox {} -f".format(
+            "scil_volume_crop.py {} {} --output_bbox {} -f".format(
                 image_fname,
                 join(base_dir, "{}_cropped.{}".format(name, ext)),
-                join(base_dir, "{}_bbox.pkl".format(name))
+                join(base_dir, "{}_bbox.json".format(name))
             )
         ]
         image_fname = join(base_dir, "{}_cropped.{}".format(name, ext))
 
         if mask_fname:
-            cmd.append("scil_crop_volume.py {} {} --input_bbox {} -f".format(
+            cmd.append("scil_volume_crop.py {} {} --input_bbox {} -f".format(
                 mask_fname,
                 join(base_dir, "{}_mask_cropped.{}".format(name, ext)),
-                join(base_dir, "{}_bbox.pkl".format(name))
+                join(base_dir, "{}_bbox.json".format(name))
             ))
             mask_fname = join(base_dir, "{}_mask_cropped.{}".format(name, ext))
 

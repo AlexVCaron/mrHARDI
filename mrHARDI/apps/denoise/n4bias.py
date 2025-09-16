@@ -107,7 +107,7 @@ class N4BiasCorrection(mrHARDIBaseApplication):
 
         if self.apply_to:
             scil_cmd = (
-                "scil_apply_bias_field_on_dwi.py {} "
+                "scil_dwi_apply_bias_field.py {} "
                 "{}_bias_field.nii.gz {}.nii.gz -f".format(
                     self.apply_to, n4_output, self.output
                 )
