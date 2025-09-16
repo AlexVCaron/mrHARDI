@@ -14,7 +14,7 @@ RUN apt-get update && apt-get -y install \
 WORKDIR /
 RUN mkdir -p /mrhs/dev/diamond /tmp/install_gcc8_gpp8
 
-ADD https://avcaron@bitbucket.org/avcaron/magic-diamond.git /tmp/magic-diamond
+ADD https://bitbucket.org/avcaron/magic-diamond.git /tmp/magic-diamond
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 10 \
     && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 10 \
