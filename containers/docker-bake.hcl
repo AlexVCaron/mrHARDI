@@ -40,6 +40,7 @@ target "diamond" {
     contexts = {
         cmake_builder = "target:cmake"
     }
+    ssh = [{ id = "default" }]
     dockerfile = "diamond.Dockerfile"
     target = "diamond_builder"
     output = ["type=cacheonly"]

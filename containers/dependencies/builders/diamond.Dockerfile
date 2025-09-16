@@ -7,9 +7,9 @@ RUN apt-get update && apt-get -y install \
     g++-10 \
     git \
     libomp-dev \
+    openssh-client \
     wget \
     && rm -rf /var/lib/apt/lists/*
-
 
 WORKDIR /
 RUN mkdir -p /mrhs/dev/diamond /tmp/install_gcc8_gpp8

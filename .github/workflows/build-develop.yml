@@ -61,6 +61,15 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.BITBUCKET_AUTH_TOKEN }}
+          name: bitbucket
+          known_hosts: ${{ secrets.BITBUCKET_KNOWN_HOSTS }}
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.BITBUCKET_AUTH_TOKEN }}
       -
         name: Build docker image stack
         if: ${{ steps.git_diff.outputs.lines > 0 }}
@@ -69,6 +78,7 @@ jobs:
           source: "{{defaultContext}}:containers"
           pull: true
           push: true
+          allow: ssh
           set: |
             mrhardi.output=type=registry
             mrhardi.tags=docker.io/avcaron/mrhardi:pr-${{ github.event.number }}
