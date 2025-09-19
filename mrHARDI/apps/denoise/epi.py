@@ -4,7 +4,7 @@ from shutil import copyfile
 
 import nibabel as nib
 import numpy as np
-from traitlets import Dict, Instance, Unicode, Enum, Bool
+from traitlets import Dict, Instance, Unicode, Enum, Bool, Integer
 from traitlets.config.loader import ConfigError
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
@@ -149,6 +149,7 @@ class BaseEpiCorrectionApplication(mrHARDIBaseApplication):
 
 class TopupCorrection(BaseEpiCorrectionApplication):
     configuration = Instance(TopupConfiguration).tag(config=True)
+    processes = Integer(1).tag(config=True)
 
     def execute(self):
         metadata = load_metadata(self.b0_volumes)
@@ -166,6 +167,7 @@ class TopupCorrection(BaseEpiCorrectionApplication):
             else:
                 self.extra_arguments = "--verbose"
 
+        self.extra_arguments += " --nthr={}".format(self.processes)
         with open("{}_script.sh".format(self.output_prefix), 'w+') as f:
             f.write("#!/usr/bin/env bash\n\n")
             f.write("# mrHARDI -------------------------\n")

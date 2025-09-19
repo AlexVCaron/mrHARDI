@@ -7,14 +7,14 @@ RUN apt-get update && apt-get -y install \
     g++-10 \
     git \
     libomp-dev \
+    openssh-client \
     wget \
     && rm -rf /var/lib/apt/lists/*
-
 
 WORKDIR /
 RUN mkdir -p /mrhs/dev/diamond /tmp/install_gcc8_gpp8
 
-ADD https://avcaron@bitbucket.org/avcaron/magic-diamond.git /tmp/magic-diamond
+ADD git@bitbucket.org:avcaron/magic-diamond.git /tmp/magic-diamond
 
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 10 \
     && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 10 \

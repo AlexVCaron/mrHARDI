@@ -90,13 +90,13 @@ class EddyConfiguration(mrHARDIConfigurable):
     enable_cuda = Bool(False).tag(config=True)
     outlier_model = DictInstantiatingInstance(
         OutlierReplacement, allow_none=True
-    ).tag(config=True, none_to_default=True, cuda_required=True)
+    ).tag(config=True, none_to_default=True)
     slice_to_vol = DictInstantiatingInstance(
         IntraVolMotionCorrection, allow_none=True
-    ).tag(config=True, none_to_default=True, cuda_required=True)
+    ).tag(config=True, none_to_default=True)
     susceptibility = DictInstantiatingInstance(
         SusceptibilityCorrection, allow_none=True
-    ).tag(config=True, none_to_default=True, cuda_required=True)
+    ).tag(config=True, none_to_default=True)
 
     ceil_value = Float(
         0.9, help="Higher bound determining a valid b-value for a b0 volume"
@@ -122,21 +122,23 @@ class EddyConfiguration(mrHARDIConfigurable):
         return super()._config_section()
 
     def _validate(self):
-        if not self.enable_cuda and (
-            self.outlier_model or self.slice_to_vol or self.susceptibility
-        ):
-            raise ConfigError(
-                "{} needs Cuda to be enabled to use :\n{}".format(
-                    self.__class__.__name__, "\n".join([
-                        "outliers detection : {}".format(
-                            self.outlier_model is not None
-                        ),
-                        "slice to volume : {}".format(
-                            self.slice_to_vol is not None
-                        )
-                    ])
-                )
-            )
+        pass
+        # With the new version of Eddy, CPU supports all features, it's just way slower
+        # if not self.enable_cuda and (
+        #     self.outlier_model or self.slice_to_vol or self.susceptibility
+        # ):
+        #     raise ConfigError(
+        #         "{} needs Cuda to be enabled to use :\n{}".format(
+        #             self.__class__.__name__, "\n".join([
+        #                 "outliers detection : {}".format(
+        #                     self.outlier_model is not None
+        #                 ),
+        #                 "slice to volume : {}".format(
+        #                     self.slice_to_vol is not None
+        #                 )
+        #             ])
+        #         )
+        #     )
 
     def serialize(self, voxel_size, *args, **kwargs):
         base_arguments = serialize_fsl_args(dict(

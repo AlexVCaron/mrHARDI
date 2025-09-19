@@ -1,4 +1,4 @@
-import pickle
+import json
 import sys
 
 import nibabel as nib
@@ -17,7 +17,7 @@ _fit2_aliases = {
     "in": "FitToBox.image",
     "out": "FitToBox.output",
     "bbox": "FitToBox.bounding_box",
-    "pbox": "FitToBox.pkl_box",
+    "pbox": "FitToBox.json_box",
     "fill": "FitToBox.fill_value"
 }
 
@@ -60,8 +60,8 @@ class FitToBox(mrHARDIBaseApplication):
     bounding_box = BoundingBox(
         None, allow_none=True, help="A bouding box in world coordinates"
     ).tag(config=True, required=True, exclusive_group="bbox", group_index=0)
-    pkl_box = Unicode(
-        None, allow_none=True, help="A .pkl bounding box calculated by Scilpy"
+    json_box = Unicode(
+        None, allow_none=True, help="A .json bounding box calculated by Scilpy"
     ).tag(config=True, required=True, exclusive_group="bbox", group_index=1)
 
     fill_value = Any(
@@ -74,17 +74,19 @@ class FitToBox(mrHARDIBaseApplication):
     def execute(self):
         image = nib.load(self.image)
 
-        if self.pkl_box:
-            setattr(
-                sys.modules['__main__'], 'WorldBoundingBox', WorldBoundingBox
-            )
-            with open(self.pkl_box, 'rb') as pklf:
-                bbox = pickle.load(pklf)
+        if self.json_box:
+            with open(self.json_box, 'r') as fbox:
+                bbox = json.load(fbox)
+                bbox = WorldBoundingBox(
+                    np.asarray(bbox['minimums']),
+                    np.asarray(bbox['maximums']),
+                    np.asarray(bbox['voxel_size'])
+                )
         else:
             bbox = WorldBoundingBox(
-                self.bounding_box[0::2],
-                self.bounding_box[1::2],
-                image.header.get_zooms()[0:3]
+                np.asarray(self.bounding_box[0::2]),
+                np.asarray(self.bounding_box[1::2]),
+                np.asarray(image.header.get_zooms()[0:3])
             )
 
         voxel_mins = world_to_voxel(bbox.minimums, image.affine)
@@ -93,10 +95,14 @@ class FitToBox(mrHARDIBaseApplication):
         if np.any(voxel_mins > 0) or np.any(
             np.less(voxel_maxs, image.shape[:3])
         ):
-            if not self.pkl_box:
-                with open("tmp_bbox.pkl", 'wb') as pklf:
-                    pickle.dump(bbox, pklf)
-                self.pkl_box = "tmp_bbox.pkl"
+            if not self.json_box:
+                with open("tmp_bbox.json", 'w') as fbox:
+                    json.dump({
+                        "minimums": bbox.minimums.tolist(),
+                        "maximums": bbox.maximums.tolist(),
+                        "voxel_size": bbox.voxel_size.tolist()
+                    }, fbox)
+                self.json_box = "tmp_bbox.json"
 
             image = crop_nifti(image, bbox)
 
@@ -128,7 +134,7 @@ _fit_aliases = {
     "in": "FitBox.image",
     "ref": "FitBox.reference",
     "out": "FitBox.output",
-    "pbox": "FitBox.pkl_box"
+    "pbox": "FitBox.json_box"
 }
 
 
@@ -137,8 +143,8 @@ class FitBox(mrHARDIBaseApplication):
     reference = required_file(description="Reference image for the box")
     output = output_file_argument()
 
-    pkl_box = Unicode(
-        None, allow_none=True, help="A .pkl bounding box calculated by Scilpy"
+    json_box = Unicode(
+        None, allow_none=True, help="A .json bounding box calculated by Scilpy"
     ).tag(config=True, required=True)
 
     aliases = Dict(default_value=_fit_aliases)
@@ -160,9 +166,13 @@ class FitBox(mrHARDIBaseApplication):
         image = nib.load(self.image)
         ref_affine = nib.load(self.reference).affine
 
-        setattr(sys.modules['__main__'], 'WorldBoundingBox', WorldBoundingBox)
-        with open(self.pkl_box, 'rb') as pklf:
-            bbox = pickle.load(pklf)
+        with open(self.json_box, 'r') as fbox:
+            bbox = json.load(fbox)
+            bbox = WorldBoundingBox(
+                np.asarray(bbox['minimums']),
+                np.asarray(bbox['maximums']),
+                np.asarray(bbox['voxel_size'])
+            )
 
         voxel_mins = world_to_voxel(
             self._change_world(bbox.minimums, ref_affine, image.affine),
@@ -174,10 +184,14 @@ class FitBox(mrHARDIBaseApplication):
         )
 
         ref_bbox = WorldBoundingBox(
-            voxel_to_world(voxel_mins, image.affine),
-            voxel_to_world(voxel_maxs, image.affine),
-            image.header.get_zooms()[0:3]
+            np.asarray(voxel_to_world(voxel_mins, image.affine)),
+            np.asarray(voxel_to_world(voxel_maxs, image.affine)),
+            np.asarray(image.header.get_zooms()[0:3])
         )
 
-        with open("{}.pkl".format(self.output), 'wb') as pklf:
-            pickle.dump(ref_bbox, pklf)
+        with open("{}.json".format(self.output), 'w') as fbox:
+            json.dump({
+                "minimums": ref_bbox.minimums.tolist(),
+                "maximums": ref_bbox.maximums.tolist(),
+                "voxel_size": ref_bbox.voxel_size.tolist()
+            }, fbox)

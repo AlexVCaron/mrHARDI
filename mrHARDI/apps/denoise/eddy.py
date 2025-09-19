@@ -4,7 +4,7 @@ from os.path import exists
 import nibabel as nib
 import numpy as np
 from GPUtil import GPUtil
-from traitlets import Dict, Instance, Unicode, Bool, Enum
+from traitlets import Dict, Instance, Unicode, Bool, Enum, Integer
 from traitlets.config.loader import ArgumentError, ConfigError
 
 from mrHARDI.base.application import (mrHARDIBaseApplication,
@@ -20,7 +20,8 @@ _aliases = {
     "in": 'Eddy.image',
     "acqp": 'Eddy.acquisition_file',
     "rev": 'Eddy.rev_image',
-    "out": 'Eddy.output_prefix'
+    "out": 'Eddy.output_prefix',
+    "processes": 'Eddy.processes'
 }
 
 _flags = dict(
@@ -115,6 +116,7 @@ class Eddy(mrHARDIBaseApplication):
 
     debug = Bool(False).tag(config=True)
     select_gpu = Bool(True).tag(config=True)
+    processes = Integer(1).tag(config=True)
 
     aliases = Dict(default_value=_aliases)
     flags = Dict(default_value=_flags)
@@ -189,14 +191,15 @@ class Eddy(mrHARDIBaseApplication):
         ) as f:
             f.write(" ".join([str(i) for i in indexes]) + "\n")
 
-        if self.configuration.enable_cuda:
-            lines = [
-                " ".join(["{:d}".format(mm) for mm in m]) + "\n"
-                for m in metadata.slice_order
-            ]
+        # New version of Eddy supports CPU for all features
+        # if self.configuration.enable_cuda:
+        lines = [
+            " ".join(["{:d}".format(mm) for mm in m]) + "\n"
+            for m in metadata.slice_order
+        ]
 
-            with open("{}_slspec.txt".format(self.output_prefix), "w+") as f:
-                f.writelines(lines)
+        with open("{}_slspec.txt".format(self.output_prefix), "w+") as f:
+            f.writelines(lines)
 
         with open(
             "{}_script.sh".format(self.output_prefix), "w+"
@@ -232,10 +235,7 @@ class Eddy(mrHARDIBaseApplication):
                 ):
                     dargs.extend(["write_scatter_brain_predictions"])
 
-                if (
-                    self.configuration.enable_cuda and
-                    self.configuration.outlier_model is not None
-                ):
+                if self.configuration.outlier_model is not None:
                     dargs.extend(["with_outliers"])
 
                 debug_args += " ".join("--{}=True".format(d) for d in dargs)
@@ -275,7 +275,7 @@ class Eddy(mrHARDIBaseApplication):
             script = build_script(
                 _eddy_script.format(
                     executable=eddy_exec,
-                    more_args=self.configuration.serialize(max_spacing),
+                    more_args=self.configuration.serialize(max_spacing) + " --nthr={}".format(self.processes),
                     debug_args=debug_args
                 ),
                 [
@@ -285,9 +285,8 @@ class Eddy(mrHARDIBaseApplication):
                 ["topup", "slspec", "scsfield", "scsmat"],
                 header="\n".join([
                     "# Preparing environment",
-                    "CUDA_HOME=/usr/local/cuda-9.1",
+                    "CUDA_HOME=/usr/local/cuda",
                     "export LD_LIBRARY_PATH=" + ":".join([
-                        "$CUDA_HOME/extras/CUPTI/lib64",
                         "$CUDA_HOME/lib64",
                         "$LD_LIBRARY_PATH"
                     ]),

@@ -22,68 +22,67 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  create_singularity_dev:
-    if: github.event.pull_request.merged == true
-    runs-on: ubuntu-latest
-    environment: CI
+  # create_singularity_dev:
+  #   if: github.event.pull_request.merged == true
+  #   runs-on: ubuntu-latest
+  #   environment: CI
 
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v3
-      -
-        name: Get git diff for the current modifications
-        uses: technote-space/get-diff-action@v6.1.2
-        id: git_diff
-        with:
-          GET_FILE_DIFF: true
-          PATTERNS: |
-            mrHARDI/**/*.py
-            setup.py
-            requirements.txt
-            .github/workflows/*-develop.yml
-            containers/**/*
-      -
-        name: Maximize disk usage
-        if: ${{ steps.git_diff.outputs.lines > 0 }}
-        uses: easimon/maximize-build-space@v7
-        with:
-          root-reserve-mb: 1024
-          temp-reserve-mb: 1024
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
-          remove-docker-images: 'true'
-      - 
-        name: Setup apptainer
-        if: ${{ steps.git_diff.outputs.lines > 0 }}
-        uses: eWaterCycle/setup-apptainer@v2
-        with:
-          apptainer-version: 1.1.8
-      - 
-        name: Azure Container Registry Login
-        if: ${{ steps.git_diff.outputs.lines > 0 }}
-        uses: Azure/docker-login@v1
-        with:
-          login-server: mrhardi.azurecr.io
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_TOKEN }}
-      -
-        name: Build and push singularity
-        if: ${{ steps.git_diff.outputs.lines > 0 }}
-        run: |
-          mkdir -p mrhardi/apptainer
-          mkdir sif_tmp sif_cache
-          export APPTAINER_TMPDIR="$(pwd)/sif_tmp"
-          export APPTAINER_CACHEDIR="$(pwd)/sif_cache"
-          echo "Caching and temping apptainer at : $APPTAINER_CACHEDIR and $APPTAINER_TMPDIR"
-          apptainer build mrhardi_dev.sif docker://avcaron/mrhardi:pr-${{ github.event.number }}
-          echo "${{ secrets.ACR_TOKEN }}" | apptainer remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
-          apptainer push mrhardi_dev.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
+  #   steps:
+  #     -
+  #       name: Checkout
+  #       uses: actions/checkout@v5
+  #     -
+  #       name: Get git diff for the current modifications
+  #       uses: technote-space/get-diff-action@v6.1.2
+  #       id: git_diff
+  #       with:
+  #         GET_FILE_DIFF: true
+  #         PATTERNS: |
+  #           mrHARDI/**/*.py
+  #           setup.py
+  #           requirements.txt
+  #           .github/workflows/*-develop.yml
+  #           containers/**/*
+  #     -
+  #       name: Maximize disk usage
+  #       if: ${{ steps.git_diff.outputs.lines > 0 }}
+  #       uses: easimon/maximize-build-space@v10
+  #       with:
+  #         root-reserve-mb: 1024
+  #         temp-reserve-mb: 1024
+  #         remove-dotnet: 'true'
+  #         remove-android: 'true'
+  #         remove-haskell: 'true'
+  #         remove-codeql: 'true'
+  #         remove-docker-images: 'true'
+  #     - 
+  #       name: Setup apptainer
+  #       if: ${{ steps.git_diff.outputs.lines > 0 }}
+  #       uses: eWaterCycle/setup-apptainer@v2
+  #       with:
+  #         apptainer-version: 1.1.8
+  #     - 
+  #       name: Azure Container Registry Login
+  #       if: ${{ steps.git_diff.outputs.lines > 0 }}
+  #       uses: Azure/docker-login@v1
+  #       with:
+  #         login-server: mrhardi.azurecr.io
+  #         username: ${{ secrets.ACR_USERNAME }}
+  #         password: ${{ secrets.ACR_TOKEN }}
+  #     -
+  #       name: Build and push singularity
+  #       if: ${{ steps.git_diff.outputs.lines > 0 }}
+  #       run: |
+  #         mkdir -p mrhardi/apptainer
+  #         mkdir sif_tmp sif_cache
+  #         export APPTAINER_TMPDIR="$(pwd)/sif_tmp"
+  #         export APPTAINER_CACHEDIR="$(pwd)/sif_cache"
+  #         echo "Caching and temping apptainer at : $APPTAINER_CACHEDIR and $APPTAINER_TMPDIR"
+  #         apptainer build mrhardi_dev.sif docker://avcaron/mrhardi:pr-${{ github.event.number }}
+  #         echo "${{ secrets.ACR_TOKEN }}" | apptainer remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
+  #         apptainer push mrhardi_dev.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:dev
 
   create_docker_dev:
-    needs: create_singularity_dev
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     environment: CI
@@ -91,7 +90,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       -
         name: Get git diff for the current modifications
         uses: technote-space/get-diff-action@v6.1.2

@@ -40,6 +40,7 @@ target "diamond" {
     contexts = {
         cmake_builder = "target:cmake"
     }
+    ssh = [{ id = "default" }]
     dockerfile = "diamond.Dockerfile"
     target = "diamond_builder"
     output = ["type=cacheonly"]
@@ -49,14 +50,13 @@ target "diamond" {
 target "dependencies" {
     context = "dependencies/."
     contexts = {
-        base_image = "docker-image://scilus/scilus:2.0.2"
+        base_image = "docker-image://scilus/scilus:2.1.2"
         web_fetcher = "target:web_fetcher"
         diamond_builder = "target:diamond"
     }
     dockerfile = "Dockerfile"
     target = "dependencies"
     tags = ["docker.io/avcaron/mrhardi:dependencies"]
-    pull = true
     output = ["type=image"]
     cache-from = ["type=registry,ref=avcaron/build-cache:mrhardi-dependencies"]
 }

@@ -12,7 +12,7 @@ jobs:
     steps:
       -
         name: Maximize disk usage
-        uses: easimon/maximize-build-space@v7
+        uses: easimon/maximize-build-space@v10
         with:
           root-reserve-mb: 30720
           temp-reserve-mb: 4096
@@ -22,17 +22,17 @@ jobs:
           remove-docker-images: 'true'
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
       -
         name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         with:
           version: v0.11.0
           driver-opts: |
             image=moby/buildkit:v0.11.6
       -
         name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -48,13 +48,13 @@ jobs:
             type=ref,event=branch
           bake-target: release-tagging
       - 
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tag-baking-recipe
           path: ${{ steps.release_tags.outputs.bake-file }}
       -
         name: Rebuild complete docker image stack with dependencies
-        uses: docker/bake-action@v3.1.0
+        uses: docker/bake-action@v6
         with:
           workdir: ./containers
           files: |
@@ -66,43 +66,43 @@ jobs:
             mrhardi.output=type=registry
             mrhardi_cloner.args.mrhardi_ver=${{ github.event.release.tag_name }}
   
-  mrhardi-packaging:
-    needs: mrhardi-bakery
-    runs-on: ubuntu-latest
-    environment: CI
+  # mrhardi-packaging:
+  #   needs: mrhardi-bakery
+  #   runs-on: ubuntu-latest
+  #   environment: CI
 
-    steps:
-      -
-        name: Maximize disk usage
-        uses: easimon/maximize-build-space@v7
-        with:
-          root-reserve-mb: 2048
-          temp-reserve-mb: 2048
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-docker-images: 'true'
-      - 
-        name: Setup apptainer
-        uses: eWaterCycle/setup-apptainer@v2
-        with:
-          apptainer-version: 1.1.8
-      - 
-        name: Azure Container Registry Login
-        uses: Azure/docker-login@v1
-        with:
-          login-server: mrhardi.azurecr.io
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_TOKEN }}
-      -
-        name: Build and push singularity
-        run: |
-          mkdir -p mrhardi/apptainer
-          mkdir sif_tmp sif_cache
-          export APPTAINER_TMPDIR="$(pwd)/sif_tmp"
-          export APPTAINER_CACHEDIR="$(pwd)/sif_cache"
-          echo "Caching and temping apptainer at : $APPTAINER_CACHEDIR and $APPTAINER_TMPDIR"
-          apptainer build --disable-cache mrhardi.sif docker://avcaron/versa:latest
-          echo "${{ secrets.ACR_TOKEN }}" | apptainer remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
-          apptainer push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:latest
-          apptainer push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:${{ github.event.release.tag_name }}
+  #   steps:
+  #     -
+  #       name: Maximize disk usage
+  #       uses: easimon/maximize-build-space@v10
+  #       with:
+  #         root-reserve-mb: 2048
+  #         temp-reserve-mb: 2048
+  #         remove-dotnet: 'true'
+  #         remove-android: 'true'
+  #         remove-haskell: 'true'
+  #         remove-docker-images: 'true'
+  #     - 
+  #       name: Setup apptainer
+  #       uses: eWaterCycle/setup-apptainer@v2
+  #       with:
+  #         apptainer-version: 1.1.8
+  #     - 
+  #       name: Azure Container Registry Login
+  #       uses: Azure/docker-login@v1
+  #       with:
+  #         login-server: mrhardi.azurecr.io
+  #         username: ${{ secrets.ACR_USERNAME }}
+  #         password: ${{ secrets.ACR_TOKEN }}
+  #     -
+  #       name: Build and push singularity
+  #       run: |
+  #         mkdir -p mrhardi/apptainer
+  #         mkdir sif_tmp sif_cache
+  #         export APPTAINER_TMPDIR="$(pwd)/sif_tmp"
+  #         export APPTAINER_CACHEDIR="$(pwd)/sif_cache"
+  #         echo "Caching and temping apptainer at : $APPTAINER_CACHEDIR and $APPTAINER_TMPDIR"
+  #         apptainer build --disable-cache mrhardi.sif docker://avcaron/versa:latest
+  #         echo "${{ secrets.ACR_TOKEN }}" | apptainer remote login --username ${{ secrets.ACR_USERNAME }} --password-stdin oras://mrhardi.azurecr.io
+  #         apptainer push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:latest
+  #         apptainer push mrhardi.sif oras://mrhardi.azurecr.io/mrHARDI/mrhardi:${{ github.event.release.tag_name }}
