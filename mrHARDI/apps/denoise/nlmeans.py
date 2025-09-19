@@ -34,8 +34,9 @@ class NonLocalMeans(mrHARDIBaseApplication):
     aliases = Dict(default_value=_aliases)
 
     def execute(self):
+        n_coils = 0
         metadata = load_metadata(self.image)
-        if metadata:
+        if metadata and metadata.number_of_coils:
             n_coils = metadata.number_of_coils
 
         command = "scil_denoising_nlmeans.py {image} {output} {p}".format(
